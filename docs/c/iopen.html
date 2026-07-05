@@ -1,0 +1,34 @@
+<div align="center"><h4>iopen</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          iopen(idx_name,mode);
+<br><br>
+          short int mode;<br>
+          char *idx_name;
+<br><br>
+<b>Description</b>
+<br><br>
+          This routine opens an index file for processing.  The
+          argument idx_name is the name of the index to open, and
+          mode is either of the manifest constants <b>RDONLY</b>, or
+          <b>UPDATE</b> for read only, or read/write respectively.  The
+          user may have only six indices open at any given time.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;char ix1[] = "name_ix";&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* global index name */
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc,char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+  <br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init_dataman(argc,argv);&nbsp;&nbsp;&nbsp;&nbsp;/* init process */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iopen(ix1,UPDATE);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* open the index */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* process */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="insert.html">&#171;previous</a>&nbsp;&nbsp;<a href="mkidx.html">next&#187;</a><br>

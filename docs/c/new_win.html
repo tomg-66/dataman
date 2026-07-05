@@ -1,0 +1,38 @@
+<div align="center"><h4>new_win</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-or-<br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          new_win(row1,col1,row2,col2,attrib,mode) else ...
+<br><br>
+          int row1, col1;<br>
+          int row2, col2;<br>
+          int attrib;<br>
+          int mode;<br>
+<br>
+<b>Description</b>
+<br><br>
+          new_win saves the area of the screen defined by the corners (row1, col1),
+	  (row2, col2) then draws a box on the screen the center of which has the background
+	  color attrib.  The mode is one of the constants <b>POP_UP</b> or <b>GROW</b> to
+	  paint a pop up or an 'exploding' window.  attrib is one of the color constants
+	  <b>BLACK, BLUE, GREEN, CYAN, RED, MAGEN, BROWN,</b> and <b>L_GREY</b>.  This 
+	  function is used in conjunction with pop_win() to restore the area beneath the box.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;....<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;new_win(5,10,10,40,CYAN,GROW);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>This will paint a box 6 lines by 31 columns with a cyan center begining at point
+(5,10) on the screen.  It will appear to grow from it's center.
+<br><br>
+<a href="mask.html">&#171;previous</a>&nbsp;&nbsp;<a href="pause.html">next&#187;</a><br>

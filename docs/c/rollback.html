@@ -1,0 +1,37 @@
+<div align="center"><h4>rollback</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          rollback();
+<br><br>
+<b>Description</b>
+<br><br>
+		The rollback function terminates a transaction and does not
+		commit any changes to the database from the time start_transaction()
+		was called.
+<br><br>
+<b>Example</b>
+<br><br><kbd><pre>
+    #include &#060;dataman/dataman.h&#062;
+
+    main(int argc, char *argv[])
+    {
+            ....
+        start_transaction();
+            ...
+        get(ix1, key) else {
+            rollback();        /* couldn't get the key, rollback */
+            return;
+        }
+            ...
+        commit() else {
+            pause(10,30, "Couldn't commit transaction");
+            return;
+        }
+    }
+
+</pre></kbd>
+<br>
+<a href="commit.html">&#171;previous</a>&nbsp;&nbsp;<a href="windowing.html">next&#187;</a>

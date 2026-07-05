@@ -1,0 +1,48 @@
+<div align="center"><h4>remove</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          remove(k_buff, idx_name) else ...
+<br><br>
+          key k_buff;<br>
+          char *idx_name;
+<br><br>
+<b>Description</b>
+<br><br>
+int db_rm_key(k_buff, idx_name)
+<br><br>
+          This function removes a key from the specified index.  The
+          syntax for the original EDITOR command is:<br><br>
+          <kbd>&nbsp;&nbsp;&nbsp;&nbsp;remove key from idx_name.</kbd><br><br>
+          It does NOT delete the associated data record.  The argument
+          idx_name is the name of the index to operate on, and k_buff
+          is a key type containing the key to be removed.  The key
+          must be constructed exactly as for the get procedure,
+          using the mk_key function.  If there are duplicate keys in
+          the index, the function removes the first occurrence of
+          the first matching key, unless a system KEY was used for
+          the key argument.  If the removed key is being pointed to
+          by any index's KP, any subsequent get_next, or get_prior
+          will issue a diagnostic and the process will terminate.
+          If the index was saved, an attempt to restore it will
+          generate an error as well.  The get_current function
+          would return false for this case.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key k_buff;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mk_key(k_buff,patient_no,strlen(patient_no));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remove(number_ix,k_buff) else<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pause(10,10,"Patient number not on file");<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="release.html">&#171;previous</a>&nbsp;&nbsp;<a href="restore.html">next&#187;</a><br>

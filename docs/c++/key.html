@@ -1,0 +1,30 @@
+<h2>Class key</h2>
+The key class defines the system key value.  Since the database allows
+having identical keys, the key class differentiates between them.
+There is a define in the dataman.hh include file the defines '<b>KEY</b>' as
+the value of the key from the last operated on index.  The minimum size
+of a key is one character, and the maximum is 32.<br><br>
+
+<h3>Constructors</h3>
+#include &#060;dataman/dataman.hh&#062;<br><br>
+Construct an empty key<br><br><kbd>
+		key()
+</kbd><br><hr><br>
+Construct a key from another key.<br><br><kbd>
+		key(key &k)
+</kbd><br><hr><br>
+<h3>Operators</h3>
+Assign a string to a key.  If using a key assigned this way the index
+will return the lowest order matching key.
+<br><br><kbd>
+		void operator=(char *s);
+</kbd><br><hr><br>
+Assign a key from another key.  When using a key assigned this way, the
+index will return that specific occurance of that key.<br><br><kbd>
+		void operator=(key& k);
+</kbd><br><hr><br>
+Cast operator.  This will implicitly cast a key to a const char * for use
+in copying and other functions and operations that require it.
+Return the string representation of the key.<br><br><kbd>
+		operator const char *() const
+</kbd><br><hr><br>

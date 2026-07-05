@@ -1,0 +1,51 @@
+<div align="center"><h4>show</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-or-<br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          show(row,col,str,...,ENDLIST);
+<br><br>
+          int row,col;<br>
+          char *str;
+<br><br>
+<b>Description</b>
+<br><br>
+          This procedure does a cursor positioned write to the
+          terminal.  This procedure takes a variable number of
+          arguments, but they must always follow the same format.
+          The arguments MUST come in sets of three,  the first two
+          are the row and column to place the display, and the
+          third, str, is a string to display.  The last argument
+          MUST be the manifest constant <strong>ENDLIST</strong>.  This is the end-
+          of-argument-list indicator.  The predefined string <strong>TOP</strong>
+          clears to the end of the screen from the cursor position,
+          and <strong>EOL</strong> clears to the end of the line.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(argc,argv)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char inpt[2];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;....<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;show (0,0,TOP,0,30,"File Maintenance",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2,30,"A Add",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3,30,"B List",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4,30,"C Change",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5,30,"D Delete",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;6,30,"Selection:",ENDLIST);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*inpt = ' ';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*(inpt+1) = '\0';<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;accept(6,41,inpt,UPPER) else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;flush();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="pop_win.html">&#171;previous</a>&nbsp;&nbsp;<a href="window.html">next&#187;</a><br>

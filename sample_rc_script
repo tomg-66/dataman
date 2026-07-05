@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# this is a sample dataman rc script.  isn't too fancy, but
+# does get the job done.  feel free to improve on it.
+# best read with tabstop=8
+#
+# start the dataman database server....
+#
+# chkconfig: 2345 90 10
+# description: Start and stop the Dataman database server
+#
+
+. /etc/rc.d/init.d/functions
+PATH=$PATH:/usr/local/bin
+
+RETVAL=0
+
+case $1 in 
+    start)
+        dataman -q >/dev/null 2>&1
+        if [ $? -eq 1 ] ; then
+	    echo Dataman already running
+	    RETVAL=1
+	else
+	    dataman > /dev/null 2>&1
+	    sleep 2
+	    dataman -q > /dev/null 2>&1
+	    if [ $? -ne 1 ] ; then
+		RETVAL=2
+	    fi
+	fi
+	;;
+
+    stop)
+    	dataman -q > /dev/null 2>&1
+	if [ $? -ne 1 ] ; then
+	    echo Dataman not running
+	    RETVAL=1
+    	else
+	    dataman -t
+	fi
+	;;
+
+    status)
+    	status dataman
+	RETVAL=$?
+	;;
+
+    restart)
+    	dataman -t
+	dataman >/dev/null 2>&1
+	sleep 2
+	dataman -q > /dev/null 2>&1
+	if [ $? -ne 1 ] ; then
+	    RETVAL=2
+	fi
+	;;
+    *)
+	echo "$0: usage: $0 [start|stop|status|reset]"
+	RETVAL=3
+	;;
+esac
+exit $RETVAL
+

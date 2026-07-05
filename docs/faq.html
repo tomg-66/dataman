@@ -1,0 +1,51 @@
+<a href="#whatis">What is Dataman?</a><br>
+<a href="#whyuse">Why would I want to use it?</a><br>
+<a href="#features">What are some of the features?</a><br>
+<a href="#relational">Is Dataman relational?</a><br>
+<a href="#packages">What software has been built on this package?</a><br>
+<a href="#javafail">The default build fails in the Java classlib section</a><br>
+
+<h3><a name="wahtis">What is Dataman?</a></h3>
+Dataman is a database manager.  Twenty some years ago Nixdorf computer had systems designed
+specifically for volume data entry.  The system database language was called EDITOR.  This
+package is based on the verbs of that language.  At the time, the language didn't have 
+many modern capabilities.  There were no arrays, control structures were primitve, and it
+would run only on their systems.  In an effort to make the database abilities more accessable
+the verbs of the language were originally written as a 'C' runtime library that would
+directly access the database.  It was implemented on MS-DOS, UNIX, and AOS/VS.  The
+databases were entirely portable, and the applications required only a re-compile between
+the systems.  In 2002 it was decided to bring things out of the stone age,
+and it was split up into a server with a C language API library.  In 2004 the entire system
+was released under the GPL.<br><br>
+<h3><a name="whyuse">Why would I want to use it?</a></h3>
+Admittedly there are many larger and more sophisticaed systems out there.  This is partly
+why you would want to use it.  It is small and fast.  Stripped of symbols, the connection
+server is ~18K and the actual database server is approximately 50K.  Yet it is multi threaded
+and supports multiple connections (256) and has system and user level concurrency
+controls.  It supports many (not yet all) of the things that modern databases do.<br><br>
+<h3><a name="features">What are some of the features?</a></h3>
+With the release of 3.3.1 Dataman supports transaction processing.  It also supports 64 bit
+databases.  Records may contain blobs.  That is a record may have both structured and
+unstructured data in it.  There -are- limits.  The structured part of a data record may be
+only 32K.  Records that contain blobs have a 2Gb limit.  If this becomes a problem, it will
+be changed.  There are concurrency operations to perform co-operative multi processing.  The
+database now supports not just C, but C++, Java, and PHP.  If someone wants to write a python
+piece, please contact me.<br><br>
+<h3><a name="relational">Is Dataman relational?</a></h3>
+No.  It is not relational.  It is based on ISAM access techniques.  But due to the ability
+for a file/table to have many different formats, and the ability to define a logical
+structure for each data file, data ownership and relations can be implicitly inferred.  It
+would be very possible to write a relational layer on top of the current package.<br><br>
+<h3><a name="packages">What software has been built on this package?</a></h3>
+There was an automotive decision support package, a retail pharmacy management package,
+and a retail auto parts store package as well.  There have been many others at least
+considering this package in the last year, juging from the downloads.<br><br>
+<h3><a name="javafail">The default build fails in the Java classlib section</a></h3>
+By default the makefile will attempt to build the Java class library.  If the Sun Java
+development kit is not in your $PATH, the build will fail at that point because it is
+trying to invoke the javac compiler.  There are two ways around this.  The first is to
+install the JDK and place the binary directory in your PATH.  The second is to disable
+the Java build. Simply run the configure command like this:<br><br><kbd>
+./configure --disable-java<br>
+make<br>
+make install</kbd><br><br>

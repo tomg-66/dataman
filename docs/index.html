@@ -1,0 +1,165 @@
+<h1><strong>Welcome to the Dataman homepage<p></strong></h1></p>
+<p></p>
+<h3><p>The hope is that this is where you will come to find help using the Dataman package.</p></h3>
+<a href="manual.html">Read the Manual</a><br>
+<a href="faq.html">Read the FAQ</a><br>
+<a href="http://sourceforge.net/project/showfiles.php?group_id=113725">Download the Software</a><br><br>
+
+03/25/2013
+Released 3.3.8. Fixed a big bug in remove introduced in the last version.
+Changed all of the routines to use appropriate print formatting defines
+from &lt;inttypes.h&gt; <br>
+<br>
+03/21/2013
+Rleased 3.3.7.  It's been a long hiatus.  But someone using a more recent
+compiler downloaded the package and reported problems in the C++ routines.
+I took advantage of the time to re-work the index sorting and searching. 
+This improved sorting time by more than 25 percent.  Also  fixed a bug in
+the transaction processing that would hang the server.  Changed the C++
+library to define the Datman namespace, and to bring it up to complience
+with newer compilers. <br>
+<br>
+09/25/09<br>
+Released 3.3.6.  Fixed a bug in the server when you used keys that are 32
+characters long, and finally removed the '-release' flag when building the
+libraries.  The upshot of this is that you can upgrade the library without
+re-linking your application against it.  Makes it easier when you want to
+add something to the library and not your application.<br>
+<br>
+07/28/09<br>
+Interesting news.... I seem to now have a corporate sponsor.  Well, really
+what has happened is that my place of employment is using this project and
+as a result lets me work on it during the day.  Sometimes.<br><br>
+Again, there have been no updates for a long time.  Mostly because things
+were working pretty good for what I wanted.  I've now fixed a few bugs, and
+added a couple of relational operators in the c++ clientlib.  I've posted up
+the changes to SourceForge as release 3.3.5 (the prior attempt at 3.3.5 was
+withdrawn pretty quickly because the freelist was a -really- bad idea.)<br>
+<br>I would still LOVE to hear from those of you who download this project just
+to know what you are using it for.  It's not mandatory, but it's something
+that will at least let me know what's going on out there<br>
+<br>
+08/03/08<br>
+My server crashed with several hardware failures which has caused the site
+to be down for a couple of weeks while I got together a new system.  It seems
+as if everything is now functional, and that I'll be able to post a couple
+of bug fixes in the near future.<br>
+<br>
+05/29/08<br>
+Fixed a problem with the server thinking an open datafile was closed.  Added
+a freelist so that when many records are deleted, space in the datafile is
+used more efficiently.<br> Released ass 3.3.5<br>
+<br>
+04/14/08<br>
+Fixed the dbclean utility.  If there were blobs associated with a file that was
+rebuilt, they wouldn't be reassigned to the newly moved record.<br>
+If dataman is already up and running, you may re-invoke it with the '-D' switch
+to toggle on and off debugging.  You can do it manually by sending SIGUSR1 to
+the dataman_srv and dataman_con processes.<br>
+dfedit would crash if you entered a record number that corresponded to a
+deleted record.  You can now do that and potentially un-delete that record.<br>
+mkdf would not delete the blobs associated with a datafile that was being
+re-built.<br>
+I decided to leave the library files at level 3.3.3 since there was no changes
+whatsoever to the client libraries.<br>Released as 3.3.4<br>
+<br>
+01/03/08<br>
+Added command sequence checking in the database server.  Up to this time, I've
+basically assumed that any connections from a client was benign, and that no one
+would want to send malicious packets.  Well, now there is more checking to verify
+packets.<br>Released as 3.3.3<br>
+<br>
+10/11/07<br>
+Well, it's been about a year since I've posted anything here.  I've mostly taken
+the time off.  This release fixes some largefile bugs, and finally officially adds
+the clean utility.  The very old and buggy code has always been in the respository,
+just not ever made to work.  This release includes that, and rolls together the
+changes made a year ago, but not rolled into a package.  Added all together, this
+makes release 3.3.2<br><br>
+12/4/06<br>
+Finally commited index file name handling for dumpix and utilities to take
+advantage of the new functionality of mkidx.  Data file names in Dataman
+still can be at most 63 characters long (do you really want to have file names
+longer than that?).<br><br>
+11/1/06<br>
+Implemented better handling of file name arguments to mkidx.  Now an index can
+refer to an arbitrarily large number of files.  Added the sort program verbs to
+php, so scripts can now build a new index.  This was added to CVS.  I'll roll a
+new release in the future.<br><br>
+10/25/06<br>
+Was able to do testing on a 64 bit system.  There was a problem with creating a new
+record in a transaction.  That has been fixed and the changes posted.  The 3.3.1
+package was re-posted as well to reflect the change.  In either case, getting the
+source package, or the CVS tree will have all the changes.  Oh, and evertying worked
+as expected<br><br>
+10/21/06<br>
+Finally the 3.3.1 release has been posted up to SourceForge.  There have been lots of
+changes and it's nice to have everything in the release package.  The transaction
+processing code, the changes to the C++ API and the documentation are all there (and 
+here as well!).  I haven't tested everything on a 64 bit system yet, but that should
+be coming in the next week or two.<br><br>
+09/15/06<br>
+I've finally added some documentation for the C++ API library.  I know it's been a long
+time coming, and should look better than it does, but hey, at least it's there.  The
+entire documentation tree will be included in the next release package that also includes
+the transaction processing functionality.<br><br>
+08/23/06<br>
+I know there haven't been many changes on the website for a while, but that is because
+I've been busily working on transaction processing.  If you are interested in testing
+this, please let me know and I'll send you the new code.  There are three new verbs
+(and of course, since they are new, they're not EDITOR verbs); start_transaction(),
+commit(), and rollback().<br><br>
+06/17/06<br>
+Two more bug fixes in the server have been put in CVS on SourceForge.  This should clear
+up some obvious problems for some.<br><br>
+06/01/06<br>
+There have been changes for 'protected' memebers of the java classes, actually, making
+them not protected, but only package level availability.  This should reduce some
+confusion of how to use some of the methods.<br><br>
+05/29/06<br>
+The java API documentation has now been posted up.  I know it's been a long time coming,
+but at least it's here now.  It was created with javadoc (I finally learned more about
+that).  I'm working at re-re-writing the c++ doc, and that should be available soon.  When
+that is done, I'll put it all in a new release, and post it up to sourceforge.<br><br>
+05/18/06<br>
+Of course, the day after I post a release, I notice something left over from cleaning
+up, and it broke db_discon.c  That has been fixed and is available in the CVS repos.<br><br>
+05/17/06<br>
+Version 3.3.0 has been released.  I know it's been a long time since the last release,
+but hopefully the changes were worth the wait.  This makes some major changes in how
+the server runs.  First off, I've finally compiled things on a 64 bit CPU and made the
+changes necessary to run successfully on both 32 bit and 64 bit CPUs.  You may now
+specify how many threads the server will run, and the size of the shared memory segments.
+There has been a longstanding bug in the delete() function that has finally been fixed.
+Overall, the changes have resulted in about a 12% increase in server speed.<br><br>
+12/29/05<br>
+Version 3.2.5 has been released.  If you've been keeping up with the CVS changes, this
+rolls up the chages found there.  I'll admit that in the last few days there were several
+changes posted, and  that is what convinced me to roll up another release.  None of the
+interfaces in the libraries have changed.<br><br>
+11/30/05<br>
+The code for the PHP module has been released as a seperate package and has it's own
+CVS repository.  This should make it easier to 1) download the package, and 2) update
+the code.  It currently has only been tested with PHP 5.0.2.
+<br><br>
+10/15/05<br>
+Hopefully, the power company have finally sorted out the power problems, and this site
+can be more available.
+<br><br>
+10/01/05<br>
+There have been many power problems of late.  Please bear with as these get sorted out.
+<br><br>
+The current news is that version 3.2.4 has been released.  This release changes the
+datafiles and indexes to 64 bit.  This means that a single datafile can be up to 9.22x10^18
+bytes if your operating system supports it.  Some effort to support concurrency for multi
+threaded web servers has been added to the php module as well.<br><br>
+Examples for C, C++ and java are now beind distributed, and this web page is now available.  The
+documentation is now being updated to match the current version, and is available only in HTML
+pages on this website.  Currently only the C API is finished.  The C++ documentation shoud be
+available shortly, followed by PHP and Java.<br><br>
+PHP documentation is available.  It's mostly in the style of the function reference page
+for PHP modules found on their website.  I didn't write seperate pages and allow for user
+comment.  Perhaps that will be forthcoming.  It was just important to get the documentation
+up for those of you downloading it.<br><br>
+This web page will be updated soon to be a bit more attractive in the near future as well.<br><br>
+

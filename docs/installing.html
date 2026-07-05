@@ -1,0 +1,74 @@
+<div align="center"><h4>Building and installing Dataman</h4></div>
+<a href="#general">General Instructions</a><br>
+<a href="#nowin">Disabling text mode windows</a><br>
+<a href="#nojava">Disabling Java</a><br>
+<a href="#buildphp">Building PHP</a><br><br>
+<a name="general"><h5>General Instructions</h5></a>
+Dataman is distributed as a .tar.gz file.  The full name is dataman-&#060;version&#062;.tar.gz
+The general method to install it is to move the file to a temporary directory and enter the
+command:<br><br>
+<kbd>zcat dataman-&#060;version&#062;.tar.gz | tar xvf</kbd><br><br>
+This will create a directory named dataman-&#060;version&#062;.  Change to that directory
+and enter the commands:<br><br>
+<kbd>./configure<br>make<br>make install<br>-or-<br>
+make install-strip<br><br></kbd>
+The configure command should be able to determine the platform that you are building on, and 
+configure the proper use of your compiler and linker.  The 'install-strip' version of the
+command will strip all symbols from the binaries installed.  There are many options to the
+configure script, and you can find them by using the '--help' switch.  The one option that is
+most likely to affect the user is the default installation directory.  This is normally
+/usr/local.  Upon successful installation, there will be new files installed in the /bin, /lib, 
+/include/dataman, and /java/Dataman sub-directories of the installation directory.<br><br>
+
+After the server is built and installed, there are a few other system configuration changes that
+are not necessary, but will be useful to make.  The first is to enter the following lines into
+your /etc/services file:
+<br><br>
+<kbd>
+dataman         8758/tcp                        #dataman database server<br>
+dataman         8758/udp                        #dataman database server
+</kbd><br><br>
+Next, you should either create a dataman user or add an alias to your mail delivery program to
+let dataman receive mail.  If the main daemon detects the termination of either the connection
+or database server, it will e-mail a notice to the dataman user that it was detected and
+re-started.<br><br>
+Finally, add a rc script to start and shut down the dataman server on system initialization and
+shutdown.  There is a sample one that is appropriate for RedHat or Mandriva systems that is
+in the top level distribution directory.<br><br>
+<a name="nowin"><h5>Disabling text mode windowing</h5></a>
+The C and C++ libraries includes a rudimentary text mode windowing system.  This system is set
+up, by default, to initialize when calling either mkidx, or init_dataman.  If you don't want to
+use the windowing system by default you need to comment out the line in config.h.in (at the top)
+that #defines DWINDOW -BEFORE- running configure.  The routines are still available to you and
+you can manually initialize and use them.  It just won't happen automatically.<br><br>
+<a name="nojava"><h5>Disabling Java</h5></a>
+The default Makefile.am for dataman directs the configure script to build a makefile to build
+the Java classes.  This build assumes that you have the Java sdk from SUN installed on your system
+and that the java compiler, javac, is in your PATH.  If you don't have javac in your PATH, the
+build will fail.  To disable the java portion of the build, you need merely to invoke the
+configure script like this:
+<br><br><kbd>
+	./configure --disable-java<br>
+	make<br>
+	make install<br>
+</kbd> <br><br>
+<a name="buildphp"><h5>Building PHP</h5></a>
+If you want to use dataman to write dynamic web pages (or just write scripts), you will want
+to use PHP.  There is also a module for PHP that includes the dataman functionality.
+First download, build, and install the basic dataman package.
+If you already have PHP installed it's a good possibility that
+you will want to uninstall it.
+Next download php_module&#060;version&#062;.tar.gz
+from sourceforge <a href=http://sourceforge.net/project/showfiles.php?group_id=113725>here</a>.
+Move the package to the &#060;php_base_dir&#062;/ext directory.  Extract the file there.  It should
+create a new directory there named dataman.  Move up one directory and run the command <br><br><kbd>
+		./buildconf
+</kbd><br><br>
+There are a number of switches to configure PHP with to make it work with your web server.  We won't
+discuss these here.  The one switch you need to add to configure dataman into PHP is:<br><br>
+<kbd>--with-dataman[=DIR]</kbd><br><br>
+where DIR is where the dataman base install directory is (if it isn't the default).  Of course,
+then run the commands<br><br>
+<kbd>make<br>make install<br><br></kbd>
+This has only been tested with PHP 5 series.<br>
+PHP is now ready to use dataman.

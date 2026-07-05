@@ -1,0 +1,152 @@
+<h2>Class datafield</h2>
+For the most part, users will not need to construct a datafield.  They are all
+initialized as part of the datarecord when a new record is retrieved from the
+database.<br><br>
+<br><h3>Constructors</h3><br><br>
+#include &#060;dataman/dataman.hh&#062;<br><br>
+Create an empty datafield:<br><br><kbd>
+		datafield::datafield(void);</kbd><br>
+<hr><br>
+construct from string, offset, length<br>
+The arguments are the charachter pointer to the string to form the datafield
+from, and len is the length of the field to build.  The offset and length
+arguments are optional.  If neither are passed, the datafield is built from
+the entire string.  If the offset is passed, that is where to begin a substring
+to use to build the datafield.  Any other length of 0 (either explicitly or
+implicitly) will make a zero length datafield.<br><br>
+<kbd>
+		datafield::datafield(char *src, int offset, int len);</kbd><br><hr><br>
+
+<br><h3>Operators</h3><br><br>
+Cast operator.  This will implicitly cast a datafield to a const char * for use
+by those functions and operations that require it.  Remember precedence rules.  If
+you expect <br><br><kbd>
+		strcpy(str, master[3]+2);
+<br><br></kbd>
+to copy to str the master record field 3, from the 3rd character, that won't happen.
+Because the '+' operator is overloaded as well, it will take whatever value is in
+master[3] add 2 to it, then copy the contents of the result to str.  What you should
+do, if you want the first behavior is this:<br><br><kbd>
+		strcpy(str, (const char *)master[3]+2);
+		<br><br></kbd>
+That will cast the field to a const char *, add 2 to the address, then pass that off
+to strcpy.  <br><br><kbd>
+		operator const char *() const
+</kbd><br><hr><br>
+None of the following operators are valid to use on a blob, and all mark the datarecord
+as updated.<br><br>
+
+Assignment from another field:<br>this makes a complete
+copy of the datafield and assigns it to the destination datafield<br><br><kbd>
+		void datafield::operator=(const datafield& d)</kbd><br><hr><br>
+Assign a datafield from a character string.<br><br>
+Assign an entire string to a datafield.  If the string is longer than the
+datafield, the string will be truncated at the datafield's length.  If the string
+is shorter, the datafield will be left justified and blank filled.<br><br><kbd>
+void datafield::operator=(const char *s);
+</kbd><br><hr><br>
+Assign a datafield from an int.  If the length of the string representation of the
+integer is longer than the datafield, it is truncated at that length.  If it is
+shorter than the datafield, it will be left justified and blank filled in the
+datafield.<br><br><kbd>
+void datafield::operator=(const int i)
+</kbd><br><hr><br>
+Assign a datafield from a float.  If the length of the string representation of the
+float is longer than the datafield, it is truncated at that length.  If it is
+shorter than the datafield, it will be left justified and blank filled in the
+datafield<br><br><kbd>
+void datafield::operator=(const float f)
+</kbd><br><hr><br>
+The 'addition' operators.  A string + string is a concatanation.  Adding an
+int or float to a string converts the string to an int or float and performs
+the operation.  if the first operand is either an int or float, then convert
+the second op to the appropriate op before performing the operation.  If you
+have two numeric datafields and wish them to be treated as an int or float, add
+an integer (or float) 0 to one of them, and then perform the other operation(s).
+<br><br>
+Add two data fields according the rules above.<br><br><kbd>
+datafield datafield::operator+(const datafield& d)
+</kbd><br><hr><br>
+Add (or concatenate) a string to the datafield according to the promotion
+rules above.<br><br><kbd>
+datafield datafield::operator+(const char *s)
+</kbd><br><hr><br>
+Add an integer to a datafield.  The result in the datafield will be an
+integer.<br><br><kbd>
+datafield datafield::operator+(const int i)
+</kbd><br><hr><br>
+Add a float to a datafield.  The result in the datafield will be a float.<br><br><kbd>
+datafield datafield::operator+(const float f)
+</kbd><br><hr><br>
+Multiplication and division operators try to treat all fields numerically, either
+int or float.  In all cases a non-numeric value is treated as a zero.
+<br><br>
+Multiply two data fields.  If a decimal is found in either of the the datafields, then both
+fields are treated as floats.  If no decimal is found then both are treated as an int.
+<br><br><kbd>
+datafield datafield::operator*(const datafield& f)
+</kbd><br><hr><br>
+Multiply a numeric string to da datafield.<br><br><kbd>
+datafield datafield::operator*(const char * s)
+</kbd><br><hr><br>
+Multiply an integer to a datafield.  Standard type promotions apply.<br><br><kbd>
+datafield datafield::operator*(int i)
+</kbd><br><hr><br>
+Multiply a float to an integer.<br><br><kbd>
+datafield datafield::operator*(float f)
+</kbd><br><hr><br>
+Division of one field by another.  Both datafields are converted as described
+above and the division is performed.  Division by zero of course is an error.
+<br><br><kbd>
+datafield datafield::operator/(const datafield& f)
+</kbd><br><hr><br>
+Divide a datafield by a numeric string.  Conversion to a float occurs only
+if a decimal is found in either of the datafield or the string.  Otherwise
+the conversion is to an integer.<br><br><kbd>
+datafield datafield::operator/(const char * s)
+</kbd><br><hr><br>
+Divide by an integer.<br><br><kbd>
+datafield datafield::operator/(const int i)
+</kbd><br><hr><br>
+Divide by a float.<br><br><kbd>
+datafield datafield::operator/(const float f)
+</kbd><br><hr><br>
+<br><h3>Method Summary</h3>
+#include &#060;dataman/dataman.hh&#062;<br><br>
+There are only a few methods defined for a datafield.  Others would be very easy
+to implement.
+<br><br>
+Assign a blob to the field.  It can't just be assigned via '=' because a blob may
+be of arbritrary length.  This will assign an arbritrary buffer of 'size' bytes to
+a datafield.  It will return a non zero value if successful, else a zero.
+<br><br><kbd>
+int datafield::put_blob(void *ptr, int len)
+</kbd><br><hr><br>
+Copy a string to a datafield.  This will assign the string to the appropriate
+datafield, and return a pointer to the string contained by the datafield.<br><br><kbd>
+char *strcpy(datafield& d, char *s)
+</kbd><br><hr><br>
+Copy the string representation of a datafield to a string.  The pointer to the
+destination is returned.<br><br><kbd>
+char *strcpy(char *s, datafield& d)
+</kbd><br><hr><br>
+Copy at most i bytes from the string respresentation of a datafield to a string.
+Return the pointer to the destination.<br><br><kbd>
+char *strncpy(char *s, datafield& d, int i)
+</kbd><br><hr><br>
+
+Copy at most i bytes from a string to a datafield.  If i is greater than the
+length of the datafield, that is the number of bytes to copy.  A pointer to the
+destination string is returned.<br><br><kbd>
+char *strncpy(datafield& d, char *s, int i)
+</kbd><br><hr><br>
+Concatenate the string representation of a datafield to a string.<br><br><kbd>
+	return(strcat(s, d.getptr()));
+</kbd><br><hr><br>
+Concatenate at most i bytes of the string representation of a datafield to a string.
+a pointer to the destination string is returned.<br><br><kbd>
+char *strncat(char *s, datafield&d, int i)
+</kbd><br><hr><br>
+Convert the string representation of a datafield to an integer and return the result.<br><br><kbd>
+int atoi(datafield& d)
+</kbd><br><hr><br>

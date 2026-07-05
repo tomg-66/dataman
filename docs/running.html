@@ -1,0 +1,69 @@
+<div align="center"><strong>Running the Dataman Server</strong></div><br><br>
+
+The dataman server consists of three executable programs.  The programs are called
+dataman, dataman_con, and dataman_srv.  Dataman is the parent of the other two, and
+it's job is to start and monitor the other two programs.  Dataman_con is the connection
+manager.  It manages the connections that clients make to the database server.  When
+running, you will see one instance of the connection manager for each connection in
+addition to the main connection manager.  The dataman_srv process is the actual
+database server.<br><br>
+
+If the dataman process catches the termination of either of the child processes it
+will send a mail to the dataman user.  As a result you will need to create either a
+dataman user, or alias a user to receive mail destined for dataman.  After sending a
+mail the terminated program gets re-started.<br><br>
+
+The connection server listens on port 8758.  So, you should make sure nothing else
+is running on this port.  It is also a good idea to make an entry in /etc/services
+so that netstat and others can see that dataman is listening.<br><br>
+
+The package as distributed contains an example <i>RC</i> script
+that shows a simple way to start the server processes.  The server usage is:<br><br><kbd>
+	&nbsp;&nbsp;&nbsp;&nbsp;dataman [-D|q|s|t] [-m size] [ -n num]<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-D  start with debugging turned on<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if dataman is alread running this will toggle<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the state of debugging<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-m size where size is the number of Kilobytes to<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;use for shared memory segments (1,2,3...)<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-n num where num is the numer of worker threads<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;in the database server<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-q  query status of dataman<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s  controlled shutdown of dataman processes<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-t  forced termination of dataman processes<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-v  print version number and exit<br></kbd><br>
+Debugging will produce copious amounds of information in logfiles located in the /tmp directory.  Only
+turn this on if you know what you're looking for, and will use it for only short runs.  If dataman is
+already running, re-invoking it with the debugging switch will toggle the debugging state.  When (re)starting
+debugging, any previous logs are truncated and the contents of the logfiles are lost.<br><br>
+
+Querying the status of dataman will tell you if dataman is running or not and the status of the
+pid lock files.  If dataman terminated abnormally there can files left named .dataman*.pid
+in the /tmp directory.  These will be automatically cleaned up on the restart of dataman.  If dataman
+is running the return from the query is a 1, and a 2 if it isn't running (good for use in scripts).<br><br>
+
+The controlled shutdown of dataman is a nice way to shut down the server processes.  If any clients are
+attached to the server at the time the shutdown command is issued, the connection server stops accepting
+new connections, and the processes wait until all of clients terminate.  Then the servers close down and
+the processes terminate.<br><br>
+
+The forced shutdown, however, is not as nice.  This forces down all of the server processes running.  Any
+clients connected at the time are forcibly disconnected and the system terminates.  Any 'in-process'
+operations may not be completed.<br><br>
+
+The -m and -n switches are new with version 3.3.0<br><br>
+
+There is a shared memory segment that is used for communication between each active connection and
+the server.  By default this segment is 1 Kilobyte (1024 bytes).  The idea is that most data records
+are smaller than 1K.  The -m switch lets you set the size of this segment up to 4K in 1K increments.
+The values may be 1, 2, 3, or 4.  If data records are larger than the defined size, the server and
+connection manager take turns using the memory segment to copy data in and out.  Obviously, if you
+have large data records this can slow down the communications. This should not be much of a problem
+though, because then you start impacting the TCP/IP connection between client and server, and that
+will be much more noticable than the memory operations.<br><br>
+
+You may configure the number of worker threads for the database server with the -n switch.  It is
+a good idea to strike a balance between the number of simultaneous connections you expect to handle
+and the number of CPUs you have on your system.  Most connections stand idle most of the time, so
+having a thread for each connection will waste resources.  If you have only one CPU the only time
+you will get thread switches is during a long syscall or on a timeslice.  Many threads on a single
+CPU system thus doesn't buy you much.  The default number of worker threads is 10.<br><br>

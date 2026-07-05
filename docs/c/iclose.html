@@ -1,0 +1,37 @@
+<div align="center"><h4>iclose</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          iclose(idx_name);
+<br><br>
+          short int mode;<br>
+          char *idx_name;
+<br><br>
+<b>Description</b>
+<br><br>
+          This routine closes an open index.  The argument
+          idx_name is the name of the index to close.  Since you may
+	  have only six indexes open at any one time, it may be
+	  necessary to close an index at other times besides the end
+	  of your program.  The server keeps track of
+	  the indexes you open during a connection, so if that connection
+	  is dropped, it attempts to close it in the server.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;char ix1[] = "name_ix";&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* global index name */
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init_dataman(argc,argv);&nbsp;&nbsp;&nbsp;&nbsp;/* init process */ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iopen(ix1,UPDATE);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* open the index */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* process */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;iclose(ix1);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="get_prior.html">&#171;previous</a>&nbsp;&nbsp;<a href="include.html">next&#187;</a><br>

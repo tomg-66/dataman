@@ -1,0 +1,166 @@
+<h2>Class index</h2>
+The index class is where most of the verbs of the dataman package
+are implemented.
+<h3>Constructors</h3>
+#include &#060;dataman/dataman.hh&#062;<br><br>
+Construct an empty index reference<br><br><kbd>
+	index()
+</kbd><br><hr><br>
+Construct a reference to an index and open it.  The named index
+needs to be in the database root path that is defined either in
+the ROOT environment variable, or passed as an argument to
+init_dataman.  The mode may be either of the manifest constants
+RDONLY (for read only access), or UPDATE (for read/write access).
+When an index goes out of scope, it is closed.  If the current
+datatrecord is from the closed index, it is flushed to the database
+if need be.<br><br><kbd>
+	index(char *name, int mode)
+</kbd><br><hr><br>
+<h3>Interface methods</h3>
+#include &#060;dataman/dataman.hh&#062;<br><br>
+Retrieve a key from the datbase.  When using an index::key to
+retrieve a record, it referrs to a particular occurence of a
+key.  The datarecord the key refers to will be stored in the
+master datarecord.<br><br><kbd>
+		int get(const key::key&)
+</kbd><br><br>
+Returns true if the key was found, else false.
+<br><hr><br>
+Retrieve a key from the database.  When using a string to
+retrieve a key, the lowest order matching key is returned.
+The datarecord the key refers to will be stored in the master
+datarecord<br><br><kbd>
+		int get(const char *)
+</kbd><br><br>
+Returns true if the key was found, else false.
+<br><hr><br>
+Retrieve a key from the datbase, using the string representation
+of a datafield as the lookup.  Since this is a string the lowest
+order matching key is returned.  The datarecord the key refers to
+will be stored in the master datarecord.<br><br><kbd>
+		int get(datafield::datafield&)
+</kbd><br><br>
+Returns true if the key was found, else false.
+<br><hr><br>
+Retrieve the next higher order key from the database.  This uses
+the the last retrieved key as the reference.  The associated record
+is stored in the master datarecord.<br><br><kbd>
+		int get_next()
+</kbd><br><br>
+Returns true if successful, else false if the current key is the
+last in the index.
+<br><hr><br>
+Retrieve the next lower order key from the database.  This uses the
+last retrieved key as the reference.  The associated record is stored
+in the master datarecore<br><br><kbd>
+		int get_prior()
+</kbd><br><br>
+Returns true if successful, else false if the current key is the
+first in the index.
+<br><hr><br>
+Retrieve the lowest order key from the index.  The associated
+datarecord is stored in the master datarecord.<br><br><kbd>
+		int get_first()
+</kbd><br><br>
+Returns true if successful, else false if there are no keys in the index.
+<br><hr><br>
+Retrieve the highest order key from the idnex.  The associated
+datarecord is stored in the master datarecord.<br><br><kbd>
+		int get_last()
+</kbd><br><br>
+Returns true if successful, else false if there are no keys in the index.
+<br><hr><br>
+Retrieve the current key from the database.  It's associated record is
+stored in the master datarecord.  This is not the same as restore.  Since
+the user can use forward or back, the current master datarecord may not
+be the one associated with the current key<br><br><kbd>
+		int get_current()
+</kbd><br><br>
+Returns true if successful, else false if the current key has been removed.
+<br><hr><br>
+Retrieve the record following the current master datareord and store in the
+master datarecord.<br><br><kbd>
+		int forward()
+</kbd><br><br>
+Returns true if successful, else false if the current record is last in the
+data file<br><hr><br>
+Retrieve the record preceeding the current master datarecord ans store it in
+the master datarecord.<br><br><kbd>
+		int back()
+</kbd><br><br>
+Returns true if successful, else false if the current record is the first in the
+data file<br><hr><br>
+Lock the current data record.  The locks are co-operative.  If the record is
+already locked the protect call can pend up to 500 msec, during which the lock
+may be asserted.
+<br><br><kbd>
+		int protect()
+</kbd><br><br>
+Returns true if the lock was asserted, else false if someone else had a lock.
+<br><hr><br>
+Remove a lock from the current record.  This as an unconditional clear.  The
+system doesn't check for lock owners, so anyone can clear a protected record.
+<br><br><kbd>
+		void clear()
+</kbd><br><hr><br>
+Delete the current record from the database.  If there is a record following
+the current one, that becomes the current record, and is stored in the master
+datarecord.  Otherwise the record prior to the deleted one becomes the current
+record.  It is illegal to delete the only record in the database.  If a key
+points to the record being deleted, the key is not removed from the index.
+If a key pointing to a deleted record is referred to in any of the get
+routines, the key is silently removed and the key search continues.
+Therefore it is normally adventageous to remove a key prior to deleting the
+record.<br><br><kbd>
+		void delrec()
+</kbd><br><hr><br>
+Remove a key from the index.  Using a key type, the user may refer to
+a specific occurence of a key.<br><br><kbd>
+		int remove(const key::key&)
+</kbd><br><br>
+Returns true if successful, else false if the key wasn't found.
+<br><hr><br>
+Remove a key from the index.  Using a string, the lowest order matching
+key will be removed.<br><br><kbd>
+		int remove(const char *)
+</kbd><br><br>
+Returns true if successful, else false if a matching key was not found.
+<br><hr><br>
+Save the current state of the reference to this index.  Only one state at a
+time may be saved.<br><br><kbd>
+		void save()
+</kbd><br><hr><br>
+Restore the state of the reference to the index.  Since the user may use
+forward or back, this is -not- the same as get_current.<br><br><kbd>
+		int restore()
+</kbd><br><br>
+Returns true if successful, else false if the key had been removed.
+<br><hr><br>
+Insert a new record into the database.  The current master record for
+the index is taken as a reference and the record is inserted relative
+to it.  fmt is the record format number of the record to be inserted.
+The where argument may be either of the manifest constantes BEFORE
+or AFTER.  The new record consisting of all blank fields is stored in
+the master datarecord.<br><br><kbd>
+		void insert(const int fmt, const int where);
+</kbd><br><hr><br>
+Include a key referring to a datarecord into the index.  The symantics
+of this command is a bit odd, so make sure you understand it.  The key
+is inserted into this index.  The index argument referres to the source
+of the datarecord that will be associated with the key.  Therefore, the
+user can take the master record referred to by one index, associate the
+key with that record, and store the key in this index.  When using a
+datafield for the key, the field's string representation is used as the
+key<br><br><kbd>
+		void include(index& idx, const char *key);<br>
+		void include(index *idx, const char *key);<br>
+		void include(index& idx, datafield::datafield& key);<br>
+		void include(index *idx, datafield::datafield& key);<br>
+</kbd><br><hr><br>
+Return the base name of the index file.<br><br><kbd>
+		char *get_ixname()
+</kbd><br><hr><br>
+Return the system key of the last retrieved key.  There is a #define in
+dataman.hh to return this as well - KEY.<br><br><kbd>
+		key& get_key(void)
+</kbd><br><hr><br>

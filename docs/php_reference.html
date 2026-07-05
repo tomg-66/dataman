@@ -1,0 +1,638 @@
+<div align="center"><font size="+8"><strong>PHP Language Function Reference</strong></font></div>
+<br><br>
+To use the Dataman extension on Unix/Linux, you first need to build and install the Dataman library.
+Source code and installation instructions are available at the Dataman Sourceforge page
+<a href="http://www.sourceforge.net/projects/dataman">here</a>.  Since the initial php release,
+just the module code has been made available.  The CVS and extnesion code are also available at
+Sourceforge.  To use it you need to have PHP 5.xx souce installed on your computer.  The package
+file needs to be extracted while in the 'ext' sub-directory of the PHP source root directory.
+Next, change directories up one (cd ..) and run the command:<br>
+<code>./buildconf</code><br>
+and proceed building PHP as normal.<br>
+<br>The routines listed here are grouped functionally instead of alphabetically.
+<br><br>
+To get these functions to work, you have to compile PHP with <b>-with-dataman[=DIR]</b>, where
+DIR is the Dataman install prefix.
+<br><br>
+The PHP interface to the Dataman server consists of the following routines:<br>
+<a href="#connect">dataman_connect</a> - init and connect to database<br>
+<a href="#iopen">dataman_iopen</a> - open an index<br>
+<a href="#iclose">dataman_iclose</a> - close an index<br>
+<a href="#get">dataman_get</a> - get a key from an index<br>
+<a href="#get_next">dataman_get_next</a> - get the next key from an index<br>
+<a href="#get_prior">dataman_get_prior</a> - get the prior key from an index<br>
+<a href="#get_current">dataman_get_current</a> - get the current key from an index<br>
+<a href="#get_first">dataman_get_first</a> - get the first key from an index<br>
+<a href="#get_last">dataman_get_last</a> - get the last key from the named index<br>
+<a href="#forward">dataman_forward</a> - get the next record from the datafile<br>
+<a href="#back">dataman_back</a> - get the prior record from the datafile<br>
+<a href="#insert">dataman_insert</a> - insert a new record in a datafile<br>
+<a href="#include">dataman_include</a> - add a new key to an index<br>
+<a href="#remove">dataman_remove</a> - remove a key from the named index<br>
+<a href="#protect">dataman_protect</a> - protect the current record in the named index<br>
+<a href="#clear">dataman_clear</a> - remove the protect bit from the record<br>
+<a href="#save">dataman_save</a> - save the current state of the named index<br>
+<a href="#restore">dataman_restore</a> - restore the state of a saved index<br>
+<a href="#delete">dataman_delete</a> - delete the current record from the named index<br>
+<a href="#get_format">dataman_get_format</a> - get the format number of the current record<br>
+<a href="#get_key">dataman_get_key</a> - get the key of the current index<br>
+<a href="#key_str">dataman_key_str</a> - get the string rep of the key of the current index<br>
+<a href="#get_index">dataman_get_index</a> - get the name of the current index<br>
+<a href="#get_file">dataman_get_file</a> - get the name of the current file<br>
+<a href="#put_data">dataman_put_data</a> - put data into a field of the mater record<br>
+<a href="#mark">dataman_mark</a> - mark the master record<br>
+<a href="#xact">dataman_start_transaction</a> - start a new transaction<br>
+<a href="#commit">dataman_commit</a> - commit a transaction to the database<br>
+<a href="#rollback">dataman_rollback</a> - cancel a transaction<br>
+<a href="#mkidx">dataman_mkidx</a> - build a new index<br>
+<a href="#sort">dataman_sort</a> - add a key to a new index<br>
+<a href="#release">dataman_release</a> - release the current work record<br>
+<a href="#when_file">dataman_when_file</a> - check if a new work file is opened<br>
+<br><br>
+<p>
+Any of the file edit routines that retrieves a data record will retrieve that record
+into a globally available string array named $master.  If the record has been updated
+with either the dataman_put_data() function, or has been marked with the dataman_mark()
+function, when a new record is retrieved the one currently in memory is automatically
+written to the database.  Be aware that if you assign values directly to the members
+of the $master array, that it won't be written unless you mark the record.  The $master
+record is available only if your script is initialized with <a href="#connect">dataman_connect</a></p>
+<p>
+Sort routines are used for building new indexes.  The data record that they used is
+named $workfile.  Like the $master record for file edit routines, this globally
+available array contains the current working record.  It is only available if your script
+is initialized with <a href="#mkidx">dataman_mkidx</a></p>
+<br><br>
+<hr>
+
+<h4><a name="connect">dataman_connect</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_connect(string hostname, string database_root);
+<br><br>
+dataman_connect is for initializing a 'file edit' routine.  It
+establishes a connection to the database server on hostname,
+and sets the database root directory to database_root.  Only
+functions associated with file edits are valid when using this
+function to establish a connection.  See <a href="#mkidx">dataman_mkidx</a>
+to see the list of functions invalid for file edits.
+<br>
+Returns
+<br><br>
+None.  If there is an error the appropriate message is displayed, and the script terminates.
+<br><br><br><hr>
+
+<h4><a name="iopen">dataman_iopen</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_iopen(string ixname, mode);
+<br><br>
+dataman_iopen opens the named index in the database_root established
+during dataman_connect.  The mode accepted is either of the constants UPDATE
+or RDONLY, for read/write or read only access to the records.  There may be
+six different indexes open at a time.
+<br><br>
+Returns
+<br><br>
+None.  If the named index is not in the root directory, or another error
+occurs, the appropriate message is displayed and the script terminates.
+<br><br><br><hr>
+
+<h4><a name="iclose">dataman_iclose</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_iclose(string indexname);
+<br><br>
+dataman_iclose closes an open index previously opened with dataman_iopen.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="get">dataman_get</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_get(string indexname, string key);
+<br><br>
+dataman_get retrieves the key and record associated with the key
+from the named index.  Upon successful return, the previous current
+record associated with the $master global variable is written to the
+database, and the new record associated with the key is stored in
+the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if the key was not found in the named index.
+<br><br><br><hr>
+
+<h4><a name="get_next">dataman_get_next</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_get_next(string index);
+<br><br>
+dataman_get_next retrieves the next key and it's associated data
+record from the named index.  Upon successful return, the current
+record associated with the $master global variable is written to
+the database, and the new record associated with the 'next' key is
+stored in the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if the current key is the last in the index.
+<br><br><br><hr>
+
+<h4><a name="get_prior">dataman_get_prior</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_get_prior(string index);
+<br><br>
+dataman_get_prior retrieves the prior key and it's associated data
+record from the named index.  Upon successful return, the current
+record associated with the $master global variable is written to the
+database, and the new record associated with the 'prior' key is
+stored in the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if the current key is the first in the index.
+<br><br><br><hr>
+
+<h4><a name="get_current">dataman_get_current</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_get_current(string index);
+<br><br>
+dataman_get_current retrieves the current key and it's associated
+data record from the named index.  Upon successful return, the current
+record associated with the $master global variable is written to the
+database, and the new record associated with the 'current' key is
+stored in the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if the current key has been deleted from the index.
+<br><br><br><hr>
+
+<h4><a name="get_first">dataman_get_first</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_get_first(string index);
+<br><br>
+dataman_get_first retrieves the lowest order key and it's associated
+data record from the named index.  Upon successful return, the current
+record associated with the $master global variable is written to the
+database, and the new record associated with the  key is stored in
+the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if there are no keys in the index.
+<br><br><br><hr>
+
+<h4><a name="get_last">dataman_get_last</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_get_last(string index);
+<br><br>
+dataman_get_last retrieves the highest order key and it's associated
+data record from the named index.  Upon successful return, the current
+record associated with the $master global variable is written to the
+database, and the new record associated with the  key is stored in
+the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if there are no keys in the index.
+<br><br><br><hr>
+
+<h4><a name="forward">dataman_forward</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_forward(string index);
+<br><br>
+dataman_forward retrieves the data record immediately following the one
+referred to in the named index.  Upon successful return, the previous
+current record associated with the $master global variable is written
+to the database, and the new record associated is stored in the $master
+global array.  The current key is -not- updated.
+<br><br>
+Returns
+<br><br>
+True on success or False if the current record is the last in the datafile.
+<br><br><br><hr>
+
+<h4><a name="back">dataman_back</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_back(string index);
+<br><br>
+dataman_back retrieves the data record immediately preceding the one
+referred to  in the named index.  Upon successful return, the previous
+current record associated with the $master global variable is written
+to the database, and the new record associated is stored in the $master
+global variable.  The current key is -not- updated.
+<br><br>
+Returns
+<br><br>
+True on success or False if the current record is the first in the datafile.
+<br><br><br><hr>
+
+
+
+<h4><a name="insert">dataman_insert</a></h4>
+PHP5
+<br><br>
+Description
+<br><br>
+void dataman_insert(int fmt, where, string index);
+<br><br>
+dataman_insert will insert a new blank record of format fmt
+into a datafile either before or after the record currently
+referred to by index.  Where may be either of the constants
+BEFORE, or AFTER, for inserting the new record before or after
+the specified record.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="include">dataman_include</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_include (string src_index, string dest_idx, string key);
+<br><br>
+dataman_include will associate the record referred to in the
+src_index with key, and place that key in dest_idx.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="remove">dataman_remove</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_remove(string index, string key);
+<br><br>
+dataman_remove removes the named key from the specified index.  It
+does -not- remove the associated data record.
+<br><br>
+Returns
+<br><br>
+True on success or False if the named key is not found in the index.
+<br><br><br><hr>
+
+<h4><a name="protect">dataman_protect</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_protect(string index);
+<br><br>
+dataman_protect 'locks' the record currently referred to by the named index.
+<br><br>
+Returns
+<br><br>
+True on success or False if the record is already protected.
+<br><br><br><hr>
+
+<h4><a name="clear">dataman_clear</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_clear(string index);
+<br><br>
+dataman_clear unlocks the record currently referred to by the named index. 
+It is an unconditional clear; it will remove the lock regardless of who applied it.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="save">dataman_save</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_save(string index);
+<br><br>
+dataman_save saves the current state of the index; the current key
+(last obtained from any of the get routines) and the current record
+(not necessarily the record referred to by the current key).  There
+is only one level of save, if you do multiple saves with no intervening
+restore, only the last state is saved.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="restore">dataman_restore</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_restore(string index);
+<br><br>
+dataman_restore returns the index to the state it was in when
+save was called.  The current record associated with the $master
+global variable is written to the database, the system key is
+set to the index key, and the saved current record is stored
+in the $master global variable.
+<br><br>
+Returns
+<br><br>
+True on success or False if the saved key has been removed, or the data record has  been deleted.
+<br><br><br><hr>
+
+<h4><a name="delete">dataman_delete</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_delete(string index);
+<br><br>
+dataman_delete removes the record currently referred to by the
+named index from it's datafile.  Any keys referring to that record
+will (eventually) be removed.  The record stored in the $master data
+record will be the record following the deleted one, or if the
+deleted record was last in the data file, the one prior.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="get_format">dataman_get_format</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+int dataman_get_format(void);
+<br><br>
+In a file edit routine, dataman_get_format retrieves the record
+format number of the record currently associated with the $master
+data record.  In a sort routine it returns the format number of
+the current $workfile record.
+<br><br>
+Returns
+<br><br>
+The current format number
+<br><br><br><hr>
+
+<h4><a name="get_key">dataman_get_key</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+string dataman_get_key(void);
+<br><br>
+dataman_get_key returns a string representing the internal system key
+ie the key associated with last of any of the get*(index) functions.
+This is particularly useful for retrieving a specific instance of a key,
+as duplicate keys are allowed in the index.
+<br><br>
+Returns
+<br><br>
+A string representation of the system key.
+<br><br><br><hr>
+
+<h4><a name="key_str">dataman_key_str</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+string dataman_key_str(void);
+<br><br>
+dataman_key_str returns a displayable string representing the internal
+system key, ie the key associated with last of any of the get*(index) functions.
+<br><br>
+Returns
+<br><br>
+A displayable string representation of the system key.
+<br><br><br><hr>
+
+<h4><a name="get_index">dataman_get_index</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+string dataman_get_index(void);
+<br><br>
+dataman_get_index returns the string name of the last accessed index.
+<br><br>
+Returns
+<br><br>
+The name of the last accessed index.
+<br><br><br><hr>
+
+<h4><a name="get_file">dataman_get_file</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+string dataman_get_file(void);
+<br><br>
+In file edit routines, dataman_get_file returns the filename
+that the current database record was retrieved from.  If in a
+sort routine, it will return the name of the current work file.
+Note that it will not be the full path name.
+<br><br>
+Returns
+<br><br>
+The data record's file name.
+<br><br><br><hr>
+
+<h4><a name="put_data">dataman_put_data</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_put_data(field, string value);
+<br><br>
+dataman_put_data  stores data in a data field and marks the record.
+This is the preferred way to store data in a field, and the only way
+to correctly store blob data.  The data field is the array element of
+the $master global variable that you wish to store,the data in.  The
+value may also be of type string, int, float, or blob, but if storing
+a blob, the field must have been defined as a blob during datafile
+creation.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="mark">dataman_mark</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_mark(void);
+<br><br>
+dataman_mark marks the data record in the $master variable as having been changed.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="xact">dataman_start_transaction</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_start_transaction(void);
+<br><br>
+dataman_start_transaction marks the start of a transaction.  Any modifications to
+the database are not written until a call to dataman_commit() is performed.  If any
+part of the transaction fails during the commit all parts fail.  Another way to
+terminate a transaction is with a call to dataman_rollback.  This cancels the
+transaction without writing anything to the database.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="commit">dataman_commit</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+bool dataman_commit(void);
+<br><br>
+dataman_commit terminates a transaction and commits all modifications to the database
+since dataman_start_transaction was called.  The commit is atomic: if any part of the
+commit fails, all fail and it is as if dataman_rollback() were called.
+<br><br>
+Returns
+<br><br>
+True if successful, else False.
+<br><br><br><hr>
+
+<h4><a name="rollback">dataman_rollback</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_rollback(void);
+<br><br>
+dataman_rollback terminates and cancels a transaction.  None of the database modifications
+since dataman_start_transaction() are written.
+<br><br>
+Returns
+<br><br>
+None.
+<br><br><br><hr>
+
+<h4><a name="mkidx">dataman_mkidx</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_mkidx(string hostname, string database_root, [-len], string new_index, string file_1, ...);
+<br><br>
+dataman_mkidx is for initializing a 'end sort' routine.  It
+establishes a connection to the database server on hostname,
+sets the database root directory to database_root and creates
+an empty index named new_index in that directory.  -len is an
+optional argument that specifies the maximum key length of the
+new index.  The minimum length is 1 and the maximum is 32.
+There is variable number of file_n arguments that specify the
+file names that this new index will reference.  Only functions
+associated with sorts are valid when using this function to
+establish a connection.<br><br>These functions are the only ones
+valid for sorts (and thus invalid for file edits):<br>
+dataman_sort<br>
+dataman_release<br>
+dataman_when_file<br>
+<br>
+Two functions are valid for both types:<br>
+dataman_get_format<br>
+dataman_get_file<br>
+<br>
+Returns
+<br><br>
+None.  If there is an error the appropriate message is displayed, and the script terminates.
+<br><br><br><hr>
+
+<h4><a name="sort">dataman_sort</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+void dataman_sort(string key);
+<br><br>
+dataman_sort associates the current $workfile record with the key
+and inserts that key into the new index being built.
+<br>
+Returns
+<br><br>
+None.  If there is an error the appropriate message is displayed, and the script terminates.
+<br><br><br><hr>
+
+<h4><a name="release">dataman_release</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+boolean dataman_release(void);
+<br><br>
+dataman_release releases the current $workfile record and retrieves the record
+following it.  If the current record is the last record in the file being sorted
+the current file is closed, the next one opened, and the first record of the new
+file is returned.  If the current record is the last record in the last named
+file, release returns false, and the current record stays in memory.
+<br>
+Returns
+<br><br>
+True if a new record was read, else false.
+<br><br><br><hr>
+
+<h4><a name="when_file">dataman_when_file</a></h4>
+PHP 5
+<br><br>
+Description
+<br><br>
+boolean dataman_when_file(void);
+<br><br>
+If dataman_release opened a new file (the current $workfile record is the first
+in the current file) this will return true.  This function will return false as
+soon as release is called after a new file has been opened.
+<br>
+Returns
+<br><br>
+True if this is a new file, else false.
+<br><br><br><hr>
+

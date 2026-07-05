@@ -1,0 +1,53 @@
+<div align="center"><h4>get</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          get(idx_name,k_buff) else ...
+<br><br>
+          char *idx_name;<br>
+          key k_buff;
+<br><br>
+<b>Description</b>
+<br><br>
+int db_g_key(idx_name, k_buff)
+<br><br>
+          This procedure retrieves a record associated with a key
+          in an index file.  The data type 'key' has been defined
+          through a typedef statement in the include file.  All
+          keys used in get must be generated with the move
+          function.  If the named key is not a member of the index
+          the current record remains in memory, and the else clause
+          is taken.  If the key does exist, the index's KP is set
+          to the new key, the MFRP is set to the record that the
+          key refers to, and the record is read into memory.
+          Generic, and approximate key searches are fully
+          supported.  To search for generic keys, an asterisk ('*')
+          may be substituted for each individual character as a
+	  wildcard.  An approximate key is just the first one or
+          more characters.  The get function will retrieve the
+          first key that matches the input up to the length of the
+          input.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(argc,argv)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key k_buff;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mk_key(k_buff,"1100**6",7);&nbsp;&nbsp;&nbsp;&nbsp;/* generate key */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get(num_ix,k_buff) else {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* get a key */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* not there */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mk_key(k_buff,"HAN",3);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* get any "HAN" key */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get(name_ix,k_buff) else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="forward.html">&#171;previous</a>&nbsp;&nbsp;<a href="get_current.html">next&#187;</a>

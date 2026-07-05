@@ -1,0 +1,45 @@
+<div align="center"><h4>mkidx</h4></div>
+<br><br>     
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          mkidx(argc,argv);
+<br><br>
+          int argc;<br>
+          char **argv;
+<br><br>
+<b>Description</b>
+<br><br>
+          This function is used to initialize sort routines that
+          generate new indices.  It is normally the first procedure
+          called in a sort program.  The arguments, argc, and argv,
+          are the arguments to the main() procedure.  It also
+          defines the usage of the sort program as being:<br><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;sort_prog [-len -h host -r root] idx_name file_1 [file_2 ...]<br><br>
+          where sort_prog is the name of the sort program, len is
+          the maximum key length allowed in the index.  If not
+          specified, the default len is 20, and the maximum length is 32.  All keys are padded
+          with nulls to the maximum key length.  Idx_name is the
+          name of the index to be created.  The host argument will override the
+	  DSERVHOST environment variable, if set, to specify which host to connect
+	  to.  The root argument will override the ROOT variable which specifies the
+	  database root directory.  File_1 through file_n
+          are the file names of the files to be included in the
+          index.  Mkidx creates an empty index, and reads the first
+          record of the first work file into memory.  If idx_name
+          already existed, all previous data is lost, as the index
+          is re-created.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/sort.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mkidx(argc,argv);&nbsp;&nbsp;&nbsp;&nbsp;/* init sort process */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* do sort procedure */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="iopen.html">&#171;previous</a>&nbsp;&nbsp;<a href="mk_key.html">next&#187;</a><br>

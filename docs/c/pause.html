@@ -1,0 +1,37 @@
+<div align="center"><h4>pause</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-or-<br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          pause(row,col,string);
+<br><br>
+          int row,col;<br>
+          char *string;
+<br><br>
+<b>Description</b>
+<br><br>
+          This routine prints a message, sounds a bell, and waits
+          for the system defined 'help' key to be entered.  The
+          arguments row and col represent the position to place the
+          message on the terminal.  String is a character string
+          that contains the message to be displayed.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get(log_ix,k_buff) else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pause(10,10,"Can't find key, try again");<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;continue;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;....<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="new_win.html">&#171;previous</a>&nbsp;&nbsp;<a href="pop_win.html">next&#187;</a><br>

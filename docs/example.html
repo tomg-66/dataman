@@ -1,0 +1,120 @@
+<div align="center"><h4>An Example Application</h4></div><br><br>
+As good as theory might be, it can't compare to actually seeing how an application would be built and
+function.  This application is a prescription filling program from a retail pharmacy program that
+was developed in the 1980s.  The source code is available from sourceforge
+<a href=http://sourceforge.net/project/showfiles.php?group_id=113725&package_id=163870&release_id=357073>here</a>.
+<br><br>
+<a href="#whatshere">What is in the Package</a><br>
+<a href="#rformats">Looking at the Record Formats</a><br>
+<a href="#ifiles">Initialization Files</a><br>
+<a href="#files">Building files</a><br>
+<a href="#indexes">Making Indexes</a><br>
+<a href="#apps">Building applications</a><br>
+<br>
+<a name="whatshere"><h5>What is in the Package</h5></a>
+Upon downloading and unpacking the source package, you will find two directories.  The one we want
+to look at is pharm.  In the pharm directory there are several sub directories.  There are the 
+required files and index directories.  They are currently empty.  There is the init directory.
+This directory contains the initialization data necessary to build the data files.  There are
+two other directories as well.  One is called src, which contains the application source code in
+C, and the other directory is named c++ which contains the same application in C++.
+<br><br>
+If you are too impatient to read this page, you can read the README file contained in the top
+level directory, follow it's instructions, and be up and running in minutes.
+<br><br>
+<a name="rformats"><h5>Looking at the Record Formats</h5></a>
+Each file in this application is described by a record format description file.  The files are
+found <a href="">here</a>.  Let's look at one of the more complex files.  It is the family file,
+and is named rxxfam.  It's record format file is named rxxfam.rf.<br><br>
+The file contains 13 record formats.  We'll start by looking at the first couple.  Record format
+one is the family demographic record.  It contains the information that is common to all of the
+family members; family name, address, phone, etc.  Record format two contains information
+regarding the individual family member; thier first name, birth date, gender, and so forth.
+Record format four is used to indicate that the patient has a different last name than the main
+family record, and will immediately preceed the patient demographic record.  Yes, you could have
+the different last name contained in the patient demographic record, but is the exception to the
+rule, and you can make better use of your database space that way.  Record formats six through
+the end are individual prescription records.  The actual prescription data (drug, date, amount,
+etc) is packed in the first field.  Field two of each of these are of different sizes, so that
+you can have different lengths of instructions for each prescription, and do it, again, saving
+disk space.  Remember that this application was written in the early '80s and memory and disk
+were at a premium.
+<br><br>
+<a name="ifiles"><h5>Initialization Files</h5></a>
+After you have built this application, you next need to build the database that it will use.
+Change to the init sub directory under pharm, and you will notice a series of files with names
+ending in .i and .t.  The routine to make files requires the .i file.  These are initialization
+files.  The .t files are templates.  They contain the responses to mkdf to build the datafile.
+They are just a convenience.  The .i files bear closer examination, however.
+<br><br>
+The initialization files contain the base set of data record(s) that you wish to have in your
+data file.  Each line in the file represents one data record.  The members of the line are colon
+(:) seperated fields.  The first field of a line is the record format number for that record.
+Following is the data for each field.  If the data field is to be empty you can have a zero length
+entry for that field.  Otherwise, the field has to be initialized to it's full width.  Any fields
+left undefined when the end of line is reached are blank filled.  So, for our family file format
+the first two lines in the initialization file reads <br><br>
+<kbd>1:00001:GREEN       :631 Pali St.        :Sandy     :UT:84070:5716061:Y:Y:<br>
+2:ROBERTA   :061360:F:<br>
+</kbd><br><br>
+This indicates that the first record will be format 1, and the data for each record is filled
+out for the entire record.  Since the second record has five fields defined for it, the last two
+fields will be blank filled when the data file is generated.  If the field actually contains a
+colon you escape it with a back slash, eg \:.  You may also escape the back slash if you need to,
+\\.  Fields that are defined as blobs can not have initialization data in the file.  They should
+be initialized to nothing.<br><br>
+<a name="files"><h5>Building Files</h5></a>
+Now that you have your initialization and template files built, it's time to generate your data
+files.  Set your ROOT environment variable to point to where your database is to reside and issue
+the command:<br><br>
+<kbd>mkdf rxxfam rxxfam.i &#060; rxxfam.t </kbd><br><br>
+This will make the datafile rxxfam, and place it in your files directory.  Again if you are
+impatient, in the example, you will find a script called makem.  Just run this script, and it will
+build all of the files required for this example.<br><br>
+<b>If you define a field as having zero length, that indicates it is a <i>blob</i> and needs to
+be treated differently.</b>
+<br><br>
+<a name="indexes"><h5>Building Indexes</h5></a>
+Indexes are necessary to get any data out of a data file.  All data is retrieved by referring to
+an index name.  So, before we build our end applications, we need to build programs that will
+generate indexes.  In the pharmacy example, there are five indexes used.  Initially, there were
+six, but this example didn't require one of them.  Let's look at a sort routine.<br><br>
+To begin with, you don't include the dataman.h (or dataman.hh for C++) header.  You include the
+sort.h header.  This defines this as an index building program.  The second big difference is that
+you don't begin by calling init_dataman, you begin by calling mkidx.  You pass this function the
+arguments to main; argc and argv.  This function defines the calling sequence for sort programs
+as:<br><br>
+<kbd>sort_prog [-size -h host -r root] indexname file1 file2 ...filen
+</kbd><br><br>
+Where size is the key size.  The default is 20 characters, the minimum is 1, and the maximum is
+32.  The host argument is the hostname where the database server is running.  You may also have
+and environment variable name DSERVHOST to specify this.  If you don't have the ROOT shell variable
+set, or you wish to override it, you can specify the database root as well.  The first non optional
+argument is the name of the index to build, and the subsequent arguments are the names of the
+data files that will be sorted through.
+<br><br>
+The two other most important functions that you will be using during a sort program is sort
+and release.  The sort function takes as it's argument the string that you want to associate with
+this record as it's key.  The release function flushes the current record from memory and
+retrieves the next record in the data file.  If the current record is the last one in the data
+file, it closes that file, opens the next named data file, and returns the first record from
+that file.  It also sets the global _file  switch to TRUE.  You can use the when_file macro to
+test this value.  After the first record in a data file has been released, this switch is set to
+FALSE.
+<br><br>
+<a name="apps"><h5>Building Applications</h5></a>
+Normal applications include the dataman.h(h) file.  This defines this as an application program
+and not a sort program.  The first function that should be called is the init_dataman function.
+The arguments to this function are the arguments to main; argc, and argv.  This defines the
+calling sequence as:<br><br>
+<kbd>app [-h host -r root] workfile</kbd><br><br>
+After this you call iopen to open indexs, use the varous get routines to retrieve data records
+associated with keys, call forward and back to directly retrieve records, and all of the rest of
+the functions to complete your application.  When you have retrieved a data record, it is stored
+in a global variable that is pre-defined for you.  In C, it is an array called mfld.  In C++ it
+is in the record class instanciated as master, which contains an array of type field.  So in C you
+refer to a field as mfld[n], where n is from 1 to he number of fields, and in C++ you refer to
+master.field[n].  The work file record is wfld[n], and workfile.field[n] respectively.  The C++
+fields are written as bounded arrays, so you worrying about that is not necessary.<br><br>
+Please look at the example programs for at least a little help on how to use the routines.
+<br><br>

@@ -1,0 +1,1633 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=iso-8859-1">
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.3  (Linux)">
+	<META NAME="CREATED" CONTENT="20040707;12325300">
+	<META NAME="CHANGED" CONTENT="20050801;16275200">
+	<STYLE>
+	<!--
+		@page { size: 8.5in 11in; margin-left: 1.25in; margin-right: 1.25in; margin-top: 1in; margin-bottom: 1in }
+		P { margin-bottom: 0.08in }
+		P.text-body-indent { margin-left: 0.2in }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+<PRE STYLE="text-align: center"><FONT FACE="Times, serif"><FONT SIZE=6 STYLE="font-size: 22pt"><B>DATAMAN</B></FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>Data Base and Record Management Utilities:</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>A Library Package</FONT></FONT>
+
+<FONT FACE="Times, serif"><FONT SIZE=3>Release 3.2</FONT></FONT>
+
+
+
+
+
+
+
+
+
+
+<FONT FACE="Times, serif"><FONT SIZE=3>Copyright 1988-2004 by </FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>SuperUser Software, all rights reserved.</FONT></FONT>
+
+
+
+<FONT FACE="Times, serif"><FONT SIZE=4><B>NOTICE</B></FONT></FONT>
+
+
+<FONT FACE="Times, serif"><FONT SIZE=3>SuperUser Software has prepared this document for use by SuperUser personnel, licensees, and customers.  The information contained herein is the property of SuperUser Software and shall not be reproduced in whole or in part by any means whatsoever without SuperUser Software prior written approval.</FONT></FONT>
+
+<FONT FACE="Times, serif"><FONT SIZE=3>SuperUser Software reserves the right to make changes in specifications and other information contained in this document without prior notice, and the reader should in all cases consult SuperUser to determine whether any such changes have been made.</FONT></FONT>
+
+
+<FONT FACE="Times, serif"><FONT SIZE=3>THE TERMS AND CONDITIONS GOVERNING THE SALE OR LICENSING OF SuperUser SOFTWARE CONSIST SOLELY OF THOSE SET FORTH IN THE &quot;LICENSE AGREEMENT&quot;.  NO REPRESENTATION OR OTHER AFFIRMATION OF FACT CONTAINED IN THIS DOCUMENT INCLUDING BUT NOT LIMITED TO STATEMENTS REGARDING THE CAPACITY, RESPONSE-TIME PERFORMANCE, SUITABILITY FOR USE, OR PERFORMANCE OF PRODUCTS DESCRIBED HEREIN SHALL BE DEEMED TO BE A WARRANTY BY SuperUser FOR ANY PURPOSE OR GIVE RISE TO ANY LIABILITY OF SuperUser WHATSOEVER.</FONT></FONT>
+
+<FONT FACE="Times, serif"><FONT SIZE=2>DATAMAN is trademark of SuperUser Software.</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=2>Copyright (c) SuperUser Software 1988-2004</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=2>All rights reserved.</FONT></FONT>
+
+
+<FONT FACE="Times, serif"><FONT SIZE=2>For more information contact:</FONT></FONT>
+     <FONT FACE="Times, serif">SuperUser Software</FONT>
+     <FONT FACE="Times, serif">2682 W. Bridle Oak Dr.</FONT>
+     <FONT FACE="Times, serif">South Jordan, Ut 84095</FONT>
+<FONT FACE="Times, serif"><FONT SIZE=4><B>DATAMAN</B></FONT></FONT>
+
+<FONT FACE="Times, serif"><FONT SIZE=3>DATAMAN is a general purpose data base and record manager.  It consists of a database server that runs on a Linxu/Unix system and a library of routines that are bound into an application program to be called at run time.  The package provides for both indexed and sequential record access.  The individual files that DATAMAN handle have a physical limit of approximately four billion bytes. The routines also provide for multi user capabilities in record locking. Internal file and record locking are performed invisibly to the user during file and index updating.  The user may also protect a record from other users trying to protect the same record at the same time.  This and the proper use of the &quot;work file&quot; (described later) makes this package ideal for transaction processing as well. </FONT></FONT>
+
+<FONT FACE="Times, serif"><FONT SIZE=3>This manual is for those who have no experience with either the EDITOR, or ET programming languages, or the DATAMAN database package.  For those that have used the EDITOR, EASY C, or the ET languages, this library emulates the verbs of those languages.  The first section describes the file structure expected by the manager and client routines, the files used, and their structure.  Section two discusses basic I/O.  The third section discusses the basic usage of the package, and section four each user routine.  The last section covers miscellaneous topics.</FONT></FONT></PRE><P CLASS="text-body-indent" STYLE="margin-left: 0in">
+<BR><BR>
+</P>
+<P CLASS="text-body-indent" STYLE="margin-left: 0in"><FONT FACE="Times, serif"><FONT SIZE=3>1
+FILES</FONT></FONT></P>
+<P CLASS="text-body-indent"><FONT FACE="Times, serif"><FONT SIZE=3>This
+section covers many aspects about files. The first topic is the root
+file structure followed by a discussion of the different directories
+usually found in the root, and the differences between a work and
+master file.</FONT></FONT></P>
+<PRE>        <FONT SIZE=3><FONT FACE="Times, serif">1.1  ROOT FILE STRUCTURE</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The DATAMAN database client routines expect there to be an environment variable named ROOT.  This value should contain the &quot;root&quot; directory path to your database on the server.  Under this root there must exist a directory named files, and one named index.  These contain the database files and indices, respectively.  There also is sometimes another directory named init.  This directory contains the initialization files for your database.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">EXAMPLE</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">To set up the &quot;root&quot; of the database structure, at your prompt issue the command:</FONT></FONT>
+
+            <FONT SIZE=3><FONT FACE="Times, serif">ROOT=/var/databases/accounting</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">This tells DATAMAN that the (accounting) database it will be operating on will be found under the /var/databases/accounting directory on the host system.  Alternatively, you may use the -r switch when starting your program to tell the database manager where the database resides.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">1.2  FILES DIRECTORY</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This directory will contain the data files used in your database.  Data files contain information in fixed length record formats.  There may be from one to sixty-three record formats defined for each file.  By use of these record formats the user may simulate variable length records, group various types of data together, and designate a particular file structure.  The meaning of designating a particular file structure is that the user may insert records into the database where he wants.  If there are two or more different record formats with related information, the user may group those records together, thus eliminating the need for a key on each separate record.  There is a functional limit of between 5000 and 7000 total fields that the user may actually define in a file.  Each file must have at least one record in it.  Thus, to generate a data file there is a utility named mkdf that will create a data file from an initialization file.  </FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">EXAMPLE</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">Assume there will be a file containing the English translations of the Latin instructions used for prescriptions.  This file would contain one record format.  This would perhaps have the English translation, the Latin SIG, and possibly a code number.  Fields 1, 2 and 3 would each be 20 characters long, to contain all of  the possible information, field 4 would be 7 characters long and contain the Latin SIG and field 5 would be 3 bytes long and contain a numeric code.  Now if, for example, you lived in an area that was heavily populated with Spanish speaking people, you might want the same information in Spanish as well.  Because you may designate your own file structure, you place the second record immediately after the first to save space.  Because you know where the second record format is you don't need the Latin SIG in the format or the numeric code either, or even a key on the second record.  All that is needed is the Spanish translation.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">1.3  INDEX DIRECTORY</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This directory contains the indices to the database.  All data is initially retrieved from master data files by referring to a key in an index.  The index may refer to data contained in up to 99 different files.  Internally all keys in an index are the same length.  Any keys that are shorter than the maximum length defined are padded with null characters.  Therefore it may be advisable to have several indices, and to group keys with approximately the same length into the same index. DATAMAN will therefore allow an application to open and reference up to six different indices at once.  As a result a database may refer to up to 594 data files at any one time.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">1.4  INIT DIRECTORY</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This directory usually contains the initialization files used to create data files.  Since all data files must contain at least one record, all files must have an initialization file.  Usually, these files contain control information and counters for dynamic files, and all of the data for static files.  Each field in these initialization files are separated by colons (:), and each line must be terminated with a new line ('\n') character.  The first field on each line is the number of the record format that will be generated for this information.  After the record format number is the first colon.  Then follows the data for the first field.  All fields must either be filled to the maximum length or have zero length.  A zero length field infers that there is no information, and will be blank filled.  Otherwise the field will be generated with the information found between the first colon and the next.  The process repeats itself for each field in the record format, or until a line terminator is found.  If there are any unfilled fields when the line terminator is found, those fields are blank filled.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">EXAMPLE</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The initialization for the latin translation file might look as follows:</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">1::::~~~~~~~:000:</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The '1' represents the record format number.  The four colons together represent three empty fields.  The tilde (~) character was selected as the SIG because it is the greatest printable character, and the '000' for field 5 is a counter signifying that there are no codes used yet.  There is no initialization for record format 2 because no initial information needed for this record.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">1.5  MASTER vs WORK FILES</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">There are two types of files used in the DATAMAN database.  The first is referred to as the MASTER file.  This is a file that is currently being pointed to by an open index.  Records may be retrieved from these files only by referencing the index name.  These files are opened and closed as needed as the index refers to them, and a process may refer to all MASTER files during a session.  A WORK file is opened at the beginning of the process, and the first record of that file is read into memory.  This file is never referenced by an index, and is always the only work file.  The only exception to this is for sort routines.  These routines create indices, and require all files that are to be included named as work files.  The procedures release and sort will only operate on work files.  The records in MASTER files are referred to through the mfld array and the records of the WORK files are referred to through the wfld array.</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>2.   INPUT AND OUTPUT</FONT></FONT>
+     <FONT SIZE=3><FONT FACE="Times, serif">This section describes the basic input and output devices used by DATAMAN.  First described will be the terminal i/o followed by data file i/o.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">2.1  TERMINAL I/O</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">2.1.1     OUTPUT</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">Most terminal output is accomplished through a function named show.  This function takes a variable number of arguments.  The arguments come in groups of three.  The first of the group is the row to begin the display, the second is the column to begin the display, and the last is the string to display.  They MUST follow in this order.  There are also two predefined strings that show uses.  The first is TOP.  This string informs show to clear the screen from the current cursor position.  The next is EOL.  This clears from the current cursor position to the end of the current line.  The last argument of show must be the manifest constant ENDLIST.  This informs show that the argument list is now exhausted.  Another type of screen output is the pause.  This positions the cursor and writes to the screen, sounds a bell, and waits for the user defined 'help' key to be entered.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">2.1.2     INPUT</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">Terminal input is performed by a function named accept.  The proper syntax for accept is:</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">accept(row,col,str,mode) else ...</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">where row and col is the screen position to begin the read.  The str argument is the destination buffer, and mode is any of the manifest constants ANY, UPPER, LOWER, or NUMERIC.  Any of these may also be or'd with the constant NOECHO to prevent input being echoed to the screen.  When accept is called the current length of the string pointed to by str is the maximum length that will be read.  An &quot;input template&quot; is displayed when accept is called.  This displays the longest input possible.  The only time the else clause is performed is when the input is terminated abnormally by entering the 'help' key.  This key is user defined and is used for backing out of accepts and pauses.  Input is terminated after either the 'help' key is entered (causing an abnormal return), a normal line terminator is entered (i.e. a new line), a function key is entered (in the proper case), or the maximum number of characters is entered.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">2.1.3     HELP</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">This key may be misnamed but is applicable.  Help is defined by an environment variable named HELP.  There are several different ways to define your help key.  The simplest is as a control character.  If the first character of the HELP variable is a '^' the next character is taken to be the 'help' control character.  For example, if HELP is defined to be &quot;^W&quot;, then holding down the control key while depressing the 'W' key will generate the 'help sequence'.  The next is with a numeric sequence.  This is usually for defining a function key as 'help'.  If the environment variable is not set the default is the 'home' key.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">2.2  DATA FILE I/O</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">Input and output from data files is completely automated.  The user, just by moving to a new record in the data base writes the old record, and retrieves the new.  All data is returned in character strings.  Data is returned as pointers to these strings in mfld[i] or wfld[i] for the master record, and the work record respectively.  The value i ranges from 1 to n where n is the highest field number defined.  Field number 0 is reserved.  For both types of files there are macros defined to set a 'dirty' bit for a record.  If this bit is set, then when moving to a new record, the data is rewritten.  This is to speed execution when reading several records that are not changed.  There is no error checking for data written beyond the end of a data field, consistent with the &quot;C&quot; language.  The user, in all cases is responsible for the integrity of the data fields. </FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>3.   USING DATAMAN</FONT></FONT>
+     <FONT SIZE=3><FONT FACE="Times, serif">This section discusses the basic flow of designing and implementing a database application using the DATAMAN package.  First is file layout, then follows generating a database, and then using the package in an application.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">3.1  DESIGNING A FILE LAYOUT</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The first thing to do when implementing a database application is to determine the data elements that will be used.  In an extremely simple charge account system the necessary data will include the account name, address, city, state, zip, and the account number.  There would also be transaction records.  These would include the transaction date, amount, location, and perhaps some sort of code.  The thinking is already in terms of different record formats.  The first would be a demographic record and the second the charge record.  The most logical way to organize this data base would be to have the demographic record immediately followed by multiple occurrences of the charge record.  This saves the need for keys on every record, and groups related data together.  All these considerations should be taken into account when designing your data base.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">3.2  GENERATING A DATABASE</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">After all of the data elements needed have been defined, group related data into different files.  In the charge account system described above, there would be only one file.  In a large system, such as a pharmacy management system, there would be several files, for doctors, patients, the drugs and so forth.  Determine the structure of each file and the initial record needed for each file.  Next generate an input file as described  above, and execute the utility mkdf to generate the data file.  The usage of mkdf is:</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">mkdf data_file input_file.i</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The &quot;.i&quot; extension is required.  All errors generated in this process are self explanatory.  If data_file existed previously, the file is regenerated, and the old data is lost.</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The next step in generating a data base is to determine the key elements in a file.  In the charge account system, the only key element would be the account number.    Possibly the account name would be of use as well, but is not necessary.  Then write a sort program that generates the index on the key fields using the appropriate DATAMAN procedures.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">3.3  USING DATAMAN IN AN APPLICATION</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The first application needed is in the database generation phase, and is the sort procedure.  This procedure generates the index used in the &quot;file edit&quot; procedures.  To begin a sort procedure the user must include the DATAMAN include file &quot;sort.h&quot;.  The first sub procedure called in the sort routine is mkidx.  This creates an empty index with all the basic index information.  The procedure mkidx also defines the usage for sort procedures as being:</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">sort_prog [-r root_dir] [-h host] [-length] idx_name file_1 [file_2 ...]</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">where root_dir is the root directory of the database, host is the host where the database resides, length is the maximum key length allowed in the index, idx_name is the name of the index being generated, followed by the names of the files to be included in the index.  The -r root_dir will override the environment variable ROOT.  The -h host switch will override the DSERVHOST environment variable.  If neither are specified the database server is assumed to be 'localhost'.  The default value for length is 20, the minimum is one, and the maximum is thirty two.  The index may include 99 different files.  The two other most important functions used in the sort program are sort, and release.  The function sort places keys in the index, and release moves off the current work record and to the next.  If the current work record is the last in the file release tries to move to the first record in the next named file.  If the current record is the last in the last named file, the else clause of release is taken.  This signals an end condition to the sort program.  There is a function named when_file that is true when a new file is initially opened, and the current file name is contained in FILE.  File Edit programs are named as they are because they add, remove, or peruse data from the database.  All procedures in file edit routines must include the header file &quot;dataman.h&quot;.  This defines the externals, and the macros for all of the functions.  The first procedure called here is init_dataman.  This processes the command line arguments and will initialize the DATAMAN process.  There are three major classes of functions used for retrieving data.  The first are the key retrieval functions, the next are the file retrieval functions, and the last are add and delete functions.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">3.3.1     KEY RETRIEVAL</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">These functions all have roughly the same syntax; get(...) else ....  All these functions require an index name.  These functions will retrieve the named key (or the next, or prior) write the old record, and read the new record pointed to by the key if successful.  If the get is not successful the old record remains in memory, and the else clause is taken.  A key that is named in the get function must be built with the mk_key function.  A variable type key is typedef'd to use to insert the retrieved key into.  System keys may be saved in variables of type key as well.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">3.3.2     FILE RETRIEVAL</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">These functions let the user walk through the database itself without changing the index key pointer.  When a user has defined a good file structure this can be much faster than doing a key search for every record.  The syntax is: forward (back) (idx_name) else ....  This will retrieve the next (or prior) record in the database and write</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>out the old record.  These functions may or may not take an index name.  If an index is named, the current record pointed to by that index is taken as a reference, and the next (or prior) record in the database is retrieved, and the old record written to the file.  If the current record is the last (first) in a database file, the current record is retained, and the else clause is taken.  If the manifest constant WFILE is used instead of an index name the forward or back is performed on the work file.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">3.3.3     ADD AND DELETE</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">The add functions add either a record or a key to your database.  The function insert inserts a record into the database.  It takes the current record pointed to by an index as reference, writes the old record to the file, inserts a record before or after that record, and reads it into memory.  The other add function is include.  This inserts a</FONT></FONT> <FONT SIZE=3><FONT FACE="Times, serif">key pointing to the current record of an index into an index which may not necessarily be the same index.  Basically you've gotten a record using index 1, and inserted a new record.  Because of your key size difference a key to the new record goes into index 2.  The user names index 1 as the source of the record and index 2 as the destination of the key.</FONT></FONT>
+
+               <FONT SIZE=3><FONT FACE="Times, serif">The delete function deletes a data base record from a data base file.  This also has the effect of removing all of the keys that point to that record.  To delete a key from the index, the function remove is provided.  This will only remove a key, it will not delete the associated data base record.  A key that points to a data base record that has been deleted will be removed at run time by trying to access that key.  So, to speed up processing, it is a good idea (though not necessary) to explicitly remove all of the keys pointing to a record that is to be deleted.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">3.3.4     TRANSACTION PROCESSING</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">Transaction processing is facilitated in this package with the use of the work file.  This is a file where the current record is existent in all subroutines and procedures during the life of the program.  This makes it an ideal place to save data and information until the current transaction is complete.  At the end of the transaction, with the proper usage of the protect and clear functions, all other master files may be updated at one time without other users disturbing the data in the meantime. </FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>4    THE FUNCTIONS</FONT></FONT>
+     <FONT SIZE=3><FONT FACE="Times, serif">This section covers the syntax, usage, and has a brief example of each user function of the package.  In this section the ellipses dots ('...') stand for intervening lines of code. Each open index has a key pointer (KP), and a master file record pointer (MFRP).  The following table indicates how the KP and MFRP are affected upon successful completion of the database functions.</FONT></FONT></PRE>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#000000" CELLPADDING=4 CELLSPACING=0>
+	<COL WIDTH=43*>
+	<COL WIDTH=96*>
+	<COL WIDTH=117*>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE STYLE="text-align: center">command</PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE STYLE="text-align: center">KP</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE STYLE="text-align: center">MFRP</PRE>
+			</TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>get            </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>Updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>get_first              </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>get_last               </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>get_next               </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>get_prior              </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>get_current                 </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>forward              </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>back                 </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>insert                    </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated points to new rec</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>delete              </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged/invalid</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated points to prev/next rec</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>include           </PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated points to new key</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated points to included rec</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>remove</PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged/invalid</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>unchanged</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>protect</PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>unchanged</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>clear</PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>unchanged</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>save</PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>unchanged</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>unchanged</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=17%>
+				<PRE>restore</PRE>
+			</TD>
+			<TD WIDTH=38%>
+				<PRE>updated</PRE>
+			</TD>
+			<TD WIDTH=46%>
+				<PRE>updated</PRE>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<PRE STYLE="margin-bottom: 0.2in">     Though the 'else' condition is not mandatory it is strongly suggested that it be included in all cases where available.  The else condition is taken according to the following table:</PRE>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#000000" CELLPADDING=4 CELLSPACING=0>
+	<COL WIDTH=64*>
+	<COL WIDTH=192*>
+	<THEAD>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>     FORMAT         </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>ELSE condition taken if:</PRE>
+			</TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>accept              </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>'HELP' key entered</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>back           </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>Current record first in file</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>forward        </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>Current record last in file</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>get            </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>The specified key is not in index</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>get_first      </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>No keys in index</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>get_last       </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>No keys in index</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>get_next       </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>Current key is last key in index</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>get_prior      </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>Current key is first key in index</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>get_current         </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>Current key has been removed</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>release       </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>Current record is last in last named work file</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>remove         </PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>The specified key is not in index</PRE>
+			</TD>
+		</TR>
+		<TR VALIGN=TOP>
+			<TD WIDTH=25%>
+				<PRE>protect</PRE>
+			</TD>
+			<TD WIDTH=75%>
+				<PRE>The record is already 'checked out'</PRE>
+			</TD>
+		</TR>
+	</TBODY>
+</TABLE>
+<PRE STYLE="page-break-before: always">
+                                                           ACCEPT
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+                or
+          #include &quot;sort.h&quot;
+
+          accept(row,col,acc,mode) else ...
+
+          short int row,col,mode;
+          char *acc;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The accept function does screen positioned, keystroke polled input.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">Row and col is the row and column number to begin reading.  Acc is a character pointer (string) to the input buffer.  The length of the string currently pointed to by acc determines the maximum number of characters that accept will read.  Mode is a manifest constant describing the type of input.  The constant ANY will accept any printable character, while the constant LOWER will map all input to lower case.  UPPER will map all input to upper case, and NUMERIC will allow only numeric input.  Finally, the constant NOECHO may be or'd with any of these to suppress the echoing of input to the screen.  If the system defined 'help' key is hit the input buffer is set to zero length, the read is terminated, and the else clause is taken.  If a normal line terminator is</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>hit, acc is truncated to the number of input characters, and the else clause is skipped.  Function keys are returned in the first byte as the scan code or'd with 0200.</FONT></FONT>
+
+     Example
+          
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              short int row,col;        /* row and column */
+              char inpt[5];             /* input variable */
+               ...
+              row = 5;
+              col = 15;
+              memset(inpt,' ',4);            /* read 4 chars */
+              *(inpt+4) = '\0';              /* end string */
+              accept(row,col,inpt,UPPER) else {
+                    flush()
+                    return;
+              }
+               ...
+          }
+
+
+BACK                                                             
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          back(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This procedure flushes the current record to disk and retrieves the data record preceding it to memory.  The string idx_name is the name of the index that points to the file that the user wants to back up, or the manifest constant WFILE.  The function back is not to be confused with the get_prior function.  The index refers to its MFRP, then checks if there is a record preceding this in the data base file.  If not, the current record is not flushed, and the else clause is executed.  If there is a revious record, the current one is flushed, the MFRP is decremented, and the new current record is read into memory.  If the index has no current record (i.e. a GET has not occurred) the diagnostic 'Initial GET not attempted' will display and the routine will terminate.  If idx_name is the manifest constant WFILE the operation will affect the work file.</FONT></FONT>
+
+     Example
+          
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              key k_buff;
+               ....
+              get(idx1,k_buff) else {
+                  pause(10,10,&quot;Can't find key&quot;);
+                  exit(0);
+              }
+              while (MFMT == 3) {
+                  back(idx1) else       /* keep backing */
+                     break;             /* first of file */
+                  ...                   /* process record */
+              }
+          }
+
+
+                                                            CLEAR
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          clear(idx_name);
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function is used in a multi user environment.  The clear function removes the protection from a data record, allowing the user to &quot;check in&quot; a record that has been protected.  This is an unconditional clear; it will clear any protected record, regardless of who initiated the protect.  If for any reason the file is closed before the record is cleared, the record remains protected.  To provide for a users source code compatibility in the single user version, this function is implemented as a no-op.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+               ...
+              get(idx1,k_buff) else {
+                  pause(10,10,&quot;Can't find key&quot;);
+                  exit(0);
+              }
+              while(1) {
+                  protect(idx1) else {       /* protect rec */
+                      waste_time();          /* pend */
+                      continue;              /* try again */
+                  }
+                  break;                     /* got protection */
+              }
+               ...                           /* process record */
+              clear(idx1);                   /* clear protect */
+          }
+
+
+DELETE                                                           
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          delete(idx_name);
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function deletes a database record from its database file.  If the index's MFRP points to nothing, the diagnostic &quot;Initial GET not attempted&quot; is displayed, and the procedure exits.  Otherwise the last accessed record is flushed to disk, and the current record that the index's MFRP points to is deleted from the database file.  If the MFRP points to the last record in a data base file, the pointer is decremented to the previous record, otherwise the MFRP points to the record that followed the deleted record. If the user attempts to delete the only record in the database file, a diagnostic will result, and the program terminates.  A call to delete will NOT remove all of the keys that point to the record.  If a key is referenced that points to a deleted record, the key will be removed at that time.  Otherwise only an explicit call to remove will do away with keys.</FONT></FONT>
+
+     Example
+          
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+              char inpt[7]
+               ...
+              remove(idx1,k_buff) else {
+                  pause(10,10,&quot;Can't find key&quot;);
+                  exit(0);
+              }
+              delete(idx1);             /* delete the record */
+          }
+
+
+                                                            FATAL
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+          #include &quot;sort.h&quot;
+
+          fatal(format,string);
+
+          char *format, *string;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The fatal function prints a fatal error message and terminates the current process. The format string follows the conventions of the 'C' printf function, but it accepts only one string as the &quot;argument&quot;.  A related function, err, which generates messages from error codes, is also reserved to dataman.  </FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          integer argc;
+          char **argv;
+          {
+
+              char buff[10];                 /* key to build */
+              key k_buff;                    /* key for get() */
+               ...
+              mk_key(k_buff, buff, strlen(buff));
+              get(&quot;name_ix&quot;, k_buff) else
+                  fatal(&quot;Can't get key %s\n&quot;,buff);
+               ...
+          }
+
+
+FLUSH                                                            
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          flush();
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The flush function flushes the contents of both the current work and master records to their respective files.  The records remain in memory after the call.  The main purpose is to force an update of the disk file before it would normally happen.  The most common use of this is at the end of a function, or program.  If flush is not called the last accessed record may never be updated in it's file.</FONT></FONT>
+     
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              short int row,col;        /* row and col to read */
+              char input[5];            /* read buffer */
+               ...
+              accept(row,col,input,UPPER) else {
+                  flush();              /* flush the record */
+                  return;               /* return to main menu */
+               }
+          }
+
+
+                                                          FORWARD
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          forward(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The forward function retrieves the next record from a database file.  The function checks the named index's MFRP.  If it points to nothing, the diagnostic &quot;Initial GET not attempted&quot; is displayed, and the process terminates.  If a record follows the one pointed to by the index, the last accessed record is flushed to disk, the index's MFRP is incremented, and the new current record is read into memory.  This should not be confused with the get_next function.  If the MFRP points to the last record in a  particular file the current record is NOT flushed, and the else clause is taken.  If idx_name is the manifest constant WFILE this signifies that the file to be operated on is the 'work file', instead of an index file.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+               ...
+              get(idx1,k_buff) else {    /* get a format 2 */
+                  pause(10,10,&quot;Can't get key&quot;);
+                  exit(0);
+              }
+              do {
+                  ...                   /* process rf 2 */
+                   forward(idx1) else   /* get to next record */
+                       break;           /* at EOF */
+              } while (MFMT == 2);      /* do format 2 recs */
+          }
+
+
+GET                                                              
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          get(idx_name,k_buff) else ...
+
+          char *idx_name;
+          key k_buff;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This procedure retrieves a record associated with a key in an index file.  The data type 'key' has been defined through a typedef statement in the include file.  All keys used in get must be generated with the mk_key function.  If the named key is not a member of the index the current record remains in memory, and the else clause is taken.  If the key does exist, the index's KP is set to the new key, the MFRP is set to the record that the key refers to, and the record is read into memory.  Generic, and approximate key searches are fully supported.  To search for generic keys, an asterisk ('*') may be substituted for each individual character that is unknown.  An approximate key is just the first one or more characters.  The get function will retrieve the first key that matches the input up to the length of the input.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              key k_buff;
+               ...
+              mk_key(k_buff,&quot;1100**6&quot;,7);      /* generate key */
+              get(num_ix,k_buff) else {      /* get a key */
+                    ...                      /* not there */
+               }
+               ...
+               mk_key(k_buff,&quot;HAN&quot;,3);    /* get any &quot;HAN&quot; key */
+               get(name_ix,k_buff) else {
+                    ...
+               }
+               ...
+          }
+
+
+                                                      GET_CURRENT
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          get_current(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function retrieves the current key from the named index, and it's associated record.  If no get has yet been performed, the diagnostic &quot;Initial GET not attempted&quot; will appear and the program will exit.  If the key that idx_name refers to has been removed, or the data record that the key points to has been deleted, the current record will not be flushed, and the else clause will be executed.  If the key is found, and the record exists, the current record will be flushed, and the record that current key in idx_name points to will be read into memory.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+               ...
+              get(num_ix,acct_no) else       /* get next acct */
+                  break;                     /* done with it */
+              do {
+                  forward(num_ix) else       /* get next rec */
+                      break;                 /* done with file */
+                    ...                      /* process record */
+              } while (MFMT == 2);
+              get_current(num_ix) else       /* get header rec */
+                  error();                   /* problem */
+               ...
+          }
+
+
+GET_FIRST                                                        
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          get_first(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function retrieves the lowest order key and its associated record from the named index.  Where idx_name is the name of the index that the first key is to be retrieved from.  If the index is empty, the else clause is executed.  If the named index is not empty the current record in memory is flushed, the index KP is set to the first key, the MFRP is set to the associated record and that record is retrieved.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              get_first(num_ix) else    /* get first account */
+                  fatal(&quot;Index %s is empty\n&quot;,num_ix);
+              while (1) {
+                    ...                 /* process */
+                  get_next(num_ix) else /* next account */  
+                      break;            /* end loop */
+               }
+          }
+
+          <FONT SIZE=3><FONT FACE="Times, serif">This will loop through an entire index.</FONT></FONT>
+
+
+                                                         GET_LAST
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          get_last(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The get_last function retrieves the highest order key in the named index.  If the index is empty the current record remains in memory and the else clause is taken.  Otherwise, the index's KP is set to point at the last key in the index, the MFRP is set to point at that key's associated record, the current record in memory is flushed, and the new record read into memory.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              get_last(name_ix) else         /* get last key */
+                  fatal(&quot;Index named %s is empty\n&quot;,name_ix);
+              while(1) {
+                    ...                      /* process rec */
+                  get_prior(name_ix) else    /* back up */
+                    break;                   /* at first */
+              }
+          }
+
+          <FONT SIZE=3><FONT FACE="Times, serif">This will loop through an index backwards.</FONT></FONT>
+
+
+GET_NEXT                                                         
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          get_next(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function will retrieve the next higher order key in the named index.  If idx_name currently points to the last key in the index, the current record is not flushed</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>from memory, and the else clause is taken.  If there is a next higher key in the index, the current record in memory is flushed, idx_name's KP is incremented, the MFRP is set to the associated record, and that record is retrieved into memory.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              get_first(num_ix) else         /* get first account */
+                  fatal(&quot;Index %s is empty\n&quot;,num_ix);
+              while (1) {
+                    ...                      /* process */
+                  get_next(num_ix) else      /* next account */  
+                      break;                 /* end loop */
+               }
+          }
+
+          <FONT SIZE=3><FONT FACE="Times, serif">This will loop through an entire index.</FONT></FONT>
+
+
+                                                        GET_PRIOR
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          get_prior(idx_name) else ..
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function will retrieve the next lower order key from the named index.  If the index's KP is pointing to the first key in the index, the current record remains in memory, and the else clause is executed.  Otherwise, the KP is decremented, the MFRP is set to point to the associated record, and that record is retrieved into memory.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              get_last(name_ix) else         /* get last key */
+                  fatal(&quot;Index named %s is empty\n&quot;,name_ix);
+              while(1) {
+                    ...                      /* process rec */
+                  get_prior(name_ix) else    /* back up */
+                    break;                   /* at first */
+              }
+          }
+
+          <FONT SIZE=3><FONT FACE="Times, serif">This will loop through an index backwards.</FONT></FONT>
+
+
+INCLUDE                                                          
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          include(ix1,ix2,key);
+
+          char *ix1, *ix2, *key;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The semantics of this command needs to be correctly understood.  This routine will insert a key into an index file.  The procedure will insert the key string into the second named index and associate the MFRP of the first named index with that key.  The file that contains the record being pointed to must be a member of both indices.  The EDITOR syntax for this command is: insert ix1 in ix2 using key.  Again, it refers to the MFRP of ix1, associates the named key with that MFRP and places the key into ix2.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;                    /* key buffer */
+              char [21] in;                  /* key to insert */
+               ...
+              get(num_ix,k_buff) else
+                  fatal(&quot;Reference Key not on file&quot;,&quot;&quot;);
+              insert(1,BEFORE,num_ix);       /* insert record */
+              strcpy(in,acct_num);
+              include(num_ix,num_ix,in);     /* include # key */
+              include(num_ix,name_ix,in);    /* &amp; name key */
+               ...
+          }
+
+
+                                                     INIT_DATAMAN
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          init_<FONT FACE="Bitstream Vera Sans">dataman</FONT>(argc,argv);
+
+          int argc;
+          char **argv;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This procedure will initialize a DATAMAN file edit process.  It is the first routine called in a file edit program.  The arguments to init_dataman (argc and argv) are the arguments to main().  It also defines the usage of file edit programs as: </FONT></FONT>
+
+          <FONT FACE="Bitstream Vera Sans">prog_name [-r root_dir] [-h host] work_file</FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">where root_dir is the database root directory on the server, host is the hostname of the database server, and work_file is the name of the file to run the program against.  The root directory may instead be defined with the environment variable ROOT, and host with the variable DSERVHOST.  The command line arguments will override the environment variables.  If the host is not named with either method, the host defaults to localhost.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              init_dataman(argc,argv);  /* initialize process */
+               ...       /* do processing */
+          }
+
+
+INSERT                                                           
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          insert(fmt,pos,idx_name);
+
+          short int fmt, pos;
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The insert routine puts a new data record into a database file.  The routine determines the file that contains the record that the named index's MFRP points to and</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>inserts format number fmt.  If fmt is less than 1 or greater than the number of formats defined for the file a diagnostic is displayed and the routine halts.  The pos argument is either of the manifest constants BEFORE or AFTER.   The constant BEFORE inserts the new record prior to the MFRP and the constant AFTER inserts the record after.  If the index currently points to no record, the diagnostic &quot;initial GET not attempted&quot; will appear and the routine will terminate.  Otherwise the record that is currently in memory will be flushed, the new record, consisting of all blanks, will be inserted in the file, the MFRP moved to the new record, and the new blank record read into memory.  All fields will be blank.  The KP is unchanged.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+               ...
+              mk_key(k_buff,num_key);               /* build key */
+              get(num_ix,num_key) else {          /* get rec */
+                  pause(1,1,&quot;Key not on file&quot;);
+                  exit(0);
+               }
+               insert(1,BEFORE,num_ix);           /* insert new rec */
+                    ....
+          }
+
+
+                                                            IOPEN
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          iopen(idx_name,mode);
+
+          short int mode;
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This routine opens an index file for processing.  The argument idx_name is the name of the index to open, and mode is either of the manifest constants RDONLY, or</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>UPDATE for read only, or read/write respectively.  The user may have only six indices open at any given time.  The function associates an index number from one to six,</FONT></FONT>
+<FONT SIZE=3><FONT FACE="Times, serif">depending on the order of open, for each index.  Therefore each index may also be referenced with not only an index name but a string containing an '&amp;' as the first character, and a digit from one to six (again depending</FONT></FONT> <FONT SIZE=3><FONT FACE="Times, serif">on the order of open).</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          char ix1[] = &quot;name_ix&quot;;       /* global index name */
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              init_dataman(argc,argv);  /* init process */
+              iopen(ix1,UPDATE);        /* open the index */
+               ...                      /* process */
+          }
+
+
+MASK                                                             
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+          #include &quot;sort.h&quot;
+
+          pt = mask(num,msk);
+
+          char *pt, *msk
+          long int num;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">Mask is a routine that does formatting of integers for output.  The argument num is a signed integer.  The argument msk is a string that takes the general form &quot;___,__0.__-&quot;.  Each character represents one column, and the underscores and the 0 determine the number of digits to be displayed.  The negative (-) sign is optional and will be left if num is less than zero.  The decimal point is optional, but if in the mask will always remain.  The zero in the mask indicates where to begin blanking leading zeros, and the comma is placed in the display for readability.  If the leading zero indicator is found, and the number doesn't fill the mask the comma will not be displayed.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;     /* external definition */
+          #include &quot;sort.h&quot;        /* found in either */
+
+          char msk[] = &quot;___,__0.__-&quot;;   /* define a mask */
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              long int test1;
+              int test2;
+              char disp1[12];
+              char disp2[12];
+              test1 = -1234567;
+              test2 = 12345;
+              strcpy(disp1,msk);
+              strcpy(disp2,msk);   
+              show(10,10,mask(test1,disp1),11,10,mask((long)test2,disp2,ENDLIST);
+          }
+
+          <FONT SIZE=3><FONT FACE="Times, serif">The output for this program would begin on line ten and column ten of the display and look like this:</FONT></FONT>
+          (10,10)
+                12,345.67-
+                   123.45 
+
+
+                                                            MATCH
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+           or
+          #include &quot;sort.h&quot;
+
+          val = match(text,template);
+
+          int val;
+          char *text, *template;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This is a pattern matching routine.  The text argument is the string to be matched.  The template is the string the generic or approximate value to be matched.  An asterisk</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">(*) will match any one character.  The procedure returns a zero (0) if the template matched the text up to the length of the template.  If the template is shorter than the text string it is considered an approximate match.  If the first differing character in the template (aside from the magic character) is less a negative number is returned, and if the template is longer than the string, or the first differing character in the template is</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>greater a positive number is returned.</FONT></FONT>
+
+     Example
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+              short int row,col;                  /* row and column */
+
+              row = 1;                  /* row of display */
+              col = 10;                 /* col of display */
+              mk_key(k_buff,&quot;HORT******KY&quot;,13);     /* key to get */
+              get(name_ix,k_buff) else
+                  error();                        /* didn't get key */
+              while (1) {
+                  show(row++,col++,mfmt[1],-1);   /* show line */
+                  get_next(name_ix) else          /* get next key */
+                      break;                      /* done with loop */
+                  if (match(KEY,k_buff))          /* do they match? */
+                      break;            /* no, so done */
+              }
+          }
+
+
+MKIDX                                                           
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;sort.h&quot;
+
+          mkidx(argc,argv);
+
+          int argc;
+          char **argv;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function is used to initialize sort routines that generate new indices.  It is normally the first procedure called in a sort program.  The arguments, argc, and argv,</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>are the arguments to the main() procedure.  It also defines the usage of the sort program as being: </FONT></FONT>
+
+               <FONT FACE="Bitstream Vera Sans">sort_prog [-r root_dir] [-h host] [-len] idx_name file_1 [file_2 ...]</FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">where sort_prog is the name of the sort program, root_dir is the directory on the databse server that contains the database, host is the hostname of the database server, and len is the maximum key length allowed in the index.  If not specified, the default len is 20.  All keys are padded with nulls to the maximum key length.  Idx_name is the name of the index to be created.  File_1 through file_n are the file names of the files to be included in the index.  Mkidx creates an empty index, and reads the first record of the first work file into memory.  If idx_name already existed, all previous data is lost, as the index is re-created.</FONT></FONT>
+
+     Example
+
+          #include &quot;sort.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              mkidx(argc,argv);         /* init sort process */
+               ...                      /* so sort procedure */
+          }
+
+
+                                                             MK_KEY
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          mk_key(k_buff,key_val,key_len);
+
+          key k_buff;
+          char *key_val;
+          short int key_len;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function generates keys to be used with the get, and remove routines.  The variable k_buff is of type key.  key is a typedef in the dataman.h include file.  The argument key_val is a string representing the key to be retrieved (or removed), and len is the length of the string.  The user may use the system defined value KEY to generate a key as long as the length passed is KEY_LEN.  KEY is the system value of the last accessed key.  Using this value the system can distinguish between different occurrences of identical keys.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              key k_buff;
+               ...
+               mk_key(key_buff,&quot;6666666666&quot;,10);         /* build key */
+               remove(key_buff,num_ix) else
+                   fatal(&quot;Key does not exist: %s\n&quot;,key_buff);
+               ...
+          }
+
+          Or to save the system key:
+
+              key key_buff[10];            /* declare key buff */
+               ...                         /* process some more */
+              mk_key(key_buff[i],KEY,KEY_LEN);    /* save sys key */
+              get(name_ix,key_buff[i]) else
+               ...
+     
+          This retrieves a particular occurrence of a key.
+
+
+PAUSE                                                            
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+          #include &quot;sort.h&quot;
+
+          pause(row,col,string);
+
+          short int row,col;
+          char *string;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This routine prints a message, sounds a bell, and waits for the system defined 'help' key to be depressed.  The arguments row and col represent the position to place the message on the terminal.  String is a character string that contains the message to be displayed.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+               ...
+              get(log_ix,k_buff) else {
+                  pause(10,10,&quot;Can't find key, try again&quot;);
+                  continue;
+               }
+                ....
+          }
+
+
+                                                          PROTECT
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          protect(idx_name) else ...
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This procedure is used to &quot;lock&quot; a cooperating process out of a database record.  The procedure protects the record that the named index's MFRP currently points to, and that record also becomes the current working record.  If the record is not already protected, the caller gets exclusive access over other processes that try to protect the same record.  If the record is already protected, up to three attempts are made internally to protect it.  If the procedure still can't protect the record it returns to the else clause. </FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>Protect also assures that the version in memory is the most recent version that has been written to disk.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              key k_buff;
+               ...
+              mk_key(k_buff,stat_key,strlen(stat_key));
+              get(idx1,k_buff) else
+                  fatal(&quot;Statistic record key not found&quot;,&quot;&quot;);
+              while (1) {
+                  protect(idx1) else {
+                      show(10,10,&quot;Waiting for update&quot;,ENDLIST);
+                      continue;
+                  }
+                  break;
+              }
+               ...                 /* update stats */
+              clear(idx1);
+          }
+
+
+RELEASE                                                           
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;sort.h&quot;
+
+          release else ...
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">The release function releases the current work file record and moves to the next sequential record in the work file.  Routines in which there are more than one work file (sort programs), if the current record is the last in a file, that record is flushed, that file closed, the next work file opened, and the first record of the new file read into memory.  If at the end of the last work file, the record is not flushed, and the else clause taken.</FONT></FONT>
+
+     Example
+
+          #include &quot;sort.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              mkidx(argc,argv);         /* init sort program */
+               ...
+              sort(key);                /* insert key in index */
+              release else              /* move to next record */
+                  break;                /* end of processing */
+              when_file                 /* new file now? */
+                  show(10,10,&quot;Working on file&quot;,10,26,FILE,ENDLIST);
+               ...
+            }
+
+
+                                                           REMOVE
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          remove(idx_name,k_buff) else ...
+
+          char *idx_name;
+          key k_buff;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function removes a key from the specified index.  It does NOT delete the associated data record.  The argument idx_name is the name of the index to operate on, and key is a string containing the key to be removed.  The key must be constructed exactly as for the get procedure, using the mk_key function.  If there are duplicate keys in</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>the index, the function removes the first occurrence of the first matching key, unless a system KEY was used for the key argument.  If the removed key is being pointed to by any index's KP, any subsequent get_next, or get_prior will issue a diagnostic and the process will terminate.  If the index was saved, an attempt to restore it will generate an error as well.  The get_current function would return false for this case.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              key k_buff;
+               ...
+              mk_key(k_buff,patient_no,strlen(patient_no));
+              remove(number_ix,k_buff) else
+                  pause(10,10,&quot;Patient number not on file&quot;);
+              ...
+          }
+
+
+RESTORE                                                          
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          restore(idx_name);
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This function restores the state of a saved index.  The idx_name is the name of an index that has previously been saved.  Remember that this is not the same as the</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>get_current function.  The database record retrieved will be the one pointed to at the time of the save command (which, because of the forward and back functions, is not</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>necessarily the same as the key points to).  If the database record has been deleted, or the key removed, this is an attempt to restore to an invalid state, and the program issues a diagnostic and terminates.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+             key k_buff;
+               ...
+              mk_key(k_buff,num_key,strlen(num_key));
+              get(num_ix,k_buff) else {
+                  pause(10,10,&quot;Key not on file&quot;);
+                  return;
+              }
+              forward(num_ix) else      /* get to next rec */
+                  return;
+              save(num_ix);             /* save index state */
+              while(MFMT == 2) {
+                   forward(num_ix) else /* get to next rec */
+                       break;
+                    ...                 /* process rec */
+              }
+              restore(num_ix);          /* restore to saved */
+               ...                      /* continue processing */
+          }
+
+
+                                                             SAVE
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+
+          save(idx_name);
+
+          char *idx_name;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This routine saves the current state of the named index.   The argument is a string containing the name of the index whose state you wish to save.  Only one state may be</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>saved per index at one time.  Successive calls to save without a call to restore will loose any previously saved state.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+          
+              int tot;                  /* total charges */
+               ...
+              get(num_ix,num_key);           /* get key */
+              forward(num_ix) else           /* get to total record */
+                  error();                   /* problems */
+              tot = atoi(mfld[1]);           /* save the total */
+              save(num_ix);                  /* save the state */
+              while (1) {
+                  forward(num_ix) else
+                     break;
+                   when_mfmt(2)              /* do only for charges */
+                      tot += atoi(mfld[3]);  /* add to total */
+                   else
+                      break;                 /* end of charges */
+               }                             /* end of loop */
+               restore(num_ix);              /* return to total rec */
+               itoa(tot,mfld[1]);            /* save in record */
+               m_dirty;                      /* set dirty bit */
+               ...
+          }
+
+
+SHOW                                                             
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+          #include &quot;sort.h&quot;             /* defined for either */
+
+          show(row,col,str,row,col,str,...,ENDLIST);
+
+          short int row,col;
+          char *str;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This procedure does a cursor positioned write to the terminal.  This procedure takes a variable number of arguments, but they must always follow the same format. </FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>The arguments MUST come in sets of three,  the first two are the row and column to place the display, and the third, str, is a string to display.  The last argument MUST be the manifest constant ENDLIST.  This is the end-of-argument-list indicator.  The predefined string TOP clears to the end of the screen from the cursor position,  and EOL clears to the end of the line.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              char inpt[2];
+                   ....
+              show (0,0,TOP,0,30,&quot;File Maintenance&quot;,
+                    2,30,&quot;A Add&quot;,
+                    3,30,&quot;B List&quot;,
+                    4,30,&quot;C Change&quot;,
+                    5,30,&quot;D Delete&quot;,
+                    6,30,&quot;Selection:&quot;,ENDLIST);
+              *inpt = ' ';
+              *(inpt+1) = '\0';
+              accept(6,41,inpt,UPPER) else {
+                  flush();
+                  return;
+              }
+               ...
+          }
+
+
+                                                             SORT
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;sort.h&quot;
+
+          sort(key);
+
+          char *key;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This routine places keys in an index.  The argument key is a string containing the key to be inserted.  This is only to be used in end sort programs (programs that generate new indices).  The current work record is associated with the key named, and the key</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>inserted into the index being built.  Keys that are shorter than the index defined maximum are padded with null characters.</FONT></FONT>
+
+     Example
+
+          #include &quot;sort.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+              char *key;
+               ...
+              if(!strcmp(FILE,&quot;sig_file&quot;)) { /* do sig file */
+                  key = malloc(9);           /* space for key */
+                  *key = '#';                /* special char */
+                  strcpy(key+1,mfld[3]);     /* tack on key */
+                  sort(key);                 /* insert new key */
+                  free(key);
+              }
+              release else              /* get next record */
+                  break;
+               ...                      /* continue */
+          }
+
+
+SUBSTR                                                           
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+
+          #include &quot;dataman.h&quot;
+           or
+          #include &quot;sort.h&quot;
+
+          pt = substr(str,off1,off2);
+
+          char *pt, *str;
+          short int off1,off2;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This procedure returns a pointer to newly allocated space that contains a substring of the passed argument.  The</FONT></FONT> <FONT SIZE=3><FONT FACE="Times, serif">first argument is the source of the substring.  The two</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>offsets are the beginning and ending offset, inclusive, of the substring.  The first offset must be less than or equal to the second.  The offsets are relative to zero.  The user is responsible for freeing the memory allocated by substr.  If the memory can not be allocated, or the second offset is less than the first, the value NULL is returned.</FONT></FONT>
+
+     Example
+
+          #include &quot;dataman.h&quot;
+
+          main(argc,argv)
+          int argc;
+          char **argv;
+          {
+
+              char *pt;
+                    ...
+              pt = substr(&quot;hello world&quot;,6,10);
+                    ...
+              free(pt);
+          }
+
+          <FONT SIZE=3><FONT FACE="Times, serif">This call returns the string &quot;world&quot; in pt.</FONT></FONT>
+
+
+                                                          WINDOW
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Summary</FONT></FONT>
+          #include &quot;dataman.h&quot;
+           or
+          #include &quot;sort.h&quot;
+           or
+          #include &quot;wind.h&quot;
+
+          cl_win(row1, col1, row2, col2, attr);
+          grow_win(row1, col1, row2, col2, attr);
+          new_win(row1, col1, row2, col2, attr, mode);
+          pop_win();
+          window(row1, col1, row2, col2, attr);
+
+          short row1, col1, row2, col2, attr, mode;
+
+     <FONT SIZE=3><FONT FACE="Times, serif">Description</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This is a collection of five routines that does very basic windowing functions.  The row and col arguments define the upper left hand and lower right hand corners of the window.  These are all text mode windows.  The functions cl_win, grow_win, and window are all &quot;stand alone&quot; functions.  Any window may be drawn on the screen with</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>them.  window merely paints a window border on the screen and clears the interior of that window.  grow_win draws &quot;exploding&quot; windows on the screen, and cl_win does area clears of the screen using the background color attribute last defined with one of the window functions.  The manifest constants for the background attribute are BLACK, BLUE, GREEN, CYAN, RED, MAGEN, BROWN, and L_GREY.  The other functions, new_win and pop_win, do &quot;overlapping&quot; windows.  With new_win the user defines the area of the window with the row, and col arguments.  The mode argument is either of the manifest constants POP_UP, or GROW.  After the window is defined, the contents of the video display under the window are saved and the new window is painted on the screen.  The function pop_win() &quot;pops&quot; the last window defined with new_win in a first in last out stack type fashion, restoring what was under the window at the time new_win was called.</FONT></FONT>
+
+
+
+                                           MISCELLANEOUS #DEFINES
+
+          <FONT SIZE=3><FONT FACE="Times, serif">There has already been mentioned several system defined 'variables', and constants,  The dataman header defines several useful 'functions' and variables.  The first two are KEY, and KEY_LEN.  The first is a structure of the internal key that dataman is currently using, and KEY_LEN is the internal length of that key.  When generating keys with the mk_key function, always use KEY_LEN as the length.  A related #define is FILE.  This is a pointer to the name of the file currently pointed to.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">MFMT and WFMT are both defined to display and test the format numbers of the master and work files.  MFMT displays the master file format, while WFMT displays the work file format.  DO NOT CHANGE THESE VALUES.  Serious database errors could result if the user alters the values in these variables.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">Next are the WHEN functions.  These are when_mfmt(x), when_wfmt(x), and when_file.  The when_fmt functions test if the current work or master format number equals the value x. The when_file is used in sort routines.  This is a true value when a new file is opened, and set to false when the first release is performed.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">There are two strings defined named TOP and EOL.  These</FONT></FONT> <FONT SIZE=3><FONT FACE="Times, serif">may be passed as the string arguments to show to do screen clearing.  TOP will clear the entire screen from</FONT></FONT> t<FONT SIZE=3><FONT FACE="Times, serif">he point that the cursor is positioned in the row and column.  EOL will clear from the cursor position to the end of the line.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">Last are the field copy #defines.  They are named mstrcpy, mstrncpy, wstrcpy, and wstrncpy.  These copy one tring into another like the strcpy routines of similar name, but these also set a &quot;dirty&quot; flag for the master record (mstrcpy, and mstrncpy), or the work record (wstrcpy, and wstrncpy).  The dirty flag informs the manager that the record has been updated since last retrieved or flushed and that when moving to a new</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>record, or flushing the current record, to write the record to the database.  If the user would rather, he/she may use dirty_m, or dirty_w to manually set these flags.  If the flag isn't set the record will not be written to the database.</FONT></FONT>
+
+<FONT FACE="Times, serif"><FONT SIZE=3>5    UTILITIES</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">The utilities represent a good deal of support to the programmer.  They will help generate a database, analyze the current data base contents, clean up lost space, and edit the structure of the data base files.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">5.1  CLEAN</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This is a utility to update and clean the empty space out of data files and indices.  The usage is: </FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">clean [-space] [Cleanfile]</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">If Cleanfile is not included in the command line, the program searches the current directory for a file named Cleanfile.  Otherwise, the cleanfile is the one named in the command line.  Cleanfile describes the systems, and method to clean your database.  All spaces and tabs in the cleanfile are significant.  The -space argument is the amount of unused space in data files when re-organizing begins.  The default is five percent.  This</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>value may range from five to twenty five percent.</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">The cleanfile consists of three sections headed by key words.  The key words are ROOT:, FILES:, INDICES:.  These key words must have no spaces before them and must have the trailing colon (:).  ALL of the lines after each heading key word line must begin with a tab (\t) character,and there must be one blank line between each section.  After the ROOT key word line, the next line defines the DATAMAN root directory.  This is the full path name to the parent directory of the files and index directory.  Next is an empty line followed by a line  with the FILES: key word.  The line(s) after this key</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>word name each file that will be checked and possibly rebuilt.  Each of these lines again must begin with the tab character.  Finally, comes the INDICES: section.  Each line here is the command line that will rebuild indices.  As a result, each sort procedure must be part of the application.  Following is a sample of a simple Cleanfile.</FONT></FONT>
+
+
+ROOT:
+     /var/database/accounting
+
+FILES:
+     acct contacts sales
+
+INDICES:
+     acct_srt1 -20 name_ix acct
+     acct_srt2 -10 num_ix acct
+
+     <FONT SIZE=3><FONT FACE="Times, serif">5.2  DFEDIT</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This utility is used to examine and update a data file contents, or its structure.  The first use of this program should be to merely edit data.  It's use to change record links is highly discouraged.  Extreme caution should be used when editing the data file pointers.  Each data record points to the record preceding it, and following it.  A record with a back pointer of zero is the first in the file, one with the next pointer of zero is the last in the file.  It's menu of operations is fairly simple.  When the program is first initiated the title names the file being edited, and the user is positioned before the first record of the</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>data file.  At the prompt the user may enter either a record link number or one of the function keys.  Function key 1 moves to the record prior to the current one, key 2 move to the next record.  F3 and F4 allow the user to move to the prior and next field in the current record respectively.  The fifth function key allows the user to change the data in the current field.  When the program is exited or the user moves to a different record the</FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>user will be prompted to verify if the changes to that record are to be saved.  The next two function keys allow the user to change the record links.  It cannot be stressed enough that this should not be done except in the most needful of situations.  Function key 8 will delete the current record.  If this selection is made the user will be prompted as to whether this is really desired.  Any input but 'Y' will be assumed as a no answer.  The last function key, F9 will exit the program.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">5.3  DUMPDF</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This program will sequentially dump the contents of a data file.  Each line displays one field.  Each field is also described by its record, format, and field number. </FONT></FONT>
+<FONT FACE="Times, serif"><FONT SIZE=3>No processing of data is performed.  Any compressed or numeric data remains so.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">5.4  DUMPIX</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This utility does a sequential dump of an index.  The number of files that an index refers to is listed.  It will be displayed as &quot;Index is a member of NN datasets&quot;.  NN is the number of constituent files.  Each line displays the key, names the file that the key points to, and the record link.</FONT></FONT>
+
+     <FONT SIZE=3><FONT FACE="Times, serif">5.5  MKDF</FONT></FONT>
+          <FONT SIZE=3><FONT FACE="Times, serif">This program builds a data file that a DATAMAN process can utilize.  It's usage is:</FONT></FONT>
+               <FONT SIZE=3><FONT FACE="Times, serif">mkdf data_file initialization_file.i</FONT></FONT>
+
+          <FONT SIZE=3><FONT FACE="Times, serif">The &quot;.i&quot; extension is required on the initialization file.  mkdf asks the user how many record formats will be defined for that file, then for each format asks the number of fields, and the length of each field.  It then builds the data file based on the information in the initialization file.  All data in the initialization file is separated into fields by colons (&quot;:&quot;).  The first field of each line is the record format number.  This is a number that ranges from '1' to the highest defined for that file.  The maximum record format number is '63'.  Every record MUST be terminated with a new line.  There can not be a new line character within the body of a record.  If a data field is to be empty when built, the field in the initialization file may be of zero length.  If there is any data in the initialization field, the field must be filled, or padded, to the full length.  Any fields that are not yet built at the time the new line character is encountered will be blank filled.</FONT></FONT></PRE>
+</BODY>
+</HTML>

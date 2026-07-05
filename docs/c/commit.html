@@ -1,0 +1,34 @@
+<div align="center"><h4>commit</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          commit else ...
+<br><br>
+<b>Description</b><br><br>
+		int db_commit();
+<br><br>
+          The commit function terminates a transaction and commits
+		  the changes to the database.  The commit is atomic: if any
+		  part of the commit fails, all fail and all parts of the
+		  transaction are backed out.  It is as if a rollback()
+		  were called.
+<br><br>
+<b>Example</b>
+<br><br><kbd><pre>
+    #include &#060;dataman/dataman.h&#062;
+
+    main(int argc, char *argv[])
+    {
+            ...
+        start_transaction();    /* start the transaction */
+            ...
+        commit else {           /* commit the transaction */
+            pause(15,32, "Can't commit transaction");
+            return;			/* return to main menu */
+        }
+    }
+</pre></kbd>
+<br>
+<a href="startxact.html">&#171;previous</a>&nbsp;&nbsp;<a href="rollback.html">next&#187;</a>

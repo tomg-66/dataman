@@ -1,0 +1,51 @@
+<div align="center"><h4>C Reference Manual</h4></div><br><br>
+The C API includes two fundamentally different parts.  The first one contains the database routines.  The
+second implements the text mode windows.  This reference will maintain that seperation of 
+functionality.  <br>
+For all user routines, all that needs to be included is either the &#060;dataman/dataman.h&#062; or the
+&#060;dataman/sort.h&#062; include files.  All programs need to be linked with the -ldataman library switch.
+<br><br>
+<a href="c/db_struct.html">Database Functions</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/back.html">back</a> - move back one record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/clear.html">clear</a> - 'check in' a record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/delete.html">delete</a> - remove a record from a data file<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/flush.html">flush</a> - force update of files<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/forward.html">forward</a> - move forward one record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/get.html">get</a> - retrieve a key and it's record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/get_current.html">get_current</a> - get last retrieved key and it's record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/get_first.html">get_first</a> - retrieve the first key in an index and it's record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/get_last.html">get_last</a> - retrieve the last key in an index and it's record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/get_next.html">get_next</a> - retrieve the key following the current one<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/get_prior.html">get_prior</a> - retrieve the key prior to the current one<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/iclose.html">iclose</a> - close an index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/include.html">include</a> - insert a key into an index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/init_dataman.html">init_dataman</a> - initialize application programs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/insert.html">insert</a> - insert a blank record into a data file<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/iopen.html">iopen</a> - open an index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/mkidx.html">mkidx</a> - initialize index creation programs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/mk_key.html">mk_key</a> - build a key to use in <b>get</b> and <b>remove</b><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/protect.html">protect</a> - 'check out' a record<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/release.html">release</a> - move to next record in index creation programs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/remove.html">remove</a> - remove a key from an index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/restore.html">restore</a> - restore the state of an index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/save.html">save</a> - save the stat of an index<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/sort.html">sort</a> - insert a new key in an index in an index creation program<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/startxact.html">start_transaction</a> - start a new transaction<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/commit.html">commit</a> - commit a transaction to the database<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/rollback.html">rollback</a> - cancel a transaction<br>
+<a href="c/windowing.html">Windowing Functions</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/accept.html">accept</a> - positioned, polled input<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/cl_win.html">cl_win</a> - draw a space on the screen<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/grow_win.html">grow_win</a> - draw an 'exploding' window<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/mask.html">mask</a> - format output<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/new_win.html">new_win</a> - do windows that can be restored<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/pause.html">pause</a> - put up an error message<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/pop_win.html">pop_win</a> - restore screen saved by new_win<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/show.html">show</a> - cursort positioned screen writes<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/window.html">window</a> - paint a new window on the screen<br>
+<a href="c/misc.html">Miscellaneous Functions and Defines</a><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/match.html">match</a> - rudimentary pattern matching<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/substr.html">substr</a> - substring<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="c/defines.html">defines</a><br>
+<br>
+<a href="c/db_struct.html">next</a><br>

@@ -1,0 +1,42 @@
+<div align="center"><h4>get_first</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          get_first(idx_name) else ...
+<br><br>
+          char *idx_name;
+<br><br>
+<b>Description</b>
+<br><br>
+int db_g_frst
+<br><br>
+          This function retrieves the lowest order key and its
+          associated record from the named index.  Where idx_name
+          is the name of the index that the first key is to be
+          retrieved from.  If the index is empty, the else clause
+          is executed.  If the named index is not empty the current
+          record in memory is flushed, the index KP is set to the
+          first key, the MFRP is set to the associated record and
+          that record is retrieved.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(argc,argv)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get_first(num_ix) else&nbsp;&nbsp;&nbsp;&nbsp;/* get first account */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fatal("Index %s is empty\n",num_ix);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while (1) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* process */ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get_next(num_ix) else&nbsp;&nbsp;&nbsp;/* next account */ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;break;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* end loop */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;This will loop through an entire index.<br>
+<br>
+<a href="get_current.html">&#171;previous</a>&nbsp;&nbsp;<a href="get_last.html">next&#187;</a>

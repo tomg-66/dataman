@@ -1,0 +1,60 @@
+<div align="center"><h4>accept</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;<br>
+	  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-or-<br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          accept(row,col,acc,mode) else ...
+<br><br>
+          int row,col,mode;<br>
+          char *acc;
+<br><br>
+<b>Description</b>
+<br><br>
+          int acept(row, col, acc, mode)
+<br><br>
+          The accept function does screen positioned, keystroke
+          polled input.
+<br><br>
+          Row and col is the row and column number to begin
+          reading.  Acc is a character pointer (string) to the
+          input buffer.  The length of the string currently pointed
+          to by acc determines the maximum number of characters
+          that accept will read.  Mode is a manifest constant
+          describing the type of input.  The constant <strong>ANY</strong> will
+          accept any printable character, while the constant <strong>LOWER</strong>
+          will map all input to lower case.  <strong>UPPER</strong> will map all
+          input to upper case, and <strong>NUMERIC </strong>will allow only numeric
+          input.  Finally, the constant <strong>NOECHO </strong>may be or'd with any
+          of these to suppress the echoing of input to the screen.
+          If the system defined 'help' key is hit the input buffer
+          is set to zero length, the read is terminated, and the
+          else clause is taken.  If a normal line terminator is
+          hit, acc is truncated to the number of input characters,
+          and the else clause is skipped.  Function keys are
+          returned in the first byte as the scan code or'd with
+          0200.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;int row,col;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* row and column */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char inpt[5];&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* input variable */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;row = 5;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;col = 15;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;memset(inpt,' ',4);&nbsp;/* read 4 chars */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*(inpt+4) = '\0';&nbsp;&nbsp;&nbsp;/* end string */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;accept(row,col,inpt,UPPER) else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;flush()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="windowing.html">&#171;previous</a>&nbsp;&nbsp;<a href="cl_win.html">next&#187;</a><br>

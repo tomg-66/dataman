@@ -1,0 +1,278 @@
+Mon Mar 25 10:06:09 MDT 2013
+Dataman 3.3.8
+server -
+    - fixed a big bug in remove introduced in the last version
+client - 
+
+overall -
+    - changed all of the routines to use appropriate print formatting 
+	  defines from <inttypes.h>
+	- released as 3.3.8
+
+
+Thu Mar 21 15:02:05 MDT 2013
+Dataman 3.3.7
+server -
+    - redid the index sorting and searching.  This improved sorting time by
+	  about 25 percent
+	- fixed a bug in the transaction processing that would hang the server
+
+client-
+    - changed the C++ library to use namespaces, and to bring it up to
+	  complience with newer compilers.  Wouldn't even build without the
+	  changes.
+
+overall -
+    - released as 3.3.7
+
+
+Fri Sep 25 14:41:12 MDT 2009
+Dataman 3.3.6
+server -
+	- fixed a bug left over from removing references to the free list.
+	- fixed a bug in upd_idx to do more checking for the rec format.
+
+client -
+	- made changes to make the c++ client lib more robust.  This stemmed
+	  from having the database functionality in a plug-in library.  So
+	  closing and re-opening the connections on load and re-load of the
+	  lib works better.
+	- changed the Makefile.ac files so library numbers are no longer tied
+	  to program release numbers.  this makes it so you can update the
+	  libs without having to re-link your applications.
+
+overall -
+	- released ase 3.3.6
+
+
+Tue Jul 28 12:39:07 MDT 2009
+Dataman 3.3.5
+server -
+	- fixed a small but nasty bug in node_search.  when you built an index
+	  with MAX_KEYLEN key length would overflow a buffer.  another bug in
+	  the recv_from_server, that would show up sometimes as well.
+
+client -
+	- fixed some minor bugs and added the "==" and "!=" operators in the
+	  c++ library for datafields.
+
+overall -
+	- released as 3.3.5.  3.3.4 was out there for a very short time
+	  because i thought a freelist for deleted record would be a good
+	  idea, but decided against it shortly thereafter.
+
+
+Mon Apr 14 18:23:54 MDT 2008
+Dataman 3.3.3
+server -
+	- Fixed the db_clean utility.  If there were blobs associated with
+	  a file that was rebuilt, they wouldn't be reassigned to the newly
+	  moved record.
+	- If dataman is already up and running, you may re-invoke it with the
+	  '-D' switch to toggle on and off debugging.  You can do it manually
+	  by sending SIGUSR1 to the dataman_srv and dataman_con processes.
+	- dfedit would crash if you entered a record number that corresponded
+	  to a deleted record.  You can now do that and potentially un-delete
+	  that record.
+	- mkdf would not delete the blobs associated with a datafile that was
+	  being re-built.
+	- I decided to leave the library files at level 3.3.3 since there was
+	  no changes whatsoever to the client libraries.
+client -
+	none
+overall
+	none.  packaged as 3.3.4
+
+
+Thu Jan  3 07:50:34 MST 2008
+Dataman 3.3.3
+server -
+	added command sequence checking in the database server.  up to
+	this time, I've basically assumed that any connections from a
+	client was benign, and that no one would want to send malicious
+	packets.  Well, now there is more checking to verify packets.
+clent -
+	none
+overall -
+	just the security changes, released as 3.3.3
+
+
+Wed Oct 10 20:10:11 MDT 2007
+Dataman 3.3.2
+server -
+	fixed some largefile bugs.  Finally fixed the clean utility
+	and got it put in the distribution.
+client -
+	none
+overall -
+	Updated some docs. Rolled up these changes as 3.3.2
+
+
+Wed Nov  1 14:23:42 MST 2006
+Dataman 3.3.1
+Server -
+	none
+client -
+	Changed handling of file names when building an index in
+	c, c++, and by extension php.  Now an index can refer to
+	an arbitrarily large number of files.  Added the index
+	building functions to php.
+
+
+Sat Oct 21 09:53:58 MDT 2006
+Dataman 3.3.1
+server -
+	Minor changes for very odd bugs.
+client -
+	Big changes for c++ library.  Dropped the ".field" way to
+	reference a field, ie master.field[n], has become just
+	master[n].  This is more consistent with the c library and
+	allows for array bounds checking.  Added a new overloaded
+	operator to return a field as a const char *.  Remember
+	precedence rules!
+overall -
+	updated the docs to reflect the changes.  Released 3.3.1.
+
+
+Sat Sep 16 20:42:06 MDT 2006
+Dataman 3.3.1
+server -
+	Added transaction processing to the server.  Transactions are
+	now held in the client's connection server until committed or
+	rolled back.
+client -
+	Added verbs to all of the libraries to support transaction
+	processing.
+overall -
+	Finally added C++ documentation, added all the documentation to
+	the distribution package.  Rolled up all of these changes to
+	release 3.3.1.  Not releasing 3.3.1 until more testing though.
+
+
+Tue May 30 15:02:38 MDT 2006
+Dataman 3.3.0
+client -
+	Changed the scope visibility of many of the Java class memebers
+	to not be protected.  This included changed DatamanIndex,
+	DatamanRecord, DatamanField, and DatamanInit.
+
+Thu May 18 18:49:38 MDT 2006
+Dataman 3.3.0
+client -
+	In db_discon() was memsetting memory that was already freed.
+
+Wed May 17 20:38:03 MDT 2006
+Dataman 3.3.0
+server -
+	Finally got a 64 bit machine to compile on, and found various type
+	problems.  This will now run a 64 bit database on both 32 bit and
+	64 bit CPUs (using gcc).  Changed the threading so that at system
+	startup worker threads are spun up, and not a new one for each
+	command received.  Removed some un-necessary memcpy's.  All in all
+	these changes improve performance ~12%.  Fixed a long standing bug
+	in delete().  Added a command line argument to set the number of
+	worker threads, and one to set the size of the shared memory area
+	used for thread communication with connections. The defaults for
+	these are 10 threads and 1K shared mem segments.
+client -
+	Had to change some of the variables for 64 bit CPUs.  Delete bug
+	was here too.
+overall -
+	rolled up the new release 3.3.0
+
+Tue Jan 17 21:08:49 MST 2006
+server -
+	Changed up file locking a little again, should be a -little- more
+	efficient.  Also in all of the get routines and restore if you had to
+	call rm_key there would be a deadlock.
+
+Dataman 3.2.5
+Wed Dec 28 20:55:12 MST 2005
+server -
+	Changed both user level and system level locking.  The original dataman
+	used to write a bit to the record header when performing a protect call.
+	Now, the server will keep a list of protected records, so if there is a
+	server crash, the records won't remain protected.  System level locking
+	now implements the idea of lock owners.  If you didn't assert a lock,
+	you can't remove one.  Also, there could have been resource starvation
+	if there was a thread waiting to assert a write lock, and read locks
+	continued to occur.  A queue is now implemented for this case.
+overall -
+	rolled up all of the changes into a new release 3.2.5
+
+Tue Dec 27 21:10:14 MST 2005
+server and client -
+	Went through the server and client routines and ran lint over most of
+	them.  Trying to clean up some crufty stuff.
+
+Mon Dec 26 16:57:03 MST 2005
+server - 
+	Two ugly bugs.  I can't believe these didn't get caught.  Two apps
+	using the same work file (init_dataman) and identical index (iopen)
+	would fail.  Would not let you run two instances of the same
+	application.
+
+Sat Nov 19 17:04:02 MST 2005
+client -
+	pre-set dm_sock to be -1.  This lets php start and stop with no
+	dataman calls at all terminate without an attempt to disconnect
+	from the server.  Otherwise you get a stupid error message.
+
+Tue Nov  8 17:04:02 MST 2005
+client - 
+	there was a conflict for the prototypes for window and new_win
+	between the proto include and the wind include for both C and C++.
+
+Wed Nov  2 12:49:47 MST 2005
+Trying to update this on each change from now on, not only on a new
+release.
+
+server -
+	added better handling of the pid files /tmp/.dataman*.pid.
+	if there were a termination of the processes without these
+	being removed, the system wouldn't come back up.  also you
+	can use the -q switch now to query the status of dataman.
+client -
+	better handling of termination of PHP.  db_discon is called
+	on termination of PHP, but when called from a web page, there
+	is no termination, so we are calling it at request end.  Then
+	when it finally did happen we'd get a second call.  we want to
+	ignore the second call.
+
+Dataman 3.2.4
+Fri Sep 16 14:25:46 MDT 2005
+Overall, changed to autoconf 2.59 and automake1.9.3, included
+some examples (in another cvs tree and package), and generally
+tried to do some cleanup.  I know, there is a lot more cleanup
+to do.
+server -
+	changed everything over to 64 bit offsets.  We really like
+	to have big databases.  the make warns about using llseek,
+	but i put the proper define in the header, and all seems to
+	work for me.  also added mutex locks around seek/read combos
+	so that shared locks on a file couldn't mess each other up.
+	there was a bug in delete that sometimes would return the
+	wrong current record.
+client -
+	of course changed these to handle the 64 bit offsets from the
+	server.
+
+Dataman 3.2.3
+Sun Apr 24 19:03:00 MDT 2005
+I haven't kept up the changelog for the last two
+releases, so I thought I would get this one put
+together.
+server -
+	added functions get_blobs and put_blobs.  purpose
+	was to be able to add blobs to the data stream
+	going back and forth between the server and clients.
+	modified the utilities (mkdf, dumpdf, dfedit) that
+	would allow for support for blobs.  also modified
+	some of the file structures.
+client -
+	modified parsing routines, headers, and other routines
+	to support blobs as well.  Also added the "-p" switch
+	to init_dataman for support of the php module.  blob
+	support includes c, c++, java, and the new php module.
+
+7/7/04 - initial release.

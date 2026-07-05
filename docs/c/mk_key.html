@@ -1,0 +1,51 @@
+<div align="center"><h4>mk_key</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          mk_key(k_buff,key_val,key_len);
+<br><br>
+          key k_buff; <br>
+          char *key_val;<br>
+          int key_len;<br>
+<br>
+<b>Description</b>
+<br><br>
+          This function generates keys to be used with the get, and
+          remove routines.  The variable k_buff is of type key.
+          key is a typedef in the dataman.h include file.  The
+          argument key_val is a string representing the key to be
+          retrieved (or removed), and len is the length of the
+          string.  The user may use the system defined value KEY to
+          generate a key as long as the length passed is KEY_LEN.
+          KEY is the system value of the last accessed key including
+	  KP and MFRP.  Using
+          this value the system can distinguish between different
+          occurrences of identical keys.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key k_buff;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mk_key(key_buff,acct_num,10);&nbsp;&nbsp;&nbsp;&nbsp;/* build key */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remove(key_buff,num_ix) else<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fatal("Key does not exist: %s\n",key_buff);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br><br>
+Or to save the system key:<br>
+<br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key key_buff[10];&nbsp;&nbsp;&nbsp;&nbsp;/* declare key buff */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* process some more */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mk_key(key_buff[i],KEY,KEY_LEN);&nbsp;&nbsp;&nbsp;&nbsp;/* save sys key */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get(name_ix,key_buff[i]) else<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...
+<br><br></kbd>
+          This retrieves a particular occurrence of a key.
+<br><br>
+<a href="mkidx.html">&#171;previous</a>&nbsp;&nbsp;<a href="protect.html">next&#187;</a><br>

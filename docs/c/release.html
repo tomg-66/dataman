@@ -1,0 +1,46 @@
+<div align="center"><h4>release</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          release else ...
+<br><br>
+<b>Description</b>
+<br><br>
+int db_rel(void)
+<br><br>
+          The release function releases the current work file
+          record and moves to the next sequential record in the
+          work file.  Routines in which there are more than one
+          work file (sort programs), if the current record is the
+          last in a file, that record is flushed, that file closed,
+          the next work file opened, the first record of the
+          new file read into memory, and the global 'new file' indicator
+	  is set to true.  When the first release is performed after the new file
+	  indicator has been set to true, the indicator is then set
+	  to false.  If at the end of the last
+          work file, the record is not flushed, the else clause
+          taken, and the new file indicator is not set to true.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/sort.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mkidx(argc,argv);&nbsp;&nbsp;&nbsp;&nbsp;/* init sort program */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while(1) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sort(key);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* insert key in index */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;release else&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* move to next record */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;break;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* end of processing */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;when_file&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* new file now? */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;show(10,10,"Working on file",10,26,FILE,ENDLIST);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="put_blob.html">&#171;previous</a>&nbsp;&nbsp;<a href="remove.html">next&#187;</a><br>

@@ -1,0 +1,286 @@
+<div align="center"><h4>Theory of Operation</h4></div><br><br>
+DATAMAN is a general purpose data base and record manager.  It consists of a database server that
+runs on a Linxu/Unix system and a library of routines that are bound into an application program
+to be called at run time.  The package provides for both indexed and sequential record access.  
+The individual files that DATAMAN handle have a physical limit of approximately
+9.22x10<sup>18</sup> bytes.  The routines also provide for multi user capabilities in record
+locking. Internal file and record locking are performed invisibly to the user during file and
+index updating.  Co-operative record locking is also provided for at the user level.  Data
+records may contain zero or more fields that are blobs.  This means that a data record may
+have both a structured and an unstructured part.  The structured part of a data record may be
+up to 32Kb, and a record with blob data may be up to 2Gb.
+<br><br>
+<a href="#general">General Information</a><br>
+<a href="#db_struct">Database Structure</a><br>
+<a href="#fieldsandfiles">Fields and Files</a><br>
+<a href="#indexes">Indexes</a><br>
+<a href="#mvwfile">Master vs Work Files</a><br>
+<a href="#dfio">Datafile I/O</a><br>
+<a href="#dflay">Designing a Datafile Layout</a><br>
+<a href="#build">Building a Database</a><br>
+<a href="#pointers">Index and File Pointers</a><br>
+<a href="#xaction">Transaction Processing</a><br>
+<a href="#window">Windowing</a><br>
+<br>
+<a name="general"><h5>General Information</h5></a>
+In general, the Dataman package tries to do everything for the user that it can.  It pre-defines
+records and fields for the user.  When any database access occurs, the record is
+placed into a variable already defined for the user.  It knows how many fields are in a record
+and when the record is retrieved, it is parsed into it's constituant fields.  Records that are
+retrieved by referencing an index are placed in what is called a 'master file record'.  In each
+of the language APIs the most common way to access the data is as a string (appropriate for the
+language).  In the "C" api this is an array of strings called mfld.  In "C++" it is record class
+with an array of datafields called master.  It is similar in java, there is a class predefined named
+Dataman.master, and in PHP it is simply an array named master.  In C, you need to use conversion
+routines to change the data from a string to the type you want to use.  In C++, it does some
+automatic conversion between string, integer, and floats depending on the operations you perform
+on them.  Java has appropriate get and put routines.  PHP, of course uses it's polymorphism to
+do it's own conversions.<br><br>
+Currently, in C, C++, and Java, the user must also use what (in the old Nixdorf/Entrex system)
+is called a workfile.  This has traditionally been a 'scratch' space.  It is used to keep
+disparate data from different records in one place.  Not using a work file is soon going to be made
+a command line option.  In 'C' the record from the work file is stored in the array wfld, 'C++'
+workfile, and in Java Dataman.workfile.  The first record of the workfile is implicitly read on
+system initialization.  For very simple applications the workfile is generally a dummy or place
+holder file, and is not really used.<br><br>
+<a name="db_struct"><h5>Database Structure</h5></a> There may, of course, be several databases on
+any one system. There may be copies of the same database. How one determines a database is the
+directory structure where it resides. On any connection to the server, the application must say
+where the root directory of the database is. So, the more roots you have, the more completely
+seperate databases you can have. Under this database root, there are several directories that
+are required; they are files, index, and blobs. The names are supposed to be self-explanatory
+Data files will contain each file for that database, index the indexes that refer to those files,
+and blobs will contain the blob data that different records in the database refer to. So, for
+example you have an accounting database, you might define a root to be /var/databases/accounting
+It doesn&#039;t matter if you have only the accounting database there, but logically, it can help
+by keeping things seperate.
+<br><br>
+<a name="fieldsandfiles"><h5>Fields and Files</h5></a>
+A database may consist of one or more data files.  A data file is somewhat analagous to a table
+in a relational database.  A record format is the description of the data contained in a record,
+and is analagous to a table description.  You define fields (columns) for each record format,
+and define the sizes for each field.  The difference is that a single data file may have up to
+63 different record formats defined in it.  This means that a table may contain 'sub tables', if
+you want to think of it that way.  Another name for this structure is 'jagged tables'.<br><br>
+For example, in the packaged pharmacy example program, there is a file containing the English
+translations of the Latin instructions used for prescriptions.  This file would contain one
+record format.  This would perhaps have the English translation, the Latin SIG, and possibly a
+code number.  Fields 1, 2 and 3 would each be 20 characters long, to contain all of  the possible
+translation text, field 4 would be 7 characters long and contain the Latin SIG and field 5 would
+be 3 bytes long and contain a numeric code.  Now, if for example, you lived in an area that was
+heavily populated with Spanish speaking people, you might want the same information in Spanish
+as well.  Now you designate a second record format to be inserted immediately after the first.  
+Because you know where the second record format is you don't need the Latin SIG in the format or
+the numeric code either, or even a key on the second record.  All that is needed is the Spanish
+translation.  By defining proper formats and because the structure of the database is
+determinate, you can establish relationships between or ownership of records<br><br>
+<a name="indexes"><h5>Indexes</h5></a>
+The index sub directory contains the indexes to the database.  All data is initially retrieved
+from master data files by referring to a key in an index.  You cannot retrieve any data without
+first opening an index and performing one of the get routines.  Currently an index may refer to
+data contained in up to 99 different files and the API allow an application to open and reference
+up to six different indices at any one time.  As a result a database may refer to up to 594 data
+files at once.<br><br>
+Internally all keys in an index are the same length.  Any keys that are shorter than the maximum
+length defined for that index are padded with null characters.  If you are worried about space
+it may be advisable to have several indexes, and to group keys with approximately the same length
+into the same one.  The package also allows you to have duplicate keys.  Duplicate keys will be
+differentiated by the order that the data records they refer to were inserted into their data
+files.<br><br>
+<a name="mvwfile"><h5>Master vs Work Files</h5></a>
+There are two types of files used in the dataman database.  The first is referred to as the
+MASTER file.  This is a file that is currently being pointed to by an open index.  Records may
+be retrieved from these files only by referencing the index name.  These files are opened and
+closed as needed as the index refers to them, and a process may refer to all MASTER files during
+a session.  A WORK file is a remenant from the requirements from the original EDITOR language.  It
+is actually only required in C, C++, and Java.  It is opened at the beginning of the process, and
+the first record of that file is read into memory.  This file is never referenced by an index
+name, and is always the only work file.  The only exception to the latter is for sort routines.
+These routines create indices, and require all files that are to be included be named as work
+files.  The procedures release and sort will only operate on work files.  In C a master record
+is referred to through the mfld array, and the work file the wfld array.  In C++ and Java
+the two names of the record class instansiated are master and workfile.  In PHP the master
+record is a global array named $master.  These arrays/classes are global and never need to
+be initialized by the user.
+<br><br>
+<a name="dfio"><h5>Datafile I/O</h5></a>
+Input and output from data files is simplified.  The user, just by moving to a new
+record in the data base writes the current record, and retrieves the new.  A data record is
+returned as strings in the master file or work file arrays.  Since we are talking about
+field numbers, the arrays do not use the zeroth array element.  Please <b>do not</b> refer
+to the array element 0 in these arrays.<br><br>
+For a record to actually be sent to the server to be written to the datafile, it must be
+'marked'.  There are macros and functions that will mark a record.  After you modify any data
+in a record, it is suggested that you call the appropriate marking routine.  This way, there is
+no network overhead transferring records that do not need to be updated.  Also remember that
+in the C library that there is no error checking for data written beyond the end of a data field.
+This is consistent with the C language.  The user, in all cases is responsible for the integrity
+of the data fields.
+<br><br>
+<a name="dflay"><h5>Designing a Data File Layout</h5></a>
+The first thing to do when implementing a database application is to determine the data elements
+that will be used.  In an extremely simple charge account system the necessary data will include
+the account name, address, city, state, zip, and the account number.  There would also be
+transaction records.  These would include the transaction date, amount, location, and perhaps
+some sort of transaction code.  The thinking is already in terms of different record formats.  The
+first would be a demographic record and the second the charge record.  The most logical way to
+organize this data base would be to have the demographic record immediately followed by multiple
+occurrences of the charge record.  This saves the need for keys on every record, and groups
+related data together.  All these considerations should be taken into account when designing
+your data base.
+<br><br>
+<a name="build"><h5>Building a Database</h5></a>
+After all of the data elements needed have been defined, group related data into different files.
+In the charge account system described above, there would be only one file.  In a large system,
+such as the example prescription filling program, there are several files; one each for doctors,
+patients, the drugs and so forth.  Determine the structure of each file and the data required for
+the initial record needed for each file, as a data file must have at least one record in it.
+Now you use the mkdf utility to build the data file.<br><br>
+After the data files are built, you need to determine which record formats need index keys on
+them and how they will be built.  Again, drawing from the prescription filling example, since
+the indexes can refer to data in multiple files, there is a sort character prepended to each
+key, depending on which file the record is in.  This is entirely arbitrary, and up to the
+developer.  This is, again, how it was done in for -this- particular application.  Now the
+developer needs to write a sort routine.  This routine will loop through each record and
+enter keys into the database as needed for the application.  You now have a database that is
+ready for use.
+<br><br>
+<a name="pointers"><h5>Index and File Pointers</h5></a>
+Each open index has a key pointer (KP), and a master file record pointer (MFRP).  The KP refers to
+the key retrieved from the last get routine.  A MFRP will refer to the data record that that
+particular index last retrieved.  Because you can retrieve records independantly from key
+retrieval, the MFRP does not necessarily have to be the one set when the KP was returned.
+The following table indicates how the KP and MFRP are affected upon successful completion of the
+database functions.<BR><BR>
+<table WIDTH=100% BORDER=1 BORDERCOLOR="#000000" CELLPADDING=4 CELLSPACING=0>
+  <thead align="center" valign="center">
+    <tr>
+      <th>Command</th>
+      <th>KP</th>
+      <th>MFRP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>get</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>get_first</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>get_last</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>get_next</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>get_prior</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>get_current</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>forward</td>
+      <td>unchanged</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>back</td>
+      <td>unchanged</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>insert</td>
+      <td>unchanged</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>delete</td>
+      <td>unchnaged/invalid</td>
+      <td>updated</td>
+    </tr>
+    <tr>
+      <td>include</td>
+      <td>updated</td>
+      <td>unchanged</td>
+    </tr>
+    <tr>
+      <td>remove</td>
+      <td>unchanged/invalid</td>
+      <td>unchanged</td>
+    </tr>
+    <tr>
+      <td>protect</td>
+      <td>unchanged</td>
+      <td>unchanged</td>
+    </tr>
+    <tr>
+      <td>clear</td>
+      <td>unchanged</td>
+      <td>unchanged</td>
+    </tr>
+    <tr>
+      <td>save</td>
+      <td>unchanged</td>
+      <td>unchanged</td>
+    </tr>
+    <tr>
+      <td>restore</td>
+      <td>updated</td>
+      <td>updated</td>
+    </tr>
+  </tbody>
+</table>
+<br><br>
+<a name="xaction"><h5>Transaction Processing</h5></a>
+There is now a basic form of transaction processing which introduces new verbs to the Dataman
+package.  These are not part of the EDITOR language, so deserve a seperate section.  The new
+verbs are (with variations appropriate for thier language) start_transaction, rollback, and
+commit.  Starting a transaction has the effect of notifying the application that we are now
+in a transaction, and that everything until the corresponding rollback or commit is not to be
+written to the database.  This does not perform an implicit protect() call on a record.  If
+you are in a multi-user environment, you still need to use the protect and clear verbs.  If
+you are modifying a record, and someone else wants to modify the same record, the two
+applications can over write each other.  Also note that the work record is -not- part of the
+transaction.  If you are trying to update the workfile record, do not do it in a transaction.<br><br>
+When rollback is called, the transaction is terminated, and the database is not updated.  When
+commit is called, the transaction is terminated and all parts of the transaction are performed
+atomically.  If any part fails, all parts fail, and it is if a rollback was called.  At present,
+the transaction processing is not totally ACID compliant, but will perform much the same.<br><br>
+The fact that nothing is written to the database until commit is called may cause some confusion.
+The modified data is not available to the user either after she successfully performs any of the
+database calls that retreives a new key or record.  Only after the commit does new data become
+generally available to -all- users.
+<br><br>
+<a name="window"><h5>Windowing</h5></a>
+The C and C++ API libraries contain a very rudimentary windowing system.  These routines can
+do simple windows, cursor positioned reads and writes, and display system warnings which
+require end user input to continue.  If you built the libraries with DWINDOW defined in
+config.h.in, then the system is initialized automatically once you call either of the basic
+dataman initialization routines, init_dataman, or mkidx.<br><br>
+If you use this system, there is
+a keystroke that will return from a system warning, or return false from a positioned read.
+Historically, on the NIXDORF keyboard this key was labelled 'HELP'.  Thus here, it is called
+the HELP key.  It defaults to be the 'Home' key on modern keyboards.  If you want it to be
+something else, you need to set the environment variable HELP to an appropriate value.  You can
+use a numeric value to define it.  For example if you want the HELP key to be &#060;ctrl&#062;A,
+then you would want to define help to be the numeric value '1'.  You could also define it to be
+the string "^A".<br><br>
+Window and screen positions begin in the upper left corner with a co-ordinate of 0,0.  All
+positions are relative to the display's upper left corner, not relative to the 'window' you
+are in.  A window is merely an area on the screen that can be drawn with a border and colored
+background.  The area under this window is saved, and when the window is poped, that area is
+then restored.
+<br><br>

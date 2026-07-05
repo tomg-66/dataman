@@ -1,0 +1,50 @@
+<div align="center"><h4>insert</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          insert(fmt,pos,idx_name);
+<br><br>
+          int fmt, pos;<br>
+          char *idx_name;
+<br><br>
+<b>Description</b>
+<br><br>
+          The insert routine puts a new data record into a data
+          base file.  The routine determines the file that contains
+          the record that the named index's MFRP points to and
+          inserts format number fmt.  If fmt is less than 1 or
+          greater than the number of formats defined for the file
+          a diagnostic is displayed and the routine halts.  The pos
+          argument is either of the manifest constants <b>BEFORE</b> or
+          <b>AFTER</b>.   The constant BEFORE inserts the new record prior
+          to the MFRP and the constant AFTER inserts the record
+          after.  If the index currently points to no record, the
+          diagnostic "initial GET not attempted" will appear and
+          the routine will terminate.  Otherwise the record that is
+          currently in memory will be flushed, the new record,
+          consisting of all blanks, will be inserted in the file,
+          the MFRP moved to the new record, and the new blank
+          record read into memory.  All fields will be blank.  The
+          KP is unchanged.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc,char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key k_buff;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;move(k_buff,num_key);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* build key */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get(num_ix,num_key) else {&nbsp;&nbsp;&nbsp;&nbsp;/* get rec */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pause(1,1,"Key not on file");<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exit(0);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;insert(1,BEFORE,num_ix);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* insert new rec */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;....<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="init_dataman.html">&#171;previous</a>&nbsp;&nbsp;<a href="iopen.html">next&#187;</a><br>

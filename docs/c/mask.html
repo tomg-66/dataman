@@ -1,0 +1,56 @@
+<div align="center"><h4>mask</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-or-<br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          pt = mask(num,msk);
+<br><br>
+          char *pt, *msk<br>
+          long int num;
+<br><br>
+<b>Description</b>
+<br><br>
+          Mask is a routine that does formatting of integers for
+          output.  The argument num is a signed long integer.  The
+          argument msk is a string that takes the general form
+          "___,__0.__-".  Each character represents one column, and
+          the underscores and the 0 determine the number of digits
+          to be displayed.  The negative (-) sign is optional and
+          will be left if num is less than zero, otherwise the column will be left blank.
+          The decimal point
+          is optional, but if in the mask will always remain in it's defined position.  The
+          zero in the mask indicates where to begin blanking
+          leading zeros, and the comma is placed in the display for
+          readability.  If the leading zero indicator is found, and
+          the number doesn't fill the mask the comma will not be
+          displayed.  The output is copied into msk, and the pointer to msk
+          is returned.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/sort.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;char msk[] = "___,__0.__-";   /* define a mask */<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long int test1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long int test2;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char disp1[12];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;char disp2[12];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;test1 = -1234567;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;test2 = 12345;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;strcpy(disp1,msk);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;strcpy(disp2,msk);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;show(10,10,mask(test1,disp1),11,10,mask((long)test2,disp2,ENDLIST);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br></kbd>
+          The output for this program would begin on line ten and
+          column ten of the display and look like this:
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;12,345.67-<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;123.45   <br></kbd>
+<br>
+<a href="grow_win.html">&#171;previous</a>&nbsp;&nbsp;<a href="new_win.html">next&#187;</a><br>

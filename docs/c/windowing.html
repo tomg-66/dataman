@@ -1,0 +1,30 @@
+<div align="center"><h4>Windowing Functions</h4></div><br><br>
+These functions implement a very basic text mode windowing system.  They are good for basic menuing
+systems.  Some of the functions just draw on the screen, and others actually work to save and restore
+what is under the screen area.  All co-ordinates are established from the upper left-hand corner of
+the screen, not relative to the corner of their window.  Again, these are 'good enough'.  To use them,
+you don't have to learn curses, just link in libcurses with your application.
+<br><br>
+These routines are, by default, compiled to initialize and be available automatically.  If you do not
+want this as the default mode of operation, you need to modify the config.h.in file that is distributed
+with the package before running the configure command.  You need to comment out the line near the top
+of that file that reads<br><br>
+<kbd>#undef DWINDOW</kbd>
+<br><br>
+Commenting this line will disable the the define in config.h that is generated during the configure
+process.  The routines are still part of the library, but they are not initialized by default.  If you
+want to manually initialize and use them, you will need to use the call (not otherwise documented here)
+<br><br>
+<kbd>init_dwin();</kbd>
+<br><br>
+These functions depend upon an environment variable named HELP to be set.  On the original keypad
+for the NIXDORF systems the key labelled 'HELP' was used to 'escape' from system pauses and 
+error messages, or to return false from keyboard prompts.  As a result, the word help was used for
+the environment variable.  If the variable is not set, the 'help key' defaults to the 'home' key.
+To set the environment variable, you need to either give it a numeric value or a key sequence.
+The numeric value is the decimal value of the key sequence.  For example if you wanted the help
+sequence to be &#060;CTRL&#062;&#060;D&#062; you would set the environment variable HELP to
+either the value 4, or the string "^D".  Any key can be established as the help key, but it
+doesn't make sense to use some values (like the backspace key).
+<br><br>
+<a href="db_struct.html">&#171;previous</a>&nbsp;&nbsp;<a href="accept.html">next&#187;</a><br>

@@ -1,0 +1,17 @@
+#
+# this is a sample cleanfile
+# it would go with the pharmacy sample application
+
+#define the database root
+ROOT: /var/databases/pharm
+
+#these are the files to check
+FILES: rxxfam rxxdrg rxxlog
+
+#and now we build some indices
+INDEX: rx01srt -4 rxidx01 rxxdrg rxxcon rxxphm rxxins rxxprs rxxstr \
+	rxxsts rxxprc
+	rx02srt -6 rxidx02 rxxsyn rxxfam rxxdoc rxxzip rxxrec
+	rx04srt rxidx04 rxxfam rxxdoc
+	rx05srt -24 rxidx05 rxxdrg
+	rx06srt -7 rxidx06 rxxfam rxxlog

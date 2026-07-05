@@ -1,0 +1,41 @@
+<h2>Class datarecord</h2>
+The datarecord type is to contain any record that is retrieved from
+the database.  There are two datarecords, the first is called 'master'
+and the second is 'workfile'.  They are already instansiated globally
+for the user and are populated with datafields automatically.<br><br>
+Datafields are members of the datarecord.  They are referenced by
+referring to the datarecord with an array operator, ie<br><br><kbd>
+		master[n]<br></kbd>-or-<br><kbd>workfile[n]</kbd><br><br>
+where n ranges from 1 to the number of fields defined for the record.
+Remember, it may look like an array subscript, but it is a field
+reference.<br><hr>
+
+<h3>Methods</h3>
+#include &#060;dataman/dataman.hh&#062;<br><br>
+Retrieve the format number of the current record.  There is also a
+define in the dataman.hh file to do this.  MFMT retrieves the master
+record format, and WFMT retrieves the workfile record format.  Two
+macros are also defined that will test the value of the format number.
+when_mfmt(n) will test to see if the record format number is equal
+to n, and when_wfmt(n) does the same for the workfile format number.<br><br><kbd>
+int getfmt()
+</kbd><br><hr><br>
+Mark (or unmark) this record as modified.  If not using one of the standard
+functions to set the value of a field in the record, it will not be marked
+as ready to send to the server, so the user may manually set the modified
+flag.  Setting the mark to a nonzero value indicates the record is to be
+written, zero that it is 'clean'.<br><br><kbd>
+		void setdirty(int i)
+</kbd><br><hr><br>
+Retrieve the next workfile record.  The methods forward() and back()
+are part of the index class.  There is no ability for them to perform
+this action on the workfile.  Release is most used in sort (index building)
+procedures.  In sorting you must name every file that will be a member of
+the index as a workfile on the command line.  When releasing a record, if
+there is no record following the current one, the first record of the next
+workfile is retrieved, and the current workfile closed.  If there are no
+more workfiles, release returns 0. In all other cases release returns a
+non-zero value.
+<br><br><kbd>
+		int release(void);
+</kbd><br><hr><br>

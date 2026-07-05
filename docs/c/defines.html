@@ -1,0 +1,53 @@
+<div align="center"><h4>defines</h4></div>
+<br><br>
+<a href="#keys">Key Values</a><br>
+<a href="#fmts">Format Values</a><br>
+<a href="#when">When Functions</a><br>
+<a href="#show">Show Values</a><br>
+<a href="#fcopy">Field Copy</a><br><br>
+<h3><a name="keys">Key Values</a></h3><br>
+         The dataman header defines two values for accessing system
+	 keys.  They are <b>KEY</b>, and <b>KEY_LEN</b>.  The first
+	 is a buffer containing the
+          internal key that dataman last accessed, and KEY_LEN
+          is the internal length of that key.  When generating keys
+          with the move function, always use KEY_LEN as the length.
+          A related #define is <b>FILE</b>.  This is a pointer to the name
+          of the file currently referred to.
+<br><br><h3><a name="fmts">Format Values</a></h3><br>
+          <b>MFMT</b> and <b>WFMT</b> are both defined to display and test the
+          format numbers of the master and work files.  MFMT
+          displays the master file format, while WFMT displays the
+          work file format.  DO NOT CHANGE THESE VALUES.  Serious
+          database errors will result if the user alters the
+          values in these variables.
+<br><br><h3><a name="when">When Functions</a></h3><br>
+          Next are the WHEN functions.  These are <b>when_mfmt(x)</b>,
+          <b>when_wfmt(x)</b>, and <b>when_file</b>.  The when_fmt functions test
+          if the current work or master format number equals the
+          value x. The when_file is used in sort routines.  This is
+          a true value when a new file is opened, and set to false
+          when the first release is performed thereafter.
+<br><br><h3><a name="show">Show Values</a></h3><br>
+          There are two strings defined named <b>TOP</b> and <b>EOL</b>.  These
+          may be passed as the string arguments to show to do
+          screen clearing.  TOP will clear the entire screen from
+          the point that the cursor is positioned in the row and
+          column.  EOL will clear from the cursor position to the
+          end of the line.
+<br><br><h3><a name="fcopy">Field Copy</a></h3><br>
+          Last are the field copy #defines.  They are named
+          <b>mstrcpy</b>, <b>mstrncpy</b>, <b>wstrcpy</b>, and <b>wstrncpy</b>.  These copy one
+          string into another like the strcpy routines of similar
+          name, but these also set a flag for the master
+          record (mstrcpy, and mstrncpy), or the work record
+          (wstrcpy, and wstrncpy) to inform the
+          system that the record has been updated since last
+          retrieved or flushed and that when moving to a new
+          record, or flushing the current record, to write the
+          record to the database.  If the user would rather, he/she
+          may use <b>dirty_m</b>, or <b>dirty_w</b> to manually set these flags.
+          If the flag isn't set the record will not be written to
+          the database.
+<br><br>
+<a href="substr.html">&#171;previous</a>&nbsp;&nbsp;<a href="../c_reference.html">up&#187;</a>

@@ -1,0 +1,50 @@
+<div align="center"><h4>back</h4></div><br><br>
+<b>Summary</b>
+<br><br>
+#include &#060;dataman/dataman.h&#062;
+<br><br>
+          back(index_name) else ...
+<br><br>
+          char *index_name;
+<br><br>
+<strong>Description</strong><br><br>
+int db_bck(index_name)<br><br>
+          This procedure flushes the current record to disk and
+          retrieves the data record preceding it to memory.  The
+          string index_name is the name of the index that points to
+          the file that the user wants to back up, or the manifest
+          constant WFILE.  The function back is not to be confused
+          with the get_prior function.  The index refers to its
+          MFRP, then checks if there is a record preceding this in
+          the data base file.  If not, the current record is not
+          flushed, and the else clause is executed.  If there is a
+          previous record, the current one is flushed, the MFRP is
+          decremented, and the new current record is read into
+          memory.  If the index has no current record (i.e. a GET
+          has not occurred) the diagnostic 'Initial GET not
+          attempted' will display and the routine will terminate.
+          If idx_name is the manifest constant WFILE the operation
+          will affect the work file.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(argc,argv)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;int argc;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;char **argv;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;key k_buff;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;....<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get(idx1,k_buff) else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;pause(10,10,"Can't find key");<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exit(0);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while (MFMT == 3) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;back(idx1) else&nbsp;&nbsp;&nbsp;&nbsp;/* keep backing */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;break;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* first of file */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* process record */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="db_struct.html">&#171;previous</a>&nbsp;&nbsp;<a href="clear.html">next&#187;</a>

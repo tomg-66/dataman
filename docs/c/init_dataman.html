@@ -1,0 +1,34 @@
+<div align="center"><h4>init_dataman</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;
+<br><br>
+          init_dataman(argc,argv);
+<br><br>
+          int argc;<br>
+          char **argv;
+<br><br>
+<b>Description</b>
+<br><br>
+          This procedure will initialize a DATAMAN file edit
+          process.  It is the first routine called in a file edit
+          program.  The arguments to init_dataman (argc and argv)
+          are the arguments to main().  It also defines the usage
+          of file edit programs as:
+               prog_name work_file
+          where work_file is the name of the file to run the
+          program against.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc,char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;init_dataman(argc,argv);&nbsp;&nbsp;&nbsp;&nbsp;/* initialize process */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* do processing */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>
+<a href="include.html">&#171;previous</a>&nbsp;&nbsp;<a href="insert.html">next&#187;</a><br>

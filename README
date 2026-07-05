@@ -1,0 +1,162 @@
+This readme is mostly notes that I think are important, so please read all
+of it before building the project.  Some of it doesn't follow any real
+pattern, but it is a good idea to read this before you do much with this
+package.
+
+First off, I would like to thank you for your interest in this project.
+It is gratifying to see people download it.  I would ask that you send me
+an e-mail through my sourceforge account letting me know who you are, what
+you are intending to use this for, and any questions you have.  I know
+the documentation for this project so far blows chunks, but I'm trying to
+fix that at least a little.  In the docs directory you will find -very- old
+documentation regarding the version I wrote for DOS 20 years ago.  You will
+also find a somewhat updated version of the documentation for the 3.2.0
+release.  It doesn't include the API for C++, Java or PHP.  That should be
+forthcoming....
+
+There is now a website that is getting some more updated web-based
+documentation.  The address is http://www.super-user.biz/dataman.  So far
+there is general documentation, and the C and PHP function references.  Be
+sure to look at that, as it is, at present, the most current information.
+
+The Dataman database system was completely re-written beginning with version
+3.  This version replaced the old system where the API library directly
+modified the database.  In it the system was redesigned as a database server
+with client API libraries.
+
+The server was designed to be fully multi-threaded, have shared and mutually
+exclusive locks, and tries to maintain concurrency.  The 'C' API library
+maintained full backward computability with previous versions; application
+code required only a re-compile to function in the new system.  Also added
+were API libraries for C++ and eventually Java, and a PHP module.  The reason
+for this project was 1) to bring those original installations using the prior
+system out of the stone age, and 2) to be a very small and fast server,
+adequate for running on small hosts.
+
+The system is typically distributed as a source.tar.gz package.  To build and
+install it, the system owner should put the source package in a temporary
+directory, then execute the command:
+
+tar xzvf dataman-<version>.tar.gz   (on Linux systems)
+or
+zcat dataman-<version>.tar.gz | tar xvf   (for other unixes)
+
+this will create the sub directory dataman.<version>, with all of the
+appropriate source contained in it.  Change to that directory, then issue
+the commands
+
+./configure
+make
+make install (or) make install-strip
+
+This will build the server and all of the client libraries.  The
+'make install-strip' command installs with debugging symbols stripped from
+the binaries.
+
+The text mode windowing system is set to initialize by default in the C and
+C++ libraries.  If you don't want it to, modify the config.h.in file before
+you run configure to comment out the line at the top that defines DWINDOW.
+You can still use the windowing routines, but you will have to manually
+initialize and terminate the routines.
+
+Currently, the system is hard coded to build the Java classlibs, so if you
+don't have the Sun Java development kit installed and in your path (javac),
+the build will fail.  If you don't want the Java classlibs built, then you
+can tweak the Makefile.am file.  Change the line
+
+SUBDIRS=c++ c java
+
+to read
+
+SUBDIRS=c++ c
+
+then from the base directory run automake (or autoreconf), configure, make,
+make install.
+
+After you have run the 'make install' command, the system will be installed
+in the place your configure command specified.  The default location is
+/usr/local.  There will be dataman commands installed in <default_dir>/bin,
+libraries in <default_dir>/lib, include files in
+<default_dir>/include/dataman, and the Java classlibs will be in
+<default_dir>/java/Dataman.  It might be advisable to add the following lines
+to your /etc/services files
+
+dataman	8758/tcp	# dataman database server
+dataman	8758/udp	# dataman database server
+
+Oh, and another thing... there should be either a dataman user or an alias
+for your mailer, because when the main executive catches an abnormal term
+of either of the servers it sends a notification to the 'dataman' mail
+account.
+
+To start the server execute the command (either from the command line, or an
+rc script)
+
+dataman
+
+This will start the three processes that control the dataman services.  The
+executive process - dataman monitors the other two, dataman_con, and
+dataman_srv.  The first is the dataman connection server, and the other is
+the database server.  As new connections are accepted from clients, there
+will be a new dataman_con process for each active connection.  If you are
+running Linux kernel version 2.4 or earlier, you will also see a dataman_srv
+entry for each active server thread.
+
+The usage for the server process is:
+
+dataman: usage: dataman [-D|n num|q|s|t|v]
+    -D  start with debugging turned on
+    -m size where size is the size of the shared memory
+            segment
+    -n num where num is the numer of worker threads
+           in the database server
+    -q  query status of dataman
+    -s  controlled shutdown of dataman processes
+    -t  forced termination of dataman processes
+    -v  print version number and exit
+
+Starting the dataman process with debugging on produces copious amounts of
+data in the /tmp directory.
+
+The -m switch is new in version 3.3.0.  Each connection has it's own shared
+memory segment that is used to communicate with the database server.  This
+lets you specify the size in Kilobytes of the segment.  The size is, at
+present, capped at 4K.  You may specify an integer value of 1, 2, 3, or 4.
+
+The -n num switch is new with version 3.3.0.  Originally, a new thread was
+started for each request and terminated at the end of the request.  Now a
+number of worker threads are started at system startup.  With this argument
+you may specify the number of threads in the pool.  If not specified, the
+number of threads defaults to 10.
+
+To shut down the dataman process, issue the dataman command with either the
+-s or -t switch.  The -s switch will signal the dataman process to accept no
+new connections, and when the last connection is terminated by the client, to
+shut down all of the remaining processes.  The -t switch will terminate 'with
+prejudice' all of the server processes.
+
+The system is not an SQL database, though an SQL layer could easily be built
+on top of it.  The closest description for it is as an ISAM style database.
+Data relationships can be flat, or hierarchical, but of course the latter
+requires a good database design.  Records can 'belong' to other records.
+This is by virtue of data record placement.  Records may be grouped together
+by virtue of how they are inserted into the database.  Unlike SQL databases,
+the structure and order of the data records are determinate.
+
+The databases consist of records or 'rows' in a file.  A record consists of
+a set of fields or 'columns'.  There may be many different types of records
+in a particular file, and one or many files may be used for a database.  This
+is how data ownership is achieved.  If, for example, a database contained
+information regarding families, there would be a general record that refers
+to the entire family, and then because you can determine the order of the
+data records, all of the records describing that particular family's members
+would immediately follow.
+
+In an index a key will refer to a particular record in a data file.  An index
+can have references to many different data files.  Thus, with appropriate use
+of multi format data files, and having more than one index open at a time,
+the user can have access to very large amounts of data.
+
+Tom Green
+tomg_66@users.sourceforge.net
+http://www.super-user.biz/dataman

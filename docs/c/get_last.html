@@ -1,0 +1,54 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<title></title>
+		<meta name="generator" content="screem 0.10.2" >
+		<meta name="author" content="Tom" >
+		<meta http-equiv="Content-Type" content="text/html;charset=ISO-8859-1" >
+	</head>
+	<body>
+		
+	</body>
+</html>
+<div align="center"><h4>get_last</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+#include &#060;dataman/dataman.h&#062;
+<br><br>
+get_last(idx_name) else ...
+<br><br>
+char *idx_name;
+<br><br>
+<b>Description</b>
+<br><br>
+int db_g_last(idx_name)
+<br><br>
+This function retrieves the highest order key and its
+associated record from the named index, where idx_name
+is the name of the index that the last key is to be
+retrieved from.  If the index is empty, the else clause
+is executed.  If the named index is not empty the current
+record in memory is flushed, the index KP is set to the
+last key, the MFRP is set to the associated record and
+that record is retrieved.
+<br><br>
+<b>Example</b><kbd>
+	<br><br>
+	&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+	&nbsp;&nbsp;&nbsp;&nbsp;main(argc,argv)<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+	<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get_last(num_ix) else&nbsp;&nbsp;&nbsp;&nbsp;/* get last account */<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fatal("Index %s is empty\n",num_ix);<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while (1) {<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* process */ <br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;get_prior(num_ix) else&nbsp;&nbsp;&nbsp;/* next account */ <br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;break;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/* end loop */<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+	&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;This will loop through an entire index backwards.<br>
+<br>
+<a href="get_first.html">&#171;previous</a>&nbsp;&nbsp;<a href="get_next.html">next&#187;</a>

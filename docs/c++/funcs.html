@@ -1,0 +1,88 @@
+<h2>General Functions</h2>
+There are many functions and an operator or two that are not members of any
+of the described classes, but are very necessary to have anything work.
+These break into two general categories; initialization and access (at this
+time we're not talking about the text mode windowing).<>br>
+
+<h3>Initialization Functions</h3><br>
+The function init_dataman initializes file edit routines.  File edit programs
+are the normal user applications that add/peruse/delete/modify data in a database.
+The arguments are those passed to main().  It defines the usage of file edit
+programs as:<br><br>
+prog_name [-h host][-r root] workfile<br><br>
+where host is the host name (or address) of the system where the server is running,
+root is the database root, and workfile is the name of the workfile.
+<br><br><kbd>
+		#include &#060;dataman/dataman.hh&#062;<br>
+void init_dataman(const int argc, const char *argv[])
+</kbd><br><hr><br>
+The mkidx function is used to initialize end sort routines.  These are only for
+creating a new index.  The arguments to mkidx are those to main.  The usage for
+sort programs are:<br><br>
+sort_prog [-h host][-r root][-len] idxname file1 file2 ...<br><br>
+where the host and root are the same as above.  The len argument is the maximum
+key length for the index.  The minimum length is 1 byte and the maximum is 32.
+If not specified, the default value is 20.  The non-optional arguments are first
+the name of the index to create, then all of the files that are to be referred to
+by this index.  <br><br><kbd>
+		#include &#060;dataman/sort.hh&#062;<br><br>
+		void mkidx(const int argc, const char *argv[])
+</kbd><br><hr><br>
+Sort is the function that inserts a new key into an index during a sort routine.
+This is only valid in programs that build new indexes.  This function takes the
+current work record, associates the key with that record and inserts the key into
+the index being built.<br><br><kbd>
+	#include &#060;dataman/sort.hh&#062;<br><br>
+	void sort(const char *key)<br>
+	void sort(char *key)<br>
+	</kbd>use a character string as the key.<br><br><kbd>
+	void sort(datafield& key)<br>
+	</kbd>use a the string representation of a datafield as the key.<br><br><kbd>
+	void sort(const int key)<br>
+</kbd>use the string representation of the integer as the key.<br>
+<br><hr><br>
+In a sort routine, when finished with the current record and you need the next
+record, you need to call release().  This flushes the current work record and
+reads the next one from the current file into memory.  If the current record is
+the last in this work file, the first record from the next work file is read and
+the when_file() function returns true.  If there are no more work files, release
+returns false and the current record remains in memory.  This method may only
+be applied to the 'workfile' datarecord.<br><br><kbd>
+	#include &#060;dataman/sort.hh&#062;<br><br>
+	int datarecord::release(void)
+</kbd><br><hr><br>
+when_file() will return true if the last call to release opened a new work file.
+Any other call to release will make this return false.<br><br><kbd>
+	#include &#060;dataman/sort.hh&#062;<br><br>
+	int when_file(void)
+</kbd><br><hr><br>
+<h3>Transaction Processing</h3>
+Transaction processing is new begining with version 3.3.1.  When in a transaction
+nothing gets written to the database until it is committed.  This can cause some
+confusion because after a record is modified it must be committed before the
+modified version can be retrieved again.  If a key is added to an index, it must
+be committed before a key lookup on that key will be successful, and a remove or
+delete will only be seen after the commit as well.
+<br><hr><br>
+start_transaction begins a new transaction.  None of the modifications to the 
+database will occur until commit is called.<br><br><kbd>
+	#include &#060;dataman/dataman.hh&#062;<br><br>
+	void start_transaction(void)
+</kbd><br><hr><br>
+commit terminates a transaction and writes the changes to the database.  It is an
+atomic commit; all parts of the transaction must succeed, or none will.  If the
+commit was successful a non-zero value is returned, otherwise zero is returned.
+<br><br><kbd>
+	#include &#060;dataman/dataman.hh&#062;<br><br>
+	int commit(void)
+</kbd><br><hr><br>
+The rollback function terminates a transaction, but does not commit any of the data
+to the database.  <br><br><kbd>
+	#include &#060;dataman/dataman.hh&#062;<br><br>
+	void rollback(void)
+</kbd><br><hr><br>
+<h3>Text mode windowing</h3>
+The C++ library includes the same text mode windowing functions as the C library.
+<a href=../c/windowing.html>This link</a> points to the C library functions page.
+The library is initialized by default when calling either init_dataman or mkidx.
+<br><br>

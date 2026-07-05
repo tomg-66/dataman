@@ -1,0 +1,54 @@
+<div align="center"><h4>Utility Functions</h4></div><br><br>
+There are a few utility programs that are used for building and diagnosing problems with your database.
+This section describes them.  Each of these routines must be run on the database server. They do
+<b>not</b> attempt to make a network connection.  You also have to have the ROOT environment variable
+set for them to work.<br><br>
+<a href="#clean">dbclean</a><br>
+<a href="#mkdf">mkdf</a><br>
+<a href="#dumpdf">dumpdf</a><br>
+<a href="#dumpix">dumpix</a><br>
+<a href="#dfedit">dfedit</a><br>
+<br>
+<a name="clean"><h5>dbclean</h5></a>
+dbclean is a utility that will scan and rebuild datafiles.  If the datafiles have changed, it can also
+be used to rebuild the indexes that refer to the modified datafiles.<br>When a record is deleted from
+a file, it is merely unlinked from the file.  When a large number of records are deleted, there can be
+a large amount of wasted disk space in a file.  This utility will clean the wasted space, and order
+the records so the physical layout of the file will match the logical one.  The utility looks for a
+'Cleanfile' for the rules to do the rebuild.  There are three keywords, or sections to a cleanfile.
+The first is "ROOT".  This allows you to override the environment variable of the same name.  This
+keyword is not mandatory.  The second keyword is FILES.  This is a list of the file names that you
+wish to scan and, if necessary, rebuild.  The last keword is INDEX.  This allows you to specify the
+commands you would like to use to rebuild any indexes.  There is one command per line, and the list
+of commands will terminate with the first blank line.  The keywords may appear in any order in the
+cleanfile.  Comments begin at the hash-mark (#), and terminate at the end of the line.  A sample
+cleanfile is included in the dataman root directory.
+<a name="mkdf"><h5>mkdf</h5></a>
+mkdf is the routine that builds data files from initialization files.  Every file must contain at least
+one record, so you must make an initialization file and build each data file.  The usage of this
+program is:<br><br>
+<kbd>mkdf data_file data_file.i</kbd><br><br>
+It is also good practice to make template files to respond to the queries that mkdf will make of you.
+It prompts you for how many record formats you want to define for the file, then for each record
+format, how many fields, and then the size for each field.  Field sizes can range from 0 to 32K.
+A field size of zero indicates that this field will be used to store <i>blob</i> data, and will need
+to be treated 'specially'.  You may define more than one blob field per record format.  A data record
+has limitations of 32Kb of structured data, and up to 2Gb if you have blob data in your record.
+<br><br>
+<a name="dumpdf"><h5>dumpdf</h5></a>
+This program will dump a data file in it logical order.  It's usage is:<br><br>
+<kbd>dumpdf data_file</kbd><br><br>
+Each record is enemurated, and each field for the record is printed seperately.
+<br><br>
+<a name="dumpix"><h5>dumpix</h5></a>
+dumpix will sequentially dump the contents of an index.  It's calling sequence is:<br><br>
+<kbd>dumpix ix_name</kbd><br><br>
+It will tell you how many data files are referred to then sequentially dump each key from first
+to last.<br><br>
+<a name="dfedit"><h5>dfedit</h5></a>
+This function allows you to do major surgery on a data file.  You can walk through a data file record
+by record, or select a specific record if you know it's pointer.  The menu uses function keys to
+move from record to record, and from field to field in a record.  You may change the data for non
+blob fields.  If you <i>really</i> know what you are doing, you can change the pointers in the records
+to delete, undelete, and move records around.  It is not normally recommended you do this sort of thing,
+but it is possible.<br><br>

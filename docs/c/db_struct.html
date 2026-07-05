@@ -1,0 +1,14 @@
+<div align="center"><h4>Database Functions</h4></div><br><br>
+The C implementation of the database functions as they are used are almost all macros that
+implement them as though they were the verbs of the EDITOR language.  The functions themselves
+return boolean values, and the macros define the functions within logical statements so that
+they look like boolean statements.  For example the get routine is implemented as:<br><br>
+<kbd>#define get(idx,key)&nbsp;&nbsp;&nbsp;&nbsp;if (db_g_key(idx,key)) ;</kbd><br><br>
+so in your program the code would look like<br><br>
+<kbd>get(idx, key) else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;/* error condition */<br>
+}</kbd><br><br>
+The idea is to try to make it function more like it would in EDITOR.  The page for each
+function will give first the #defined version, then also give the name and calling
+sequence of the 'real' function.<br><br>
+<a href="back.html">next</a>&nbsp;&nbsp;<a href="../c_reference.html">up</a>

@@ -1,0 +1,35 @@
+<div align="center"><h4>cl_win</h4></div>
+<br><br>
+<b>Summary</b>
+<br><br>
+          #include &#060;dataman/dataman.h&#062;<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-or-<br>
+          #include &#060;dataman/sort.h&#062;
+<br><br>
+          cl_win(row1,col1,row2,col2,attrib) else ...
+<br><br>
+          int row1, col1;<br>
+          int row2, col2;<br>
+          int attrib;<br>
+<br><br>
+<b>Description</b>
+<br><br>
+          cl_win does area clears of the screen using the background color attrib.
+          Row1 and col1 is the row and column number of the upper left hand corner,
+          and row2, col2 is the lower right hand corner.  The mode is one of the 
+          color constants <b>BLACK, BLUE, GREEN, CYAN, RED, MAGEN, BROWN,</b> and <b>L_GREY</b>.
+<br><br>
+<b>Example</b>
+<br><br><kbd>
+&nbsp;&nbsp;&nbsp;&nbsp;#include &#060;dataman/dataman.h&#062;
+<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;main(int argc, char *argv[])<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;....<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cl_win(5,10,10,40,MAGEN);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br></kbd>
+<br>This will paint a magenta rectangle 6 lines by 31 columns begining at point
+(5,10) on the screen.
+<br><br>
+<a href="accept.html">&#171;previous</a>&nbsp;&nbsp;<a href="grow_win.html">next&#187;</a><br>

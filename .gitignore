@@ -28,6 +28,9 @@ stamp-h1
 # Dataman server utility binaries
 server/check_it
 server/dataman
+server/dataman_con
+server/dataman_srv
+server/dbclean
 server/dbserve
 server/dfedit
 server/dnodes

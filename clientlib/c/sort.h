@@ -44,7 +44,7 @@
 #define release			if (db_rel()) ;		/* def for release */
 #define when_wfmt(x)	if (w_fmt == x)
 #define when_file		if (_file)			/* test _file switch */
-#define dirty_w			wfld[0] = (char *)((int)wfld[0] | 1)	/* set dirty bit */
+#define dirty_w			wfld[0] = (char *)((uintptr_t)wfld[0] | 1)	/* set dirty bit */
 #define wstrcpy(pt1,pt2)        do { dirty_w;strcpy(pt1,pt2) } while (0)
 #define wstrncpy(pt1,pt2,i)     do { dirty_w;strncpy(pt1,pt2,i) } while (0)
 

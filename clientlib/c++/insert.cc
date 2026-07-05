@@ -81,7 +81,7 @@ void index::insert(int fmt, int mode)
 	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
 		comm.db_err(0, "%s: memory corruption detected in insert", _progname);
 
-	sprintf(cmd, "%d|%d|%d|%d|%d|%"PRId64"|", INSERT, fmt, mode,
+	sprintf(cmd, "%d|%d|%d|%d|%d|%" PRId64 "|", INSERT, fmt, mode,
 					this->_idxno, this->_fno, this->_rptr);
 	try {
 		buff = comm.db_send(cmd, strlen(cmd));

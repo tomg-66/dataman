@@ -61,6 +61,8 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 
+#include <pthread.h>
+
 #if defined(__GNU_LIBRARY__) && !defined(_SEM_SEMUN_UNDEFINED)
 /* union semun is defined by including <sys/sem.h> */
 #else

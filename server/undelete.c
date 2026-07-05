@@ -61,6 +61,9 @@
 extern int idx_cnt;
 
 extern INDEX *_indices;
+extern int64_t get_ll(void *);
+extern void put_ll(void *, int64_t);
+extern void blob_ctl(char *, char *, int, int64_t, int);
 
 int undelete(char *cmd, int c_off, char **ret)
 {

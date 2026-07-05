@@ -42,6 +42,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "m_params.h"
 #include "w_params.h"
@@ -103,7 +104,7 @@ found:
 	free(rec[j]);							/* free the old one */
 	rec[j] = (char *)buff;					/* make rec point to current one */
 
-	rec[0] = (char *)((int)rec[0] | 1);		/* flag record as dirty */
+	rec[0] = (char *)((uintptr_t)rec[0] | 1);	/* flag record as dirty */
 	rfdesc->field_sizes[j-1] = -size;		/* save the new size of the blob */
 	return(TRUE);
 }

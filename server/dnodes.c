@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <inttypes.h>
@@ -32,7 +33,9 @@
 
 #define LEAF    0200
 
-main(int argc, char *argv[])
+static void usage(void);
+
+int main(int argc, char *argv[])
 {
     int bytes,chan,i,j,offs;
 
@@ -124,7 +127,7 @@ main(int argc, char *argv[])
 	}
 }
 
-usage()
+static void usage(void)
 {
 	fprintf(stderr,"Usage: dnodes idx_name\n");
 	exit(0);

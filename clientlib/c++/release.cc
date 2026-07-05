@@ -107,7 +107,7 @@ int datarecord::release(void)
 						_fnames[_fileno]);
 		this->_file = 1;
 	} else
-		sprintf(cmd, "%d|%d|%"PRId64"|", RELEASE, this->chan, this->next);
+		sprintf(cmd, "%d|%d|%" PRId64 "|", RELEASE, this->chan, this->next);
 /*
  * send the command and wait for the response.  then allocate space for it
  * then readit.

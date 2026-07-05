@@ -84,7 +84,7 @@ int index::protect()
  * because part of the idea is to read in the -most current-
  * disk version.  you don't want to write it, then get it!
  */
-	sprintf(cmd, "%d|%d|%d|%"PRId64"|", PROTECT, this->_idxno, this->_fno, this->_rptr);
+	sprintf(cmd, "%d|%d|%d|%" PRId64 "|", PROTECT, this->_idxno, this->_fno, this->_rptr);
 
 	try {
 		buff = comm.db_send(cmd, strlen(cmd));

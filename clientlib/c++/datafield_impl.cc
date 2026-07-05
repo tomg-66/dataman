@@ -258,9 +258,9 @@ void datafield::make_field(const char *ptr, int len, int w)
 		return;
 
 	if (len < 0) {
-		this->data = new char[len];
-		::memcpy(this->data, (char *)ptr, len);
 		this->length = -len;
+		this->data = new char[this->length];
+		::memcpy(this->data, (char *)ptr, this->length);
 		this->type = type_blob;
 	} else {
 		this->data = new char[len+1];

@@ -46,12 +46,12 @@
 #include <stdint.h>
 #include <string.h>
 
-char *mask(int64_t num, register char *msk)
+char *mask(int64_t num, char *msk)
 {
-    register char zero_found = 0;               /* zero in the mask? */
+    char zero_found = 0;                        /* zero in the mask? */
 
-    register int tmp;                           /* temporary integer */
-    register int offs;                          /* offset into mask */
+    int tmp;                                    /* temporary integer */
+    int offs;                                   /* offset into mask */
 
     offs = strlen(msk) -1;                      /* get offset */
 

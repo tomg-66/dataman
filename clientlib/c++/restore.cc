@@ -80,7 +80,7 @@ int index::restore()
 
     len = this->_keylen + KEY_HEADER_LENGTH;		/* internal key length */
 
-	sprintf(cmd, "%d|%d|%"PRId64"|%d|%"PRId64"|", RESTORE, this->_idxno,
+	sprintf(cmd, "%d|%d|%" PRId64 "|%d|%" PRId64 "|", RESTORE, this->_idxno,
 					this->_savptr->_savnode, this->_savptr->_savoffs,
 					this->_savptr->_savrec);
 	i = strlen(cmd);

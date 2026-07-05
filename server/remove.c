@@ -51,6 +51,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <netinet/in.h>
 
 #include "node.h"
 #include "srv_index.h"

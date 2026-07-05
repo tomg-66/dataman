@@ -84,7 +84,7 @@ static void __myecho__(int row, int col, char c)
 int acept(int row, int col, char *acc, int mode)
 {
 
-	register short idx;		/* loop counter */
+	short idx;				/* loop counter */
 
 	int len;				/* input string length */
 	int noecho;				/* the no echo flag */

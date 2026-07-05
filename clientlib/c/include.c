@@ -68,6 +68,7 @@ extern INDEX *findex(char *);
 extern char *substr(char *, int, int);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
+extern void put_ll(void *, int64_t);
 
 extern int in_xact;
 

@@ -85,7 +85,15 @@ extern int d_endian;				/* flag for endian ness */
 #define MAX_CONNS					256
 
 #include <sys/types.h>
-extern loff_t llseek(int fd, loff_t offset, int whence);
+
+extern off_t lseek(int, off_t, int);
+
+static inline loff_t dataman_llseek(int fd, loff_t offset, int whence)
+{
+	return((loff_t)lseek(fd, (off_t)offset, whence));
+}
+
+#define llseek dataman_llseek
 
 typedef struct serial_context {
 		char *shptr;				/* pointer to shared mem segment */

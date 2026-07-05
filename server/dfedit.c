@@ -84,6 +84,11 @@ char *_progname;
 extern void show(int, int, char *, ...);
 extern void pause(int, int, char *);
 extern int acept(int, int, char *, int);
+extern int get_datafile_desc(FILES *);
+extern void db_err(int, char *, ...);
+extern void init_dwin(void);
+extern ssize_t read(int, void *, size_t);
+extern ssize_t write(int, const void *, size_t);
 
 extern short get_short(char *);
 extern void put_short(char *, short);
@@ -92,6 +97,9 @@ extern int64_t get_ll(void *);
 extern void put_ll(void *, int64_t);
 
 char *mask(int64_t, char *);
+static int get_rec(FILEDESC *);
+static int update(FILEDESC *);
+static int disp_it(int);
 
 void alrm_handle(int sig)
 {
@@ -373,7 +381,7 @@ int main(int argc, char *argv[])
 /*
  * set up for a new record
  */
-get_rec(FILEDESC *p_desc)
+static int get_rec(FILEDESC *p_desc)
 {
 	void in_rec(FILEDESC *);
 
@@ -385,7 +393,7 @@ get_rec(FILEDESC *p_desc)
 /*
  * verify if the user wants to save the changes to the datarecord
  */
-update(FILEDESC *p_desc)
+static int update(FILEDESC *p_desc)
 {
 	void out_rec(FILEDESC *);
 	char sel[2];
@@ -397,7 +405,7 @@ update(FILEDESC *p_desc)
 		accept(20,50,sel,2);
 		show(20,0,EOL,ENDLIST);
 		if (*sel == 'Y')
-			mfld[0] = (char *)((int)mfld[0] | 1);
+			mfld[0] = (char *)((uintptr_t)mfld[0] | 1);
 	}
 	out_rec(p_desc);
 	dirty = 0;
@@ -406,7 +414,7 @@ update(FILEDESC *p_desc)
 /*
  * do some onscreed display
  */
-disp_it(int val)
+static int disp_it(int val)
 {
 	char msk[12];
 	char *mask();

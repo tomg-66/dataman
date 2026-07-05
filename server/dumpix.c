@@ -69,7 +69,11 @@ extern char *substr(char *, int ,int);	/* substring function */
 extern short get_short(char *);
 extern int64_t get_ll(void *);
 
-main(int argc, char *argv[])
+static void usage(void);
+static void write_node(char *);
+static void all_done(void);
+
+int main(int argc, char *argv[])
 
 {
 
@@ -226,14 +230,14 @@ main(int argc, char *argv[])
 	}
 }
 
-usage()
+static void usage(void)
 {
 	fprintf(stderr, "Usage: dumpix [-r root] idx_name\n");
 	fprintf(stderr, "    -r database_root_directory\n");
 	exit(-1);
 }
 
-write_node(char *stuff)
+static void write_node(char *stuff)
 
 {
 	int64_t ptr;
@@ -256,7 +260,7 @@ write_node(char *stuff)
 }
 
 
-all_done()                      /* this is if finished with endex */
+static void all_done(void)                      /* this is if finished with endex */
 {
 	fprintf(stderr,"Keys dumped: %d\nNormal termination\n",cntr);
 	exit(0);

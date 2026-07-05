@@ -25,6 +25,7 @@
 #define _DATAMAN_INC_
 
 #include <stddef.h>
+#include <stdint.h>
 #include "proto.h"				/* declare all the function prototypes */
 #include "index.h"				/* open index description */
 #include "wind.h"				/* windowing definitions */
@@ -76,8 +77,8 @@
 #define when_wfmt(x)	if (wfld&&w_fmt == x)	/* work file format test */
 #define when_file		if (wfld&&_file)		/* new file test */
 
-#define dirty_m			(mfld[0] = (char *)((int)mfld[0] | 1))	/* set master dirty bit */
-#define dirty_w			(wfld[0] = (char *)((int)wfld[0] | 1))	/* set work file dirty bit */
+#define dirty_m			(mfld[0] = (char *)((uintptr_t)mfld[0] | 1))	/* set master dirty bit */
+#define dirty_w			(wfld[0] = (char *)((uintptr_t)wfld[0] | 1))	/* set work file dirty bit */
 
 
 #define mstrcpy(pt1,pt2)        do { dirty_m;strcpy(pt1,pt2); } while (0)

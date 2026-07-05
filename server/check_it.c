@@ -56,6 +56,7 @@
 #define DELETED 0200					/* record deleted mask */
 
 extern void rebuild(char *, char *, FILES *);
+extern int get_datafile_desc(FILES *);
 
 int check_it(char *root, char *filename, int max)
 

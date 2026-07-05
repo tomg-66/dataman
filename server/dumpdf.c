@@ -62,8 +62,11 @@ int dbgsw;					/* this is needed for get_datafile_desc */
 extern int64_t get_ll(char *);
 extern short get_short(char *);
 extern char *substr(char *, int, int);
+extern int get_datafile_desc(FILES *);
 
-main(int argc,char *argv[])
+static void usage(void);
+
+int main(int argc,char *argv[])
 
 {
 	int index,count,acc;      /* misc vars */
@@ -168,7 +171,7 @@ main(int argc,char *argv[])
     }
 }
 
-usage()
+static void usage(void)
 
 {
 	fprintf(stderr,"Usage: dumpdf [-r root] filename\n");

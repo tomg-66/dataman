@@ -63,6 +63,7 @@ extern int idx_cnt;
 extern int dbgsw;
 
 extern INDEX *_indices;
+extern int get_blobs(FILES *, int, int64_t, char **, int *);
 
 
 int get_rec(char *cmd, int c_off, char **ret)

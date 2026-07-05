@@ -69,6 +69,11 @@
 
 #include <sys/mman.h>
 
+extern short get_short(char *);
+extern void put_short(char *, short);
+extern int64_t get_ll(void *);
+extern void put_ll(void *, int64_t);
+
 typedef struct mapping {
 	int64_t old;
 	int64_t new;

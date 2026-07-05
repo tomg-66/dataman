@@ -246,7 +246,7 @@ void datarecord::out_rec()
 		}
 	}
 	rec_buff = (char *)malloc(b_size+64);
-	sprintf(rec_buff, "%d|%d|%d|%"PRId64"|%d|%ld|", FLUSH, idx, chan,
+	sprintf(rec_buff, "%d|%d|%d|%" PRId64 "|%d|%ld|", FLUSH, idx, chan,
 					this->getcur(), this->getfmt(), b_size);
 	i = strlen(rec_buff);
 	val = i + rfdesc->rf_len;

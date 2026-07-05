@@ -80,7 +80,7 @@ void index::delrec()
 	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
 		comm.db_err(0, "%s: memory corruption detected in delete", _progname);
 
-	sprintf(cmd, "%d|%d|%d|%"PRId64"|%d|", DELETE, this->_idxno,
+	sprintf(cmd, "%d|%d|%d|%" PRId64 "|%d|", DELETE, this->_idxno,
 					this->_fno, this->_rptr, in_xact);
 	try {
 		buff = comm.db_send(cmd, strlen(cmd));

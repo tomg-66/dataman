@@ -53,6 +53,8 @@
 #define FALSE   0
 
 extern char *db_send(char *, int, char *);
+extern void db_err(int, char *, ...);
+extern void out_rec(int);
 
 extern int in_xact;
 

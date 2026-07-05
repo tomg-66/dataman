@@ -73,7 +73,7 @@ void index::clear()
 	db_comm comm;
 	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0)
 		comm.db_err(0, "%s: memory corruption detected in clear", _progname);
-	sprintf(cmd, "%d|%d|%d|%"PRId64"|", CLEAR, this->_idxno, this->_fno, this->_rptr);
+	sprintf(cmd, "%d|%d|%d|%" PRId64 "|", CLEAR, this->_idxno, this->_fno, this->_rptr);
 
 	try {
 		buff = comm.db_send(cmd, strlen(cmd));

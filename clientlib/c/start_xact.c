@@ -49,6 +49,7 @@
 #define FALSE   0
 
 extern char *db_send(char *, int, char *);
+extern void db_err(int, char *, ...);
 
 extern char *_progname;
 

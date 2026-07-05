@@ -44,6 +44,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <sys/msg.h>
+
 #include "dbfunc.h"
 #include "msg.h"
 

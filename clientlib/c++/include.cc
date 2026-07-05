@@ -97,7 +97,7 @@ void index::include(index *idx_1, const char *key)
 	if (idx_1->get_idxno() < 0 || idx_1->get_idxno() > MAX_INDEX || idx_1->get_fno() < 0 || idx_1->get_fno() > idx_1->get_nfiles() < 0)
 		comm.db_err(0, "%s: memory corruption detected in include", _progname);
 
-	sprintf(buff, "%d|%d|%d|%d|%d|%"PRId64"|%s|", INCLUDE, idx_1->get_idxno(),
+	sprintf(buff, "%d|%d|%d|%d|%d|%" PRId64 "|%s|", INCLUDE, idx_1->get_idxno(),
 				idx_1->get_fno(), this->_idxno, this->_fno, idx_1->get_rptr(), key);
 	try {
 		ret = comm.db_send(buff, strlen(buff));

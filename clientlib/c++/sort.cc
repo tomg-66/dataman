@@ -62,7 +62,7 @@ void sort(const char *pkey)
 	char cmd[128];
 	char *buf;
 
-	sprintf(cmd, "%d|%d|%d|%"PRId64"|%s|", SORT, cur_index->get_idxno(),
+	sprintf(cmd, "%d|%d|%d|%" PRId64 "|%s|", SORT, cur_index->get_idxno(),
 					_fileno, workfile.getcur(), pkey);
 	db_comm comm;
 

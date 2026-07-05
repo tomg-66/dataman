@@ -1,0 +1,39 @@
+# Old CVS checkout metadata
+CVS/
+
+# Autotools/configure outputs
+Makefile
+config.cache
+config.h
+config.log
+config.status
+configure.lineno
+libtool
+stamp-h1
+
+# Compiler and libtool outputs
+.deps/
+.libs/
+*.a
+*.la
+*.lo
+*.o
+*.so
+*.so.*
+
+# Java build outputs
+*.class
+*.jar
+
+# Dataman server utility binaries
+server/check_it
+server/dataman
+server/dbserve
+server/dfedit
+server/dnodes
+server/dumpdf
+server/dumpix
+server/mkdf
+server/mkidx
+server/rebuild
+server/term_dbserve

@@ -10,6 +10,13 @@
  * 
  * FILES:
  *
+ * MOMDIFICATION HISTORY:
+ *
+ *			Sun Jul 19 10:23:58 PM MDT 2026
+ *			tomg
+ *			do a little better error checking and clean
+ *			up the code some
+ *
  ************************************************************* */
 /*
  * take some of the basic setup stuff out of serial_service so
@@ -70,13 +77,12 @@ int msg_setup(int sock, pid_t mypid)
 	if ((retval = msgget((key_t)MSGKEY, PERMS|IPC_CREAT)) < 0) {
 		i = sprintf(buff, "%d", ENOMSGQ);
 		if (write(sock, buff, i) != i) {
-			fprintf(stderr, "pid %d: error writing ENOSMGQ to socket: ",
-						mypid);
+			fprintf(stderr, "pid %d: error writing ENOSMGQ to socket: ", mypid);
 			perror("");
 		}
-		fprintf(stderr, "pid %d: error getting message queue", 
-						mypid);
+		fprintf(stderr, "pid %d: error getting message queue", mypid);
 		perror("");
+		return(-1);
 	}
 /*
  * first thing we need to do, is to make sure there are no messages
@@ -102,20 +108,34 @@ int sem_setup(int sock, pid_t mypid)
 
 	perms = IPC_CREAT|IPC_EXCL|PERMS;
 	if ((retval = semget((key_t)mypid, 1, perms)) < 0) {
+		if (errno != EEXIST)
+			goto err;
 		retval = semget((key_t)mypid, 1, 0);		/* it was already there */
-		semctl(retval, 0, IPC_RMID, 0);			/* get rid of it and */
-		if ((retval = semget((key_t)mypid, 1, perms)) < 0) {
+		if (retval < 0 || semctl(retval, 0, IPC_RMID, 0) < 0) {
 			i = sprintf(buff, "%d", ENOSEM);
 			if (write(sock, buff, i) != i) {
-				fprintf(stderr, "pid %d: error writing ENOSEM to socket: ",
-								mypid);
+				fprintf(stderr, "pid %d: error writing ENOSEM to socket: ", mypid);
 				perror("");
 			}
-			fprintf(stderr, "pid %d: error creating semaphore: ", mypid);
+			fprintf(stderr, "pid %d: error removing stale semaphore: ", mypid);
 			perror("");
+			return(-1);
+		}
+		if ((retval = semget((key_t)mypid, 1, perms)) < 0) {
+			goto err;
 		}
 	}
 	return(retval);
+
+err:
+	i = sprintf(buff, "%d", ENOSEM);
+	if (write(sock, buff, i) != i) {
+		fprintf(stderr, "pid %d: error writing ENOSEM to socket: ", mypid);
+		perror("");
+	}
+	fprintf(stderr, "pid %d: error creating semaphore: ", mypid);
+	perror("");
+	return(-1);
 }
 
 /*
@@ -132,12 +152,17 @@ int shm_setup(int sock, pid_t mypid, void**shptr)
 	void *ptr;
 
 	perms = IPC_CREAT|IPC_EXCL|PERMS;
-	if ((retval = shmget((key_t)mypid, shmsiz, IPC_CREAT|PERMS)) < 0) {
-		fprintf(stderr, "error 1: ");
-		goto err;
+	if ((retval = shmget((key_t)mypid, (size_t)shmsiz, perms)) < 0) {
+		if (errno != EEXIST || (retval = shmget((key_t)mypid, 1, 0)) < 0 ||
+				shmctl(retval, IPC_RMID, NULL) < 0 ||
+				(retval = shmget((key_t)mypid, (size_t)shmsiz, perms)) < 0) {
+			fprintf(stderr, "error creating shared memory: ");
+			goto err;
+		}
 	}
 	if ((ptr = shmat(retval, NULL, 0)) == (void *)-1) {
-		fprintf(stderr,"error 2: ");
+		fprintf(stderr,"error attaching shared memory: ");
+		shmctl(retval, IPC_RMID, NULL);
 		goto err;
 	}
 	*shptr = ptr;

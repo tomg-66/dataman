@@ -60,13 +60,7 @@
 #define itoa(val,buf)					sprintf(buf, "%d", val)
 
 #define KEY				cur_index._curkey		/* last accesed key */
-/*
- * i didn't want to do this this way, but i don't want to include
- * ../../server/misc.h, so i'm hard coding this to be 
- * sizeof(char)+sizeof(int64_t)
- */
-#define KEY_HEADER_LENGTH	(sizeof(char) + sizeof(int64_t))
-#define KEY_LEN			(cur_index._keylen + KEY_HEADER_LENGTH)
+#define KEY_LEN			(cur_index._keylen + sizeof(char) + sizeof(int64_t))
 #define MFMT			m_fmt					/* master file format number */
 #define WFMT			w_fmt					/* work file format number */
 #define FILE			cur_index._files[cur_index._fno]->_fname

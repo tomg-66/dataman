@@ -74,6 +74,11 @@
  *				tomg
  *				fixed bug not setting message buffer length when
  *				adding transaction
+ *
+ *				Sun Jul 19 10:30:23 PM MDT 2026
+ *				tomg
+ *				did some hardening better error checking
+ *
  ************************************************************* */
 
 /*
@@ -110,6 +115,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
+#include <stdbool.h>
 
 #include <signal.h>
 
@@ -161,8 +168,10 @@ extern int store_xact(context_t *, char **, int, MSG *, char **, int *, size_t *
 extern int msg_setup(int , pid_t);
 extern int sem_setup(int, pid_t);
 extern int shm_setup(int, pid_t, char **);
-extern int send_to_server(context_t *, char *, char *, int, int);
-extern int recv_from_server(context_t *, MSG *, char **, int *, size_t *);
+extern bool send_to_server(context_t *, char *, char *, int, int);
+extern bool send_to_server_stream(context_t *, char *, int, int, int);
+extern bool recv_from_server_stream(context_t *, MSG *, int);
+extern bool recv_from_server(context_t *, MSG *, char **, int *, size_t *);
 
 extern int dbgsw;						/* debugging on? */
 extern int shmsiz;						/* size of shared mem seg */
@@ -173,6 +182,150 @@ void sigprint(int sig)
 	fprintf(stderr, "caught signal %d\n", sig);
 }
 
+static bool write_all(int fd, const void *buf, size_t len)
+{
+	const char *ptr = buf;
+
+	while (len) {
+		ssize_t ret = write(fd, ptr, len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return(false);
+		}
+		if (ret == 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
+static bool read_exact(int fd, void *buf, size_t len)
+{
+	char *ptr = buf;
+
+	while (len) {
+		ssize_t ret = read(fd, ptr, len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return(false);
+		}
+		if (ret == 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
+/*
+ * Long commands have five fixed fields before their decimal payload length.
+ * Verify that the declared length exactly consumes the bytes left in the
+ * socket frame before handing the payload to shared-memory transfer code.
+ */
+static int shared_payload(char *buf, int frame_len, char **payload, int *payload_len,
+						int *command_len)
+{
+	char *field;
+	char *sep;
+	char *end;
+	char saved;
+	long value;
+	int i;
+
+	end = buf + frame_len;
+	field = buf;
+	for (i = 0; i < 5; i++) {
+		sep = memchr(field, '|', (size_t)(end - field));
+		if (sep == NULL)
+			return(0);
+		field = sep + 1;
+	}
+	sep = memchr(field, '|', (size_t)(end - field));
+	if (sep == NULL || sep == field)
+		return(0);
+
+	saved = *sep;
+	*sep = '\0';
+	errno = 0;
+	value = strtol(field, &field, 10);
+	*sep = saved;
+	if (errno == ERANGE || *field != '|' || value < 0 || value > INT_MAX)
+		return(0);
+
+	*payload = sep + 1;
+	*payload_len = (int)value;
+	*command_len = (int)(*payload - buf);
+	return((size_t)*payload_len == (size_t)(end - *payload));
+}
+
+static int shared_payload_header(char *buf, int header_len, int frame_len,
+						int *payload_len)
+{
+	char *field = buf;
+	char *sep;
+	char *end = buf + header_len;
+	char saved;
+	long value;
+	int i;
+
+	for (i = 0; i < 5; i++) {
+		sep = memchr(field, '|', (size_t)(end - field));
+		if (sep == NULL)
+			return(0);
+		field = sep + 1;
+	}
+	sep = memchr(field, '|', (size_t)(end - field));
+	if (sep == NULL || sep == field || sep + 1 != end)
+		return(0);
+	saved = *sep;
+	*sep = '\0';
+	errno = 0;
+	value = strtol(field, &field, 10);
+	*sep = saved;
+	if (errno == ERANGE || *field != '|' || value < 0 || value > INT_MAX)
+		return(0);
+	*payload_len = (int)value;
+	return(*payload_len == frame_len - header_len);
+}
+
+/* Read just enough of a long command to locate and validate its payload. */
+static int read_command_prefix(int fd, char *buf, int frame_len, int *cmd,
+						int *prefix_len, int *payload_len)
+{
+	int fields = 0;
+	int len = 0;
+	char ch;
+
+	while (fields < 6) {
+		if (len >= MAXSIZ || len >= frame_len || !read_exact(fd, &ch, 1))
+			return(-1);
+		buf[len++] = ch;
+		if (ch != '|')
+			continue;
+		fields++;
+		if (fields == 1) {
+			buf[len - 1] = '\0';
+			*cmd = atoi(buf);
+			buf[len - 1] = '|';
+			if (*cmd < FLUSH) {
+				*prefix_len = len;
+				return(0);
+			}
+		}
+	}
+	buf[len] = '\0';
+	*prefix_len = len;
+	if (!shared_payload_header(buf, len, frame_len, payload_len))
+		return(-1);
+	return(1);
+}
+
+/*
+ * this is where things really start
+ */
 void serial_service(int sock)
 {
 
@@ -181,14 +334,15 @@ void serial_service(int sock)
 	size_t len;
 	size_t buflen;
 
-	ssize_t ret;				/* returned from msgrcv */
-
 	int maxread = MAXSIZ;		/* default maxsize of read buff */
 	int i, j;
+	int prefix_len;
+	int stream_input;
+	int frame_len;
 
 	int cmd;					/* received command */
 	int isw;
-	int in_xact;					/* are we in a transaction */
+	int in_xact;				/* are we in a transaction */
 
 	char *rcvbuf;				/* socket receive buffer */
 	char *sndbuf;				/* send buffer */
@@ -227,13 +381,11 @@ void serial_service(int sock)
 	if (sndbuf == NULL || rcvbuf == NULL) {
 		char errstr[8];
 		i = sprintf(errstr, "%d", ENOALLOC);
-		if (write(sock, errstr, (size_t)i) != (ssize_t)i) {
-			fprintf(stderr, "pid %d: error writing ENOALLOC to socket: ",
-						context.mypid);
+		if (!write_all(sock, errstr, (size_t)i)) {
+			fprintf(stderr, "pid %d: error writing ENOALLOC to socket: ", context.mypid);
 			perror("");
 		}
-		fprintf(stderr, "pid %d: error allocating system memory", 
-						context.mypid);
+		fprintf(stderr, "pid %d: error allocating system memory", context.mypid);
 		perror("");
 		goto done;
 	}
@@ -274,7 +426,7 @@ ok_conn:
 /*
  * finally, everything is set up, notify the remote client
  */
-	if (write(sock, "ok", 2) != 2) {	/* let client know we are ok */
+	if (!write_all(sock, "ok", 2)) {	/* let client know we are ok */
 		fprintf(stderr, "pid %d: failed notification: ", context.mypid);
 		perror("");
 		goto done;
@@ -289,79 +441,57 @@ ok_conn:
 		if (select(sock+1, &readfds, NULL, NULL, NULL) < 1) {
 			fprintf(stderr, "pid %d: select failed: ", context.mypid);
 			perror("");
-			goto done;
+			break;
 		}
 		if (dbgsw) {
 			fprintf(stderr, "select succeded\n");
 			fflush(stderr);
 		}
 /*
- * get the number of bytes available on the socket
- * if the ioctl fails or returns 0 bytes, that indicates that the socket
- * went away for some reason.  if the socket goes away between the
- * ioctl and the read, the read will fail as well.
- */
-		if (ioctl(sock, FIONREAD, &j) < 0 || j == 0) {
-			fprintf(stderr, "pid %d: ioctl failed, socket gone: ", context.mypid);
-			fflush(stderr);
-			perror("");
-			goto done;
-		}
-		if (dbgsw) {
-			fprintf(stderr, "ioctl returns %d bytes in queue\n", j);
-			fflush(stderr);
-		}
-/*
  * a message has at least 4 bytes.  this is the wrapper that indicates the
  * the length of the following message.  it is network byte order.
  */
-		if (j < sizeof(int32_t)) {
-			fprintf(stderr, "the length of the header is too small\n");
+		if (!read_exact(sock, (char *)&size, sizeof(int32_t))) {
+			fprintf(stderr, "pid %d: failed reading command header\n", context.mypid);
 			close(sock);
-			goto done;
-		}
-
-		if ((j = (int)read(sock, (char *)&size, (size_t)sizeof(int32_t))) != sizeof(int32_t)) {
-			fprintf(stderr, "the header length read only %d bytes!\n", j);
-			close(sock);
-			goto done;
+			break;
 		}
 		size = ntohl(size);
+		if (size < 1 || size == INT_MAX) {
+			fprintf(stderr, "pid %d: invalid command length %d\n", context.mypid, size);
+			close(sock);
+			break;
+		}
 		if (dbgsw) {
 			fprintf(stderr, "read header length %d\n", size);
 			fflush(stderr);
 		}
+		frame_len = size;
 
-		j = size + 1;
-		if (j > maxread) {
-			if ((rcvbuf = realloc(rcvbuf, (size_t)j)) == NULL) {
-				fprintf(stderr, "pid %d: failed realloc 1 - size = %d: ",
-								context.mypid, j);
-				perror("");
-				goto done;
-			}
-			maxread = j;
+		stream_input = read_command_prefix(sock, rcvbuf, size, &cmd, &prefix_len, &j);
+		if (stream_input < 0) {
+			fprintf(stderr, "pid %d: invalid command prefix\n", context.mypid);
+			break;
 		}
-		memset(rcvbuf, '\0', (size_t)j);
-/*
- * read the number of bytes we were told.  retry as often as we don't
- * get an error to get the full message that was sent.
- */
-		j = 0;
-		i = size;
-		while(j < size) {
-			if ((ret = read(sock, rcvbuf+j, (size_t)i)) <= 0) {
-				if (ret == 0) {
-					fprintf(stderr, "socket read returned 0\n");
-					fflush(stderr);
-				} else {
-					fprintf(stderr, "pid %d: command read failed: ", context.mypid);
+		if (stream_input == 0) {
+			j = size + 1;
+			if (j > maxread) {
+				if ((rcvbuf = realloc(rcvbuf, (size_t)j)) == NULL) {
+					fprintf(stderr, "pid %d: failed realloc 1 - size = %d: ", context.mypid, j);
 					perror("");
-					goto done;
+					break;
 				}
+				maxread = j;
 			}
-			i -= ret;
-			j += ret;
+			memset(rcvbuf, '\0', (size_t)j);
+				if (!read_exact(sock, rcvbuf + prefix_len, (size_t)(size - prefix_len))) {
+				fprintf(stderr, "pid %d: command read failed: ", context.mypid);
+				perror("");
+				break;
+			}
+			cmd = atoi(rcvbuf);
+		} else {
+			size = prefix_len;
 		}
 		if (dbgsw) {
 			fprintf(stderr, "read socket ->");
@@ -378,7 +508,6 @@ ok_conn:
  * after we send the message we will need to loop on copying more
  * into the shared memory segment.
  */
-		cmd = atoi(rcvbuf);
 		if (cmd == START_XACT) {
 			if (in_xact) {
 				i = sprintf(sndbuf+sizeof(int32_t), "%d|", EINXACT);
@@ -388,7 +517,7 @@ ok_conn:
 			}
 			put_long(sndbuf, (int32_t)i);
 			i += sizeof(int32_t);
-			if (write(sock, sndbuf, (size_t)i) != (ssize_t)i) {
+			if (!write_all(sock, sndbuf, (size_t)i)) {
 				fprintf(stderr, "Can't write XACT response to socket:");
 				perror("");
 				exit(0);
@@ -402,7 +531,7 @@ ok_conn:
 				i = sprintf(sndbuf+sizeof(int32_t), "%d|", ENOXACT);
 				put_long(sndbuf, (int32_t)i);
 				i += sizeof(int32_t);
-				if (write(sock, sndbuf, (size_t)i) != (ssize_t)i) {
+				if (!write_all(sock, sndbuf, (size_t)i)) {
 					fprintf(stderr, "Can't write ENOXACT to socket:");
 					perror("");
 					exit(0);
@@ -421,7 +550,7 @@ ok_conn:
 			i = sprintf(sndbuf+sizeof(int32_t), "%d|", i);
 			put_long(sndbuf, (int32_t)i);
 			i += sizeof(int32_t);
-			if (write(sock, sndbuf, (size_t)i) != (ssize_t)i) {
+			if (!write_all(sock, sndbuf, (size_t)i)) {
 				fprintf(stderr, "Can't write COMMIT response to socket:");
 				perror("");
 				exit(0);
@@ -434,61 +563,83 @@ ok_conn:
 				fprintf(stderr, "got disconnect message,closing down\n");
 				fflush(stderr);
 			}
-			goto done;					/* got disconnect message from client */
+			break;					/* got disconnect message from client */
 		}
 
 		if (cmd >= FLUSH) {
 			sarg.val = 2;
 			if (semctl(context.semid, 0, SETVAL, sarg) < 0) {
-				fprintf(stderr, "pid %d: error setting semaphore value", 
-								context.mypid);
+				fprintf(stderr, "pid %d: error setting semaphore value", context.mypid);
 				perror("");
-				goto done;
+				break;
 			}
-			ptr = rcvbuf;
-			for (i = 0; i < 5; i++)
-				ptr = strchr(ptr, '|') + 1;
-			j = atoi(ptr);						// j is now the size of the shared mem portion
-			ptr = strchr(ptr, '|') + 1;			// ptr points at the shared mem portion
-			size = ptr - rcvbuf;				// size is the length of the basic command
+			if (!stream_input && !shared_payload(rcvbuf, size, &ptr, &j, &size)) {
+				fprintf(stderr, "pid %d: invalid shared-memory payload frame\n", context.mypid);
+				break;
+			}
+			if (stream_input)
+				ptr = NULL;
 		} else {
 			j = 0;
 			ptr = NULL;
 		}
 		isw = cmd;
+		if (stream_input && in_xact) {
+			if (frame_len + 1 > maxread) {
+				if ((rcvbuf = realloc(rcvbuf, (size_t)frame_len + 1)) == NULL) {
+					fprintf(stderr, "pid %d: failed realloc for transaction payload: ", context.mypid);
+					perror("");
+					break;
+				}
+				maxread = frame_len + 1;
+			}
+			if (!read_exact(sock, rcvbuf + size, (size_t)j)) {
+				fprintf(stderr, "pid %d: transaction payload read failed: ", context.mypid);
+				perror("");
+				break;
+			}
+			rcvbuf[frame_len] = '\0';
+			if (!shared_payload(rcvbuf, frame_len, &ptr, &j, &size))
+				break;
+			stream_input = 0;
+		}
 /*
  * verify that the base command we got wasn't bigger than the
- * buffer we are have to store it in.  if it is, we can bet it
- * is malicious and we had better close this connection!
+ * buffer we have to store it in.  if it is, we can bet it is
+ * malicious and we had better close this connection!
  */
 		if (size > MAXSIZ) {
 			sprintf(sndbuf+sizeof(int32_t), "%d", EINVMSG);
 			put_long(sndbuf, (int32_t)sizeof(int32_t));
 			i = strlen(sndbuf+sizeof(int32_t)) + sizeof(int32_t);
-			if (write(sock, sndbuf, (size_t)i) != (ssize_t)i) {
-				fprintf(stderr, "pid %d: error writing EINVMSG to socket: ",
-							context.mypid);
+			if (!write_all(sock, sndbuf, (size_t)i)) {
+				fprintf(stderr, "pid %d: error writing EINVMSG to socket: ", context.mypid);
 				perror("");
 			}
-			fprintf(stderr, "pid %d: received bad message ->%s<-",
-							context.mypid, rcvbuf);
-			goto done;
+			fprintf(stderr, "pid %d: received bad message ->%s<-", context.mypid, rcvbuf);
+			break;
 		}
 /*
  * if we are in a transaction, these commands are the ones that still
  * modify the database, so we need to save them until we do a commit.
  * otherwise we send the command to the server, and get the  response.
  */
-		if (in_xact && (cmd ==  DELETE || cmd == INSERT || cmd == INCLUDE
+		if (stream_input && !in_xact) {
+			if (!send_to_server_stream(&context, rcvbuf, size, j, sock))
+				break;
+			if (!recv_from_server_stream(&context, &msgbuf, sock))
+				break;
+			continue;
+		} else if (in_xact && (cmd ==  DELETE || cmd == INSERT || cmd == INCLUDE
 								|| cmd == REMOVE || cmd == FLUSH)) {
 			msgbuf.type = size;
 			if (!store_xact(&context, &rcvbuf, maxread, &msgbuf, &sndbuf, &i, &buflen))
-				goto done;
+				break;
 		} else {
 			if (!send_to_server(&context, rcvbuf, ptr, size, j))
-				goto done;
+				break;
 			if (!recv_from_server(&context, &msgbuf, &sndbuf, &i, &buflen))
-				goto done;
+				break;
 		}
 /*
  * if the first field of the response (returned in i) is negative it is
@@ -545,24 +696,19 @@ ok_conn:
 			fflush(stderr);
 		}
 		size = htonl((int32_t)len);
-		if (write(sock, (char*)&size, sizeof(int32_t)) != sizeof(int32_t)) {
+		if (!write_all(sock, (char*)&size, sizeof(int32_t))) {
 			if (dbgsw) {
 				fprintf(stderr, "failed header size write!, errno = %d\n", errno);
 				fflush(stderr);
 			}
-			goto done;
+			break;
 		}
-		j = 0;
-		while (len) {
-			if ((i = write(sock, sndbuf+j, len)) < 0) {
-				if (dbgsw) {
-					fprintf(stderr, "failed sending buffer to client, errno = %d\n", errno);
-					fflush(stderr);
-				}
-				goto done;
+		if (!write_all(sock, sndbuf, len)) {
+			if (dbgsw) {
+				fprintf(stderr, "failed sending buffer to client, errno = %d\n", errno);
+				fflush(stderr);
 			}
-			j += i;
-			len -= i;
+			break;
 		}
 		sarg.val = 0;
 		semctl(context.semid, 0, SETVAL, sarg);
@@ -577,7 +723,7 @@ done:
 		shmctl(context.shmid, IPC_RMID, 0);		/* remove the shared memory */
 	put_long(sndbuf, (int32_t)2);
 	memcpy(sndbuf+sizeof(int32_t), "ok", 2);
-	i = write(sock, sndbuf, 2+sizeof(int32_t));	/* shutting down the socket, don't care if it fails */
+	i = write_all(sock, sndbuf, 2+sizeof(int32_t));	/* shutting down the socket, don't care if it fails */
 	shutdown(sock, SHUT_WR);			/* shutdown the socket */
 	if (dbgsw) {
 		fprintf(stderr, "sent shutdown message from pid %d\n", context.mypid);

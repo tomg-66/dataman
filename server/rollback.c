@@ -42,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include <sys/sem.h>
 
@@ -55,8 +56,8 @@ extern xact_t *xact_curr;			/* the instruction that failed */
 
 extern int64_t *inserts;
 
-extern int send_to_server(context_t *, char *, char *, int, int);
-extern int recv_from_server(context_t *, MSG *, char **, int *, int *);
+extern bool send_to_server(context_t *, char *, char *, int, int);
+extern bool recv_from_server(context_t *, MSG *, char **, int *, int *);
 extern int64_t get_ll(char *);
 extern void put_ll(char *, int64_t);
 

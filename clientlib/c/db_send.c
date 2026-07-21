@@ -25,6 +25,10 @@
  *				check for dm_sock == -1 just in case, so we
  *				don't send data on a closed socket.
  *				tomg
+ *
+ *				Sun Jul 19 03:44:27 PM MDT 2026
+ *				tomg
+ *				doing clean up.  using better send/receive routines
  ************************************************************* */
 
 /*
@@ -57,8 +61,8 @@
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
-#include <sys/ioctl.h>
 #include <sys/types.h>
 
 #include <arpa/inet.h>		/* for def of ntohl */
@@ -71,54 +75,72 @@ int db_send(char *cmd, int len)
 
 extern void db_err(int, char *, ...);
 
+static bool write_all(int fd, const void *buf, size_t len)
+{
+	const char *ptr = buf;
+
+	while (len) {
+		ssize_t ret = write(fd, ptr, len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return(false);
+		}
+		if (ret == 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
+static bool read_exact(int fd, void *buf, size_t len)
+{
+	char *ptr = buf;
+
+	while (len) {
+		ssize_t ret = read(fd, ptr, len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return(false);
+		}
+		if (ret == 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
 char * db_send(char *cmd, int len, char *module)
 {
 
 	int32_t size;
 
-	int i, j;
+	int j;
 
 	char *ret;
-
-	fd_set rfds;
 
 	if (dm_sock == -1)
 		return(NULL);
 
 	size = htonl((int32_t)len);
-	if (write(dm_sock, (char *)&size, sizeof(int32_t)) != sizeof(int32_t))
+	if (!write_all(dm_sock, (char *)&size, sizeof(int32_t)))
 		db_err(0, "%s: Can't write wrap to socket", _progname);
 
-	j = 0;
-	while (len) {
-		if ((i = write(dm_sock, cmd+j, (size_t)len)) < 0)
-			db_err(0, "%s: Can't write to socket", _progname);
-		j += i;
-		len -= i;
-	}
+	if (!write_all(dm_sock, cmd, (size_t)len))
+		db_err(0, "%s: Can't write to socket", _progname);
 
-	while (1) {
-		FD_ZERO(&rfds);
-		FD_SET(dm_sock, &rfds);
-		if (select(dm_sock+1, &rfds, NULL, NULL, NULL) > -1)
-			break;
-		if (errno != EINTR)
-			db_err(0, "%s: select failed", _progname);
-	}
 /*
- * get the number of bytes available on the socket
- * if the ioctl fails or returns 0 bytes, that indicates that the socket
- * went away for some reason.  if the socket goes away between the
- * ioctl and the read, the read will fail as well.
+ * Read the length wrapper, then exactly that many response bytes.
  */
-	if (ioctl(dm_sock, FIONREAD, &i) < 0 || i == 0)
-		db_err(0, "%s: ioctl failed, socket gone", _progname);
-	if (i < sizeof(int32_t))
-		db_err(0, "%s: wrapper length is too small!", _progname);
-	if ((i = read(dm_sock, (char *)&size, sizeof(int32_t))) != sizeof(int32_t))
-		db_err(0, "%s: read only %d header bytes", _progname, i);
+	if (!read_exact(dm_sock, (char *)&size, sizeof(int32_t)))
+		db_err(0, "%s: Can't read response wrapper", _progname);
 
 	size = ntohl(size);
+	if (size < 0)
+		db_err(0, "%s: invalid response length %"PRId32, _progname, size);
 
 	if (dbgsw) {
 		fprintf(stderr, "header says to read %"PRId32" bytes\n", size);
@@ -129,18 +151,10 @@ char * db_send(char *cmd, int len, char *module)
 		db_err(0, "%s: Cannot allocate buffer memory in db_send for %s",
 					_progname, module);
 	memset(ret, '\0', size+1);
-	j = 0;
-/*
- * read until we either get an error or the number of bytes that we
- * are supposed to, and return the buffer
- */
-	while(size > 0) {
-		if ((i = read(dm_sock, ret+j, size)) < 0)
-			db_err(0, "%s: Can't read socket response in %s",
-						_progname, module);
-		j += i;
-		size -= i;
-	}
+	if (!read_exact(dm_sock, ret, (size_t)size))
+		db_err(0, "%s: Can't read socket response in %s",
+					_progname, module);
+	j = size;
 
 	if (dbgsw) {
 		fprintf(stderr, "have read %d bytes from socket\n", j);

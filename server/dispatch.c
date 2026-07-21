@@ -20,6 +20,12 @@
  *				changed the structure so that a new thread wasn't
  *				started for each call, but that each dispatch
  *				thread will listen on the message queue.
+ *
+ *				Sun Jul 19 03:49:27 PM MDT 2026
+ *				tomg
+ *				using discreet functions to handle shared memory
+ *				functions.  cleaning up and hardning
+ *
  ************************************************************* */
 /*
  * this is the newly created thread.  it's purpose is to perform
@@ -54,6 +60,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -91,6 +98,43 @@ extern char *_progname;
 
 extern void err_sys(char *, char *);
 
+/*
+ * these are the symetrical versions to those also in server_comm.c
+ */
+static bool sem_wait_for_chunk(int semid)
+{
+	struct sembuf sop = { 0, 0, 0 };
+	while (semop(semid, &sop, 1) < 0) {
+		if (errno != EINTR)
+			return(false);
+	}
+	return(true);
+}
+
+static bool sem_take_slot(int semid)
+{
+	struct sembuf sop = { 0, -1, 0 };
+	while (semop(semid, &sop, 1) < 0) {
+		if (errno != EINTR)
+			return(false);
+	}
+	return(true);
+}
+
+static bool sem_publish_chunk(int semid, int value)
+{
+	union semun sarg;
+	sarg.val = value;
+	return(semctl(semid, 0, SETVAL, sarg) == 0);
+}
+
+static bool sem_release_slot(int semid)
+{
+	struct sembuf sop = { 0, 2, 0 };
+	return(semop(semid, &sop, 1) == 0);
+}
+/* ------------------------------------------------------------------------- */
+
 void *dispatch(void *dummy)
 {
 
@@ -112,6 +156,8 @@ void *dispatch(void *dummy)
 	int semid;				/* semaphore id */
 	int shmid;				/* shared memory id */
 
+	struct timeval tv;
+
 	MSG msgbuf;
 
 	struct sembuf sop;
@@ -128,11 +174,12 @@ void *dispatch(void *dummy)
 	if ((msgid = msgget((key_t)MSGKEY, PERMS|IPC_CREAT)) < 0)
 		err_sys("%s: Can't create message queue: ", _progname);
 /*
- * now what we want to do is spin up a bunch of threads that are all are
- * just waiting to execute a function.  That way we don't have the over-
+ * this is part of the thread pool spun up in dbserve.c.  each thread is just waiting to
+ * read the message queue to execute a function.  That way we don't have the over-
  * head of starting a new thread -every- time we want to service a request
  */
-	while(1) {
+	while (1) {
+		shptr = NULL;
 		memset((void *)&msgbuf, '\0', sizeof(MSG));
 		if ((i = msgrcv(msgid, &msgbuf, MAXSIZ, MSG_SRV, 0)) < 0) {
 			switch(errno) {
@@ -143,8 +190,8 @@ void *dispatch(void *dummy)
 				case EINTR:			/* interrupted call */
 					continue;
 				default:
-					fprintf(stderr, "msgrcv failed: ");
-					perror("");
+					fprintf(stderr, "%s: line: %d msgrcv failed: %s\n", __func__, __LINE__, strerror(errno));
+					fflush(stderr);
 					exit(0);
 			}
 		}
@@ -203,32 +250,45 @@ void *dispatch(void *dummy)
  */
 			semid = semget((key_t)pid, 0, 0666);
 			shmid = shmget((key_t)pid, (size_t)shmsiz, 0666);
+			if (semid < 0) {
+				fprintf(stderr, "%s: line: %d pid %d: cannot get semaphore: %s\n", __func__, __LINE__, getpid(), strerror(errno));
+				fflush(stderr);
+				ret = ENOSEM;
+				goto err_jump;
+			}
+			if (shmid < 0) {
+				fprintf(stderr, "%s: line: %d pid %d: cannot get shared memory: %s\n", __func__, __LINE__, getpid(), strerror(errno));
+				fflush(stderr);
+				ret = ENOSHM;
+				goto err_jump;
+			}
 			if (dbgsw) {
 				fprintf(stderr, "len = %d, semid = %d, shmid = %d\n", len, semid, shmid);
 				fflush(stderr);
 			}
 			shptr = shmat(shmid, NULL, 0);
+			if (shptr == (void *)-1) {
+				fprintf(stderr, "%s: line: %d, pid %d: cannot attach shared memory: %s\n", __func__, __LINE__, getpid(), strerror(errno));
+				fflush(stderr);
+				shptr = NULL;
+				ret = ENOSHM;
+				goto err_jump;
+			}
 			while(len) {
-				while (1) {
-					sop.sem_num = 0;
-					sop.sem_op = 0;
-					sop.sem_flg = 0;
-					if (semop(semid, &sop, 1) > -1)
-						break;
-					if (errno != EINTR) {
-						fprintf(stderr, "pid %d error during semop - %d\n",
-								getpid(), errno);
-						exit(0);
-					}
+				if (!sem_wait_for_chunk(semid)) {
+					fprintf(stderr, "%s: line: %d: error during wait_for_chunk: %s\n", __func__, __LINE__, strerror(errno));
+					fflush(stderr);
+					exit(0);
 				}
 				size = min(shmsiz, len);	
 				memcpy(ptr+offs, shptr, size);		// copy out the data
 				offs += size;						// increment the pointer
 				len -= size;						// decrement the count
-				sop.sem_num = 0;
-				sop.sem_op = 2;
-				sop.sem_flg = 0;
-				semop(semid, &sop, 1);
+				if (!sem_release_slot(semid)) {
+					fprintf(stderr, "%s: line: %d: can't release slot: %s\n", __func__, __LINE__, strerror(errno));
+					fflush(stderr);
+					exit(0);
+				}
 			}
 		}
 /*
@@ -256,14 +316,33 @@ void *dispatch(void *dummy)
 		}
 err_jump:
 		msgbuf.type = pid;
-		if (ret < 0) {
-			i = sprintf(msgbuf.txt, "%d|", ret);
-			msgsnd(msgid, &msgbuf, i, 0);
-			goto done;
-		} else if (ret == 0) {
-			sprintf(msgbuf.txt, "0|0|");
-			msgsnd(msgid, &msgbuf, 5, 0);
-			goto done;
+
+		if (ret < 1) {
+			if (ret == 0) {
+				i = 5;
+				memcpy(msgbuf.txt, "0|0|", i);
+			} else {
+				i = sprintf(msgbuf.txt, "%d|", ret);
+			}
+			while (true) {
+				if (msgsnd(msgid, &msgbuf, i, 0) > -1) {
+					break;
+				}
+				if (dbgsw) {
+					fprintf(stderr, "sending msg \"%s\" from dbfunc returns error: %d\n", msgbuf.txt, errno);
+					fflush(stderr);
+				}
+				if (errno == EIDRM) {
+					exit(0);
+				} else if (errno == EINTR) {
+					tv.tv_sec = 0;
+					tv.tv_usec = 500;				/* wait 500 microsec */
+					select(1, NULL, NULL, NULL, &tv);
+				} else {
+					exit(0);
+				}
+			}
+			goto done;		// use this goto for clarity.  don't want to nest too deeply
 		}
 /*
  * len is the length of the data to return besides the 'standard
@@ -276,47 +355,82 @@ err_jump:
 		if (len) {
 			semid = semget((key_t)pid, 0, 0666);
 			shmid = shmget((key_t)pid, (size_t)shmsiz, 0666);
+			if (semid < 0) {
+				fprintf(stderr, "pid %d: cannot get semaphore: ", getpid());
+				perror("");
+				ret = ENOSEM;
+				goto err_jump;
+			}
+			if (shmid < 0) {
+				fprintf(stderr, "pid %d: cannot get shared memory: ", getpid());
+				perror("");
+				ret = ENOSHM;
+				goto err_jump;
+			}
 			shptr = shmat(shmid, NULL, 0);
+			if (shptr == (void *)-1) {
+				fprintf(stderr, "pid %d: cannot attach shared memory: ", getpid());
+				perror("");
+				shptr = NULL;
+				ret = ENOSHM;
+				goto err_jump;
+			}
 			sarg.val = 2;
-			semctl(semid, 0, SETVAL, sarg);
+			if (semctl(semid, 0, SETVAL, sarg) < 0) {
+				fprintf(stderr, "pid %d: cannot initialize semaphore: ", getpid());
+				perror("");
+				ret = ENOSEM;
+				goto err_jump;
+			}
 		}
 /*
  * send the message to serial_service that we have some
  * sort of return for them
  */
-		msgsnd(msgid, &msgbuf, ret, 0);
-
+		while (true) {
+			if (msgsnd(msgid, &msgbuf, ret, 0) > -1) {
+				break;
+			}
+			if (dbgsw) {
+				fprintf(stderr, "sending long message from dbfunc returns error: %d\n", msgbuf.txt, errno);
+				fflush(stderr);
+			}
+			if (errno == EIDRM) {
+				exit(0);
+			} else if (errno == EINTR) {
+				tv.tv_sec = 0;
+				tv.tv_usec = 500;				/* wait 500 microsec */
+				select(1, NULL, NULL, NULL, &tv);
+			} else {
+				exit(0);
+			}
+		}
 /*
- * copy the data to the shared memory segment 1024 bytes at a
+ * copy the data to the shared memory segment shmsiz bytes at a
  * time.  remember the semaphore is available to us only on the
  * first pass.
  */
 		offs = 0;
 		while (len) {
-			while (1) {
-				sop.sem_num = 0;
-				sop.sem_op = -1;
-				sop.sem_flg = 0;
-				if (semop(semid, &sop, 1) > -1)
-					break;
-				if (errno != EINTR) {
-					fprintf(stderr, "pid %d error during semop - %d\n",
-						getpid(), errno);
-					exit(0);
-				}
+			if (!sem_take_slot(semid)) {
+				fprintf(stderr, "%s: line: %d: error during semop: %s\n", __func__, __LINE__, strerror(errno));
+				fflush(stderr);
+				exit(0);
 			}
 			size = min(len, shmsiz);
 			memcpy(shptr, ptr+offs, size);
 			len -= size;
 			offs += size;
-			sarg.val = 0;
-			semctl(semid, 0, SETVAL, sarg);
+			if (!sem_publish_chunk(semid, 0)) {
+				fprintf(stderr, "%s: line: %d: error publishing chunk: %s\n", __func__, __LINE__, strerror(errno));
+				fflush(stderr);
+				exit(0);
+			}
 		}
 
 done:
-		if (shmid > -1) {
+		if (shptr != NULL) {
 			shmdt(shptr);
-			shmid = -1;
 		}
 		if (dbgsw) {
 			fprintf(stderr, "ptr is returned 0x%p\n", ptr);

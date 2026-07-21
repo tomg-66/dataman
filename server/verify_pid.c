@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <libgen.h>
 
 #include <sys/types.h>
 
@@ -48,10 +49,10 @@
 
 extern void err_sys(char *, char *);
 
-static char path_name[64];		/* path to pid file */
+static char pidfile_name[64];		/* path to pid file */
 void termit(void)
 {
-	unlink(path_name);
+	unlink(pidfile_name);
 }
 
 int verify_pid(char *prog_name)
@@ -65,14 +66,15 @@ int verify_pid(char *prog_name)
 
 	struct flock lock;
 
-	if ((ptr = strrchr(prog_name, '/')) != NULL)
-		sprintf(path_name, "/tmp/.%s.pid", ptr+1);
-	else
-		sprintf(path_name, "/tmp/.%s.pid", prog_name);
+	ptr = basename(prog_name);
+	if (*ptr == '.' || *ptr == '/')
+		return -1;
+
+	sprintf(pidfile_name, "/tmp/.%s.pid", ptr);
 
 	atexit(termit);
 
-	if ((chan = open(path_name, O_WRONLY|O_CREAT, 0666)) < 0)
+	if ((chan = open(pidfile_name, O_WRONLY|O_CREAT, 0666)) < 0)
 		return(-1);
 /*
  * now put a write lock on the whole file.  this will make sure

@@ -21,7 +21,7 @@
  *
  ************************************************************* */
 /*
- * a transaction had a failure.  we need to undo a deletee the
+ * a transaction had a failure.  we need to undo a delete the
  * user had performed.
  */
 

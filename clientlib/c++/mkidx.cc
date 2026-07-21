@@ -116,11 +116,11 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
         useage(argv[0]);
 
 	cur_index = new class index;
-	cur_index->my_mkidx(argc, argv);
+	cur_index->_mkidx(argc, argv);
 
 }
 
-void index::my_mkidx(int argc, char *argv[])
+void index::_mkidx(int argc, char *argv[])
 {
     int i, j;					/* general usage */
 	int h_len;					/* header length */

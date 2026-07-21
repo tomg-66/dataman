@@ -15,6 +15,10 @@
  * 				Tom Green
  * 				added name space
  *
+ *				 Sun Jul 19 03:43:26 PM MDT 2026
+ *				 Tom Green
+ *				 doing clean up.  used better send/receive routines
+ *
  ************************************************************* */
 /*
  * db_comm.cc
@@ -50,6 +54,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include <sys/ioctl.h>
 
@@ -69,6 +74,44 @@
 using namespace Dataman;
 
 int db_comm::db_sock = -1;
+
+static bool write_all(int fd, const void *buf, size_t len)
+{
+	const char *ptr = (const char *)buf;
+
+	while (len) {
+		ssize_t ret = write(fd, ptr, len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return(false);
+		}
+		if (ret == 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
+static bool read_exact(int fd, void *buf, size_t len)
+{
+	char *ptr = (char *)buf;
+
+	while (len) {
+		ssize_t ret = read(fd, ptr, len);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			return(false);
+		}
+		if (ret == 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
 
 /*
  * constructors for the db_conn class
@@ -195,16 +238,8 @@ int db_comm::db_connect(const char *host)
 char *db_comm::db_send(char *cmd, int len)
 {
 
-	fd_set rfds;
-
 	int32_t size;
 
-	size_t count = len;
-	size_t off;
-	size_t num;
-
-	int i;
-	int j;
 /*
  * the reason I chose to do two writes is that it would take much less
  * time and effort than to allocate a new buffer len+4 bytes long, copy
@@ -222,55 +257,26 @@ char *db_comm::db_send(char *cmd, int len)
 
 //	size = htonl(s_len);
 	size = htonl(len);
-	if (write(this->db_sock, (char *)&size, sizeof(int32_t)) != sizeof(int32_t))
+	if (!write_all(this->db_sock, (char *)&size, sizeof(int32_t)))
 		db_err(0, "%s: Can't write wrapper to socket", _progname);
 
-	j = 0;
-	while(count) {
-		if ((i = write(this->db_sock, cmd+j, count)) < 0)
-			db_err(0, "%s: Can't write to socket", _progname);
-		count -= i;
-		j += i;
-	}
+	if (!write_all(this->db_sock, cmd, (size_t)len))
+		db_err(0, "%s: Can't write to socket", _progname);
 
-	while (1) {
-		FD_ZERO(&rfds);
-		FD_SET(this->db_sock, &rfds);
-		if (select(this->db_sock+1, &rfds, NULL, NULL, NULL) > -1)
-			break;
-		if (errno != EINTR)
-			db_err(0, "%s: select failed", _progname);
-	}
 /*
- * get the number of bytes available on the socket
- * if the ioctl fails or returns 0 bytes, that indicates that the socket
- * went away for some reason.  if the socket goes away between the
- * ioctl and the read, the read will fail as well.
+ * Read the length wrapper, then exactly that many response bytes.
  */
-	if (ioctl(this->db_sock, FIONREAD, &len) < 0 || len == 0)
-		db_err(0, "%s: ioctl failed, socket gone", _progname);
-	if (len < 4)
-		db_err(0, "%s: wrapper length is too small - %d", _progname, len);
-
-	if ((i = read(this->db_sock, (char *)&size, sizeof(int32_t))) != sizeof(int32_t))
-		db_err(0, "%s: read only %d header bytes", _progname, i);
+	if (!read_exact(this->db_sock, (char *)&size, sizeof(int32_t)))
+		db_err(0, "%s: Can't read response wrapper", _progname);
 	size = ntohl(size);
+	if (size < 0)
+		db_err(0, "%s: invalid response length %d", _progname, size);
 
 	char *ret = new char[size+1];
 	memset(ret, '\0', size+1);
 
-//
-//read until we either get an error or the number of bytes that the wrapper
-//tells us we are supposed to, then return the buffer
-//
-	off = 0;
-	count = size;
-	while(count > 0) {
-		if ((num = read(this->db_sock, ret+off, count)) < 0)
-			throw(comm_err);
-		off += num;
-		count -= num;
-	}
+	if (!read_exact(this->db_sock, ret, (size_t)size))
+		throw(comm_err);
 	return(ret);
 }
 

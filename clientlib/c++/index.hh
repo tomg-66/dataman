@@ -152,7 +152,7 @@ class index {
 		char *get_ixname() { return(this->_idxname); }
 		int64_t get_rptr() { return(this->_rptr); }
 
-		void my_mkidx(int, char **);		// internal mkidx routine
+		void _mkidx(int, char **);		// internal mkidx routine
 
 		files *get_file(int i) { return(this->_files+i); };
 		files *get_files() { return(this->_files); }

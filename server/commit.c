@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include <sys/sem.h>
 
@@ -31,8 +32,8 @@
 #include "msg.h"
 #include "misc.h"
 
-extern int recv_from_server(context_t *, MSG *, char **, int *, int *);
-extern int send_to_server(context_t *, char *, char *, int, int);
+extern bool recv_from_server(context_t *, MSG *, char **, int *, int *);
+extern bool send_to_server(context_t *, char *, char *, int, int);
 
 extern xact_t *xact_list;
 extern xact_t *xact_curr;

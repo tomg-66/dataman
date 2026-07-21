@@ -10,6 +10,13 @@
  * 
  * FILES:
  *
+ * MODIFICATION HISTORY:
+ *
+ *				Sun Jul 19 10:20:28 PM MDT 2026
+ *				tomg
+ *				hardened the connections, make the copys go directly
+ *				to/from shared memory instead of doing extra copys
+ *
  ************************************************************* */
 /*
  * send data to the server, and get it back.  it makes the
@@ -40,12 +47,14 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <arpa/inet.h>
 
 #include <time.h>
 #include <errno.h>
@@ -73,6 +82,209 @@ extern int dbgsw;
 extern int shmsiz;
 
 /*
+ * semaphone ops.  they are analogous to the sem_ functions in dispatch.c
+ */
+static bool sem_wait_for_zero(int semid, pid_t pid)
+{
+	struct sembuf sop;
+
+	while (true) {
+		sop.sem_num = 0;
+		sop.sem_op = 0;
+		sop.sem_flg = 0;
+		if (semop(semid, &sop, 1) == 0)
+			return(true);
+		if (errno != EINTR)
+			break;
+	}
+	fprintf(stderr, "pid %d: semaphore wait failed: ", pid);
+	perror("");
+	return(false);
+}
+
+static bool sem_take_slot(int semid, pid_t pid)
+{
+	struct sembuf sop;
+
+	while (true) {
+		sop.sem_num = 0;
+		sop.sem_op = -1;
+		sop.sem_flg = 0;
+		if (semop(semid, &sop, 1) == 0)
+			return(true);
+		if (errno != EINTR)
+			break;
+	}
+	fprintf(stderr, "pid %d: semaphore take failed: ", pid);
+	perror("");
+	return(false);
+}
+
+static bool sem_publish_chunk(int semid, int value, pid_t pid)
+{
+	union semun sarg;
+
+	sarg.val = value;
+	if (semctl(semid, 0, SETVAL, sarg) == 0)
+		return(true);
+	fprintf(stderr, "pid %d: semaphore publish failed: ", pid);
+	perror("");
+	return(false);
+}
+
+static bool sem_release_slot(int semid, pid_t pid)
+{
+	struct sembuf sop;
+
+	sop.sem_num = 0;
+	sop.sem_op = 2;
+	sop.sem_flg = 0;
+	if (semop(semid, &sop, 1) == 0)
+		return(true);
+	fprintf(stderr, "pid %d: semaphore release failed: ", pid);
+	perror("");
+	return(false);
+}
+/* --------------------------------------------------------------- */
+
+/*
+ * read data from the socket
+ */
+static bool read_socket_chunk(int fd, void *buf, size_t len)
+{
+	char *ptr = buf;
+	ssize_t ret;
+
+	while (len) {
+		ret = read(fd, ptr, len);
+		if (ret < 0 && errno == EINTR)
+			continue;
+		if (ret <= 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
+/*
+ * write data to the socket
+ */
+static bool write_socket_chunk(int fd, const void *buf, size_t len)
+{
+	const char *ptr = buf;
+	ssize_t ret;
+
+	while (len) {
+		ret = write(fd, ptr, len);
+		if (ret < 0 && errno == EINTR)
+			continue;
+		if (ret <= 0)
+			return(false);
+		ptr += ret;
+		len -= ret;
+	}
+	return(true);
+}
+
+/*
+ * send the command portion of the message to the server
+ */
+static bool queue_command(context_t *ctxt, char *fptr, int fsize)
+{
+	MSG msgbuf;
+	struct timeval tv;
+	int i;
+
+	msgbuf.type = MSG_SRV;
+	memset(msgbuf.txt, '\0', MAXSIZ);
+	i = sprintf(msgbuf.txt, "%d|", ctxt->mypid);
+	if (fsize < 0 || i + fsize > MAXSIZ)
+		return(false);
+	memcpy(msgbuf.txt + i, fptr, fsize);
+	fsize += i;
+
+	/*
+	 * the msgsnd will block if the message queue is full.  other errors can terminate
+	 * the send, or restart it.
+	 */
+	while (true) {
+		if (msgsnd(ctxt->msgid, (void *)&msgbuf, (size_t)fsize, 0) > -1) {
+			break;
+		} else {
+			if (errno == EIDRM) {
+				fprintf(stderr, "some twit removed the message queue while open!\n");
+				return(false);
+			} else if (errno == EINTR) {
+				tv.tv_sec = 0;
+				tv.tv_usec = 500;				/* wait 500 microsec */
+				select(1, NULL, NULL, NULL, &tv);
+			} else {
+				perror("Error sending command to dispatch");
+				return(false);
+			}
+		}
+	}
+	return(true);
+}
+
+/* Queue the fixed command, then stream payload chunks directly into shm. */
+bool send_to_server_stream(context_t *ctxt, char *fptr, int fsize, int vsize, int sock)
+{
+	int size;
+
+	if (!queue_command(ctxt, fptr, fsize))
+		return(false);
+	while (vsize) {
+		if (!sem_take_slot(ctxt->semid, ctxt->mypid))
+			return(false);
+		size = min(vsize, shmsiz);
+		if (!read_socket_chunk(sock, ctxt->shptr, (size_t)size))
+			return(false);
+		vsize -= size;
+		if (!sem_publish_chunk(ctxt->semid, 0, ctxt->mypid))
+			return(false);
+	}
+	return(true);
+}
+
+/* Receive a response and write each large shared-memory chunk to the client. */
+bool recv_from_server_stream(context_t *ctx, MSG *msgbuf, int sock)
+{
+	int fixed_len;
+	int payload_len;
+	int size;
+	int32_t frame_len;
+
+	while (true) {
+		memset(msgbuf, '\0', sizeof(*msgbuf));
+		fixed_len = (int)msgrcv(ctx->msgid, msgbuf, (size_t)MAXSIZ, (long)ctx->mypid, 0);
+		if (fixed_len >= 0)
+			break;
+		if (errno != EINTR)
+			return(false);
+	}
+	msgbuf->txt[fixed_len] = '\0';
+	payload_len = atoi(msgbuf->txt);
+	if (payload_len < 0)
+		payload_len = 0;
+	frame_len = htonl((int32_t)(fixed_len + payload_len));
+	if (!write_socket_chunk(sock, &frame_len, sizeof(frame_len)) ||
+			!write_socket_chunk(sock, msgbuf->txt, (size_t)fixed_len))
+		return(false);
+	while (payload_len) {
+		if (!sem_wait_for_zero(ctx->semid, ctx->mypid))
+			return(false);
+		size = min(payload_len, shmsiz);
+		if (!write_socket_chunk(sock, ctx->shptr, (size_t)size) ||
+				!sem_release_slot(ctx->semid, ctx->mypid))
+			return(false);
+		payload_len -= size;
+	}
+	return(true);
+}
+
+/*
  * the context contains the various things that define this connection.
  * fptr is the pointer to the fixed part of the command.  vptr points to
  * the shared memory stuff, fsize is the length of the fixed part, and
@@ -84,17 +296,13 @@ extern int shmsiz;
  * fsize is the length of the command string
  * vsize is the length of the shared memory data
  */
-int send_to_server(context_t *ctxt, char *fptr, char *vptr, int fsize, int vsize)
+bool send_to_server(context_t *ctxt, char *fptr, char *vptr, int fsize, int vsize)
 {
 	int i;
 
 	MSG msgbuf;
 
 	struct timeval tv;
-
-	struct sembuf sop;			/* semaphore operation */
-
-	union semun sarg;
 
 /*
  * the message we send to the database server consists of our pid
@@ -112,17 +320,22 @@ int send_to_server(context_t *ctxt, char *fptr, char *vptr, int fsize, int vsize
 		fflush(stderr);
 	}
 	while (1) {
-		if (msgsnd(ctxt->msgid, (void *)&msgbuf, (size_t)fsize, 0) < 0) {
-			if (dbgsw) {
-				fprintf(stderr, "msgsnd is failing - %d\n", errno);
-				fflush(stderr);
-			}
+		if (msgsnd(ctxt->msgid, (void *)&msgbuf, (size_t)fsize, 0) > -1) {
+			break;
+		}
+		if (dbgsw) {
+			fprintf(stderr, "%s: line %d: msgsnd is failing: %s\n", __func__, __LINE__, strerror(errno));
+			fflush(stderr);
+		}
+		if (errno == EIDRM) {
+			return (false);
+		} else if (errno == EINTR) {
 			tv.tv_sec = 0;
 			tv.tv_usec = 500;
 			select(1, NULL, NULL, NULL, &tv);
-			continue;
-		} else
-			break;
+		} else {
+			return (false);
+		}
 	}
 
 	if (dbgsw) {
@@ -135,28 +348,17 @@ int send_to_server(context_t *ctxt, char *fptr, char *vptr, int fsize, int vsize
  * segment as that process gets it out.
  */
 	while(vsize) {
-		while(1) {
-			sop.sem_num = 0;
-			sop.sem_op = -1;
-			sop.sem_flg = 0;
-			if (semop(ctxt->semid, &sop, 1) > -1)
-				break;
-			if (errno != EINTR) {
-				fprintf(stderr, "pid %d: semop failed: ", ctxt->mypid);
-				perror("");
-				return(0);
-			}
-		}
+		if (!sem_take_slot(ctxt->semid, ctxt->mypid))
+			return(false);
 		i = min(vsize, shmsiz);
 		memcpy(ctxt->shptr, vptr, i);
 		vptr += i;
 		vsize -= i;
-		sarg.val = 0;
-		semctl(ctxt->semid, 0, SETVAL, sarg);
+		if (!sem_publish_chunk(ctxt->semid, 0, ctxt->mypid))
+			return(false);
 	}
-	return(1);
+	return(true);
 }
-
 
 /*
  * receive a message back from the server
@@ -171,7 +373,7 @@ int send_to_server(context_t *ctxt, char *fptr, char *vptr, int fsize, int vsize
  *
  * 	buflen gets the size of the message returned from the server
  */
-int recv_from_server(context_t *ctx, MSG *msgbuf, char **ptr, int *len, size_t *buflen)
+bool recv_from_server(context_t *ctx, MSG *msgbuf, char **ptr, int *len, size_t *buflen)
 {
 
 	static int maxsize = MAXSIZ;		/* default maxsize of send buff */
@@ -182,11 +384,9 @@ int recv_from_server(context_t *ctx, MSG *msgbuf, char **ptr, int *len, size_t *
 
 	char *sndbuf;
 
-	struct sembuf sop;			/* semaphore operation */
-
 	sndbuf = *ptr;
 	while (1) {
-		memset((char *)msgbuf, '\0', sizeof(msgbuf));
+		memset((char *)msgbuf, '\0', sizeof(MSG));
 		i = (int)msgrcv(ctx->msgid, msgbuf, (size_t)MAXSIZ, (long)ctx->mypid, 0);
 		if (dbgsw) {
 			fprintf(stderr, "msgrcv returns, size = %d\n", i);
@@ -199,7 +399,7 @@ int recv_from_server(context_t *ctx, MSG *msgbuf, char **ptr, int *len, size_t *
 			}
 			fprintf(stderr, "pid %d: msgrcv failed: ", ctx->mypid);
 			perror("");
-			return(0);
+			return(false);
 		}
 		break;
 	}
@@ -222,10 +422,9 @@ int recv_from_server(context_t *ctx, MSG *msgbuf, char **ptr, int *len, size_t *
 		j = i + *len;
 		if (j > maxsize || !sndbuf) {
 			if ((sndbuf = realloc(sndbuf, j)) == NULL) {
-				fprintf(stderr, "pid %d: failed realloc 2 - size = %d: ",
-								ctx->mypid, j);
+				fprintf(stderr, "pid %d: failed realloc 2 - size = %d: ", ctx->mypid, j);
 				perror("");
-				return(0);
+				return(false);
 			}
 			if (j > maxsize)
 				maxsize = j;
@@ -244,33 +443,21 @@ int recv_from_server(context_t *ctx, MSG *msgbuf, char **ptr, int *len, size_t *
 			fflush(stderr);
 		}
 		while(j) {
-			while (1) {
-				sop.sem_num = 0;
-				sop.sem_op = 0;
-				sop.sem_flg = 0;
-				if (semop(ctx->semid, &sop, 1) > -1)
-					break;
-				if (errno != EINTR) {
-					fprintf(stderr, "pid %d, semop error %d\n",
-							ctx->mypid, errno);
-					_exit(0);
-				}
-			}
+			if (!sem_wait_for_zero(ctx->semid, ctx->mypid))
+				return(false);
 			size = min(j, shmsiz);
 			memcpy(sndbuf+i, ctx->shptr, size);
 			i += size;
 			j -= size;
-			sop.sem_num = 0;
-			sop.sem_op = 2;
-			sop.sem_flg = 0;
-			semop(ctx->semid, &sop, 1);
+			if (!sem_release_slot(ctx->semid, ctx->mypid))
+				return(false);
 		}
 		if (dbgsw) {
 			fprintf(stderr, "done with shared mem\n");
 			fflush(stderr);
 		}
 	}
-	return(1);
+	return(true);
 }
 
 /*

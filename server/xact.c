@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "dbfunc.h"
 
@@ -43,8 +44,8 @@
 xact_t *xact_list = NULL;
 xact_t *xact_curr = NULL;
 
-extern int recv_from_server(context_t *, MSG *, char **, int *, size_t *);
-extern int send_to_server(context_t *, char *, char *, int, int);
+extern bool recv_from_server(context_t *, MSG *, char **, int *, size_t *);
+extern bool send_to_server(context_t *, char *, char *, int, int);
 
 int n_inserts;
 int64_t *inserts;

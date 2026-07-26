@@ -82,6 +82,5 @@ char *idx_name;                         /* the index name to save info from */
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker ft=c:
  */

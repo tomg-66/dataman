@@ -124,5 +124,5 @@ void key::operator=(const key& k) {
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim: set noet sw=4 sts=4 ts=4 fdm=marker ft=c:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

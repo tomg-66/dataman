@@ -108,5 +108,5 @@ void blob_ctl(char *root, char *f_name, int fmt, int64_t recno, int op)
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim: set noet sw=4 sts=4 ts=4 fdm=marker ft=c:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

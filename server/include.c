@@ -21,6 +21,10 @@
  *				locking model.
  *				tomg
  *
+ *				Mon Jul 27 08:17:24 PM MDT 2026
+ *				tomg
+ *				updated to use the V2 index copy on write model.
+ *
  ************************************************************* */
 
 /*
@@ -64,8 +68,8 @@
 #include <fcntl.h>
 #include <inttypes.h>
 
+#include "index_v2.h"
 #include "srv_index.h"					/* index description */
-#include "node.h"						/* description of last accesed node */
 #include "lock.h"
 #include "errors.h"
 #include "misc.h"
@@ -80,9 +84,6 @@ extern int dbgsw;
 extern INDEX *_indices;					/* the opened indices */
 
 extern void put_ll(char *, int64_t);
-extern int split_node(int64_t, NODE *, SPLIT *);
-extern int get_node(int64_t, NODE *, SPLIT *);
-extern int node_search(char *, int, int64_t, int, SPLIT *, NODE *);
 extern int get_datafile_desc(FILES *);
 
 int include(char *cmd, int c_off, char **ret)
@@ -92,22 +93,14 @@ int include(char *cmd, int c_off, char **ret)
 	int idxno;
 	int i;
 	int fileno;
-	int offs;
-
-	int64_t node;					/* the offset to read from */
 	int64_t rptr;					/* record pointer */
 
-	char buff[NODESIZE];			/* output buffer */
 	char ikey[64];					/* internal rep of key */
 	char *cptr;
 
 	INDEX *idx;						/* structure for the dest index */
 
-	NODE cur_node;					/* the last accesed node */
-
 	FILES *fptr;
-
-	SPLIT cur_index;
 /*
  * the incoming command has:
  *	source index number
@@ -162,7 +155,6 @@ int include(char *cmd, int c_off, char **ret)
  * if the header length for this file is zero, it hasn't been opened
  * before, and needs to be now.
  */
-	node = idx->_rootpos;
 /*
  * what to do here.... if we call get_datafile_desc that is easy, it
  * is already written, but it has to read the file a couple of times
@@ -214,56 +206,29 @@ int include(char *cmd, int c_off, char **ret)
  * instead of 0 thru n-1
  * PTR_SIZE bytes for the record pointer.
  */
-	i = min(strlen(cptr)-1, idx->_keylen);
+	i = (int)min(strlen(cptr)-1, (size_t)idx->_keylen);
 	memset(ikey, '\0', sizeof(ikey));
 	memcpy(ikey, cptr, i);
 	*(ikey+idx->_keylen) = fileno + 1;
 	put_ll(ikey+idx->_keylen+1, rptr);
 
-	cur_index._keylen = idx->_keylen;
-	cur_index._idxchan = idx->_idxchan;
-	cur_index._curleaf = cur_node._isleaf;		/* save the leaf info */
-	cur_index._curnode = node;					/* current node position */
-	cur_index._rootpos = idx->_rootpos;
-	cur_index._prntnode = cur_node._parent;		/* save parent node */
+	uint16_t disk_keylen, disk_file_count;
+	uint32_t root_crc;
+	uint64_t root, generation;
 
-	while (1) {
-		if ((i = get_node(node,&cur_node,&cur_index)) < 0)
-			goto done;
-		offs = node_search(ikey,0,0ll,cur_node._isleaf & LEAF,
-						&cur_index, &cur_node);
-		if (cur_node._isleaf & LEAF)
-			break;								/* found the right leaf */
-		node = cur_node._kids[offs];			/* go to proper kid */
+	if (!index_v2_insert(idx->_idxchan, ikey, fileno, rptr) ||
+			!index_v2_read_header(idx->_idxchan, &disk_keylen,
+				&disk_file_count, &root, &root_crc, &generation)) {
+		i = ENODWRT;
+		goto done;
 	}
-
-	if ((cur_node._isleaf & ~LEAF) == N_KEYS) {
-		if ((i = split_node(node, &cur_node, &cur_index)) < 0) {
-			goto done;
-		}
-		pthread_mutex_lock(&(idx->_mutex));
-		idx->_rootpos = cur_index._rootpos;
-		pthread_mutex_unlock(&(idx->_mutex));
-	} else {
-		*buff = ++cur_node._isleaf;
-		tmp = (idx->_keylen + MISC_LEN) * N_KEYS;		/* length of buff */
-		memcpy(buff+1,(char *)cur_node._keys,tmp);		/* put keys in */
-		llseek(idx->_idxchan,node,SEEK_SET);				/* move to cur node */
-		tmp++;
-		if (write(cur_index._idxchan,buff,tmp) < tmp) {
-			i = ENODWRT;
-			goto done;
-		}
-	}
-	tmp = sprintf(cmd, "0|%d|%"PRId64"|", offs, node);
-	memcpy(cmd+tmp, ikey, idx->_keylen+MISC_LEN);
-	i = tmp + idx->_keylen + MISC_LEN;
-	if (dbgsw) {
-		fprintf(stderr, "include final packet ->");
-		fwrite(cmd, 1, i, stderr);
-		fprintf(stderr, "<-, i = %d, keylen = %d, tmp = %d\n", i, idx->_keylen, tmp);
-		fflush(stderr);
-	}
+	pthread_mutex_lock(&(idx->_mutex));
+	idx->_rootpos = (int64_t)root;
+	idx->_generation = generation;
+	pthread_mutex_unlock(&(idx->_mutex));
+	tmp = sprintf(cmd, "0|0|");
+	memcpy(cmd+tmp, ikey, idx->_keylen + KEY_HEADER_LENGTH);
+	i = tmp + idx->_keylen + KEY_HEADER_LENGTH;
 
 done:
 	fl_lock(&idx->_lock, LOCK_UN);
@@ -275,6 +240,5 @@ done:
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

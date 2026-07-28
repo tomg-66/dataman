@@ -55,6 +55,7 @@ typedef struct idxbuf   {               /* main index information */
 	char			_idxname[64];		/* name of index */
 	int64_t			_curnode;			/* pointer to current node */
 	int64_t			_rptr;				/* pointer to current record */
+	int64_t			_generation;		/* index V2 generation validator */
 	unsigned char	_offs;				/* offset into node */
 	char           *_curkey;			/* pointer to current key */
 	FILES          *_files;				/* each of the files in the index */

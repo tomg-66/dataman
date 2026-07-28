@@ -58,6 +58,8 @@ void index::parse_get(int i, char *buff)
 //	master.setfmt(atoi(cptr));
 	master.fmt = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
+	this->_generation = strtoll(cptr, NULL, 0);
+	cptr = strchr(cptr, '|') + 1;
 	this->_curnode = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 	this->_offs = atoi(cptr);

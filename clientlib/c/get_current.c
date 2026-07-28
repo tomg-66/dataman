@@ -14,6 +14,11 @@
  * 				March 2002
  *				Tom Green
  *				modified to use call interface to server
+ *
+ *				Mon Jul 27 09:10:16 PM MDT 2026
+ *				tomg
+ *				added the V2 index generation flag
+ *
  ************************************************************* */
 
 /*
@@ -95,9 +100,8 @@ int db_g_curr(char *index_name)
     if (idx->_curkey == 0)
         db_err(ENOGET, "%s: Can't get_current", _progname);
 
-	sprintf(msg, "%d|%d|%"PRId64"|%d|", GET_CURRENT, idx->_idxno,
-					idx->_curnode, idx->_offs);
-	i = strlen(msg);
+	i = sprintf(msg, "%d|%d|%"PRId64"|%"PRId64"|%d|", GET_CURRENT, idx->_idxno,
+					idx->_generation, idx->_curnode, idx->_offs);
 	memcpy(msg+i, idx->_curkey, idx->_keylen+KEY_HEADER_LENGTH);
 	i += idx->_keylen+KEY_HEADER_LENGTH;
 	ret = db_send(msg, i, __FILE__);
@@ -114,6 +118,8 @@ int db_g_curr(char *index_name)
  */
 	cptr = strchr(ret, '|') + 1;
 	m_fmt = atoi(cptr);
+	cptr = strchr(cptr, '|') + 1;
+	idx->_generation = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 	idx->_curnode = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;

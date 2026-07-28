@@ -20,6 +20,11 @@
  *				modified how fl_lock is used for the new file
  *				locking model.
  *				tomg
+ *
+ *				Mon Jul 27 08:48:40 PM MDT 2026
+ *				modified to use the new V2 indexing scheme.
+ *				this is for dataman 4.0.0
+ *
  ************************************************************* */
 /*
  * this restores the index state to the last accessed key
@@ -51,10 +56,9 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdlib.h>
-#include <arpa/inet.h>		/* byteorder functions */
 
+#include "index_v2.h"
 #include "srv_index.h"
-#include "node.h"
 #include "lock.h"
 #include "errors.h"
 #include "misc.h"
@@ -69,119 +73,81 @@ extern int idx_cnt;
 extern INDEX *_indices;
 
 extern void rm_key(int, int, char *);
-extern int read_node(int64_t,NODE *,int);
-extern int upd_idx(INDEX *,NODE*,int,int64_t, int64_t, char *, char **);
-extern char *substr(char *,int,int);
+extern void put_ll(void *, int64_t);
+extern int64_t get_ll(void *);
+extern int upd_idx(INDEX *, const unsigned char *, uint16_t, uint64_t,
+		const INDEX_V2_CURSOR *, char *, char **);
 
 int get_current(char *cmd, int c_off, char **ret)
 
 {
-	int i,j;							/* misc usage */
-	int cnt;							/* loop counter */
-	int keylength;						/* misc usage */
+	int i;								/* misc usage */
 	int idxno;
-	int diff;
-	int size;
 
-	uint16_t compare16;
-	uint32_t compare32;
-	int64_t node;						/* the node to search for */
+	uint16_t file_id = 0;
+	uint64_t record_offset = 0;
 
-	char bsw,sw;						/* boolean values */
-	char *tkey;							/* temporary key */
+	char *cptr;							/* temporary key */
 	char *rptr;
+	unsigned char matched_key[MAX_KEY_SIZE];
+	char system_key[KEY_BUFFER_SIZE];
 
 	INDEX *idx;							/* index to be operated */
-	NODE cur_node;
 
 	rptr = NULL;
 	*ret = NULL;
 
+	INDEX_V2_CURSOR cursor;
+
 	idxno = atoi(cmd+c_off);					/* get the global index */
 	if (idxno < 0 || idxno >= idx_cnt)
 		return(EINVMSG);
-	if ((idx = _indices + idxno) == NULL)
+	if (_indices == NULL)
 		return(ENOINDEX);
+	idx = _indices + idxno;
 	if (!idx->_refcnt)
 		return(EIDXNOO);
 
-	if ((tkey = strchr(cmd+c_off, '|') + 1) == (char *)1)
-		return(EIDXNOO);
-	node = strtoll(tkey, NULL, 0);
-	if ((tkey = strchr(tkey, '|') + 1) == (char *)1)
-		return(EIDXNOO);
-	j = atoi(tkey);
-	if ((tkey = strchr(tkey, '|') + 1) == (char *)1)
-		return(EIDXNOO);
-	keylength = idx->_keylen + MISC_LEN;		/* internal length of the key */
-	bsw = 0;							/* default to not found */
-	sw = 0;								/* on prelim pass */
-
-	if (idx->_keylen < 4)
-		compare16 = htons(*(uint16_t *)tkey);
-	else
-		compare32 = htonl(*(uint32_t *)tkey);
+	if ((cptr = strchr(cmd+c_off, '|') + 1) == (char *)1)
+		return(EINVMSG);
+	cursor.generation = strtoll(cptr, NULL, 0);
+	if ((cptr = strchr(cptr, '|') + 1) == (char *)1)
+		return(EINVMSG);
+	cursor.node_offset = strtoll(cptr, NULL, 0);
+	if ((cptr = strchr(cptr, '|') + 1) == (char *)1)
+		return(EINVMSG);
+	cursor.entry_index = atoi(cptr);
+	if ((cptr = strchr(cptr, '|') + 1) == (char *)1)
+		return(EINVMSG);
 
 	fl_lock(&idx->_lock, LOCK_SH);
 
-	while (1) {
-		if ((i = read_node(node,&cur_node,idxno)) < 0)
-			goto done;
-		for(cnt = j;cnt <= N_KEYS;cnt++) {
-			i = cnt * keylength;						/* offset to first of key */
-			if (*(cur_node._keys+i) == '\0')	/* get the key */
-				break;
-			switch (idx->_keylen) {
-				case 1:
-					diff = *tkey - *(cur_node._keys+i);
-					size = sizeof(char);
-					break;
-				case 2:
-					diff = compare16 - htons(*(uint16_t *)(cur_node._keys+i));
-					size = sizeof(uint16_t);
-					break;
-				case 3:
-					diff = compare16 - htons(*(uint16_t *)(cur_node._keys+i));
-					if (!diff)
-						diff = *(tkey+sizeof(uint16_t)) - *(cur_node._keys+i+sizeof(uint16_t));
-					size = sizeof(uint16_t)+sizeof(char);
-					break;
-				default:
-					diff = compare32 - htonl(*(uint32_t *)(cur_node._keys+i));
-					size = sizeof(uint32_t);
-					break;
-			}
-
-			if (!diff)
-				diff = memcmp(tkey+size, cur_node._keys+i+size, keylength-size);
-			if (diff <= 0) {
-				if (diff == 0)
-					bsw = TRUE;				/* matched key */
-				break;							/* quit the loop */
-			}
-		}
-        if (bsw)								/* found? */
-			break;								/* break outer loop */
-		if (!sw) {
-			sw = 1;								/* have made prelim pass */
-			node = idx->_rootpos;				/* search from the root */
-			j = 0;								/* start from beg of node */
-			continue;							/* start the loop */
-		}
-		if (cur_node._isleaf & LEAF) {			/* at a leaf? */
-			i = FALSE;
-			goto done;
-		}
-		node = cur_node._kids[cnt];             /* next kid to search */
-    }
-	if (!(i = upd_idx(idx,&cur_node,cnt,node, 0, cmd, &rptr))) {
-        tkey = substr(cur_node._keys,cnt*keylength,(cnt+1)*keylength-1); /* get key to remove */
+	if ((unsigned char)cptr[idx->_keylen] == 0) {
 		fl_lock(&idx->_lock, LOCK_UN);
-		rm_key(idxno, NOXACT, tkey);					/* remove it */
-		fl_lock(&idx->_lock, LOCK_SH);
-        free(tkey);								/* free temp key */
+		return(EINVMSG);
 	}
-done:
+	file_id = (uint16_t)(unsigned char)cptr[idx->_keylen] - 1;
+	if (file_id >= (uint16_t)idx->_f_cnt) {
+		fl_lock(&idx->_lock, LOCK_UN);
+		return(EINVMSG);
+	}
+	record_offset = (uint64_t)get_ll(cptr + idx->_keylen + 1);
+
+	if (!index_v2_find(idx->_idxchan, cptr, true, &file_id, &record_offset, matched_key, &cursor)) {
+		fl_lock(&idx->_lock, LOCK_UN);
+		return(0);
+	}
+
+	i = upd_idx(idx, matched_key, file_id, record_offset, &cursor, cmd, &rptr);
+	if (i == 0) {
+		memcpy(system_key, matched_key, idx->_keylen);
+		system_key[idx->_keylen] = (char)(file_id + 1);
+		put_ll(system_key + idx->_keylen + 1, (int64_t)record_offset);
+		fl_lock(&idx->_lock, LOCK_UN);
+		rm_key(idxno, NOXACT, system_key);
+		fl_lock(&idx->_lock, LOCK_SH);
+	}
+
 	fl_lock(&idx->_lock, LOCK_UN);
 	*ret = rptr;
 	return(i);									/* evrything worked */

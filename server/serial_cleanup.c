@@ -10,6 +10,13 @@
  * 
  * FILES:
  *
+ * MODIFICATION HISTORY:
+ *
+ *				Mon Jul 27 08:36:13 PM MDT 2026
+ *				tomg
+ *				added to the message a flag so that we can abort
+ *				a makidx more sanely
+ *
  ************************************************************* */
 /*
  * take some of the functions that we could out of serial_service
@@ -135,7 +142,7 @@ void do_iclose(char *cmd, int msgid)
 			fflush(stderr);
 		}
 		msg.type = MSG_SRV;
-		sprintf(msg.txt, "%d|%d|%d|", mypid, ICLOSE, ixlist->_ixno);
+		sprintf(msg.txt, "%d|%d|%d|1|", mypid, ICLOSE, ixlist->_ixno);
 		msgsnd(msgid, (void *)&msg, strlen(msg.txt), 0);
 		msgrcv(msgid, &msg, MAXSIZ, (long)mypid, 0);
 		tptr = ixlist->_next;

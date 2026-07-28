@@ -77,8 +77,8 @@ int index::get_prior()
 	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
 		comm.db_err(0, "%s: memory corruption detected in get_prior", _progname);
 
-	sprintf(msg, "%d|%d|%" PRId64 "|%d|", GET_PRIOR, this->_idxno,
-					this->_curnode, this->_offs);
+	sprintf(msg, "%d|%d|%" PRId64 "|%" PRId64 "|%d|", GET_PRIOR,
+					this->_idxno, this->_generation, this->_curnode, this->_offs);
 	i = strlen(msg);
 	::memcpy(msg+i, this->_curkey.get_data(), this->_keylen+KEY_HEADER_LENGTH);
 	i += this->_keylen+KEY_HEADER_LENGTH;

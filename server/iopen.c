@@ -28,6 +28,14 @@
  *				modified to use 64 bit offsets described in mis
  *				tomg
  *
+ *				Sun Jul 26 10:43:23 AM MDT 2026
+ *				tomg
+ *				changed to use the new V2 copy-on-write index access
+ *				this now has a check to make sure you can't open an
+ *				index that is in the process of being built with
+ *				mkidx/sort.
+ *				this is for dataman 4.0.0
+ *
  ************************************************************* */
 /*
  * this opens and initializes an index for use.  first off,
@@ -73,6 +81,7 @@
 #include "srv_index.h"
 #include "errors.h"
 #include "misc.h"
+#include "index_v2.h"
 
 INDEX *_indices;				/* the currently opened indices */
 
@@ -213,44 +222,54 @@ retry:
 
 	_indices[idx]._idxchan = chan;
 	_indices[idx]._idxname = strdup(stuff);
+	{
+		uint16_t v2_keylen, v2_file_count;
+		uint32_t v2_root_crc;
+		uint64_t v2_root, v2_generation;
+		char **v2_names;
 
-	if (read(chan, stuff, INDEX_FILE_OFFSET) != INDEX_FILE_OFFSET)
-		goto err;
-
-	_indices[idx]._keylen = get_short(stuff);					/* capture the keylength */
-	_indices[idx]._f_cnt = get_short(stuff+sizeof(short)) + 1;	/* capture # of files */
-	_indices[idx]._rootpos = get_ll(stuff+INDEX_HEADER_LENGTH);			/* capture the root offset */
-	_indices[idx]._refcnt = 1;					/* there is one reference! */
-	_indices[idx]._files = calloc(_indices[idx]._f_cnt,
-					sizeof(FILES *));
-	_indices[idx]._rootdir = strdup(root);
-	_indices[idx]._lock.value = 0;
-	pthread_cond_init(&_indices[idx]._lock.cond, NULL);
-	pthread_mutex_init(&_indices[idx]._lock.mutex, NULL);
-
-/*
- * assume the file names will be long... up to 64 bytes.  should we think longer?
- * and remember this is the 'basename' not the full path name.
- * at any rate, if we assume that, we can get enough space for all we need
- * the file names will have a name that is null terminated in the index.  so the
- * 'minimum' length of a file name stored there is 2.
- */
-	if ((f_buff = malloc(_indices[idx]._f_cnt*64)) == NULL)
-		goto err;
-	if (read(chan,f_buff,_indices[idx]._f_cnt*64) < _indices[idx]._f_cnt*2)
-		goto err;
-
-	ptr = f_buff;
-	size = 0;
-	memset(stuff, '\0', sizeof(stuff));
-	strcpy(stuff,root);
-	strcat(stuff, "/files/");
-	cptr = stuff+strlen(stuff);
-	for (loop = 0; loop < _indices[idx]._f_cnt; loop++) {
-		strcpy(cptr,ptr);
-		size += strlen(ptr)+1;
-		_indices[idx]._files[loop] = get_file(stuff);
-		ptr += strlen(ptr) + 1;
+		if (!index_v2_read_header(chan, &v2_keylen, &v2_file_count,
+					&v2_root, &v2_root_crc, &v2_generation)) {
+			fprintf(stderr, "Cannot open legacy or invalid index %s; rebuild it with dbclean -i\n",
+				_indices[idx]._idxname);
+			goto err;
+		}
+		{
+			if (!index_v2_read_file_names(chan, v2_file_count, &v2_names))
+				goto err;
+			_indices[idx]._keylen = v2_keylen;
+			_indices[idx]._f_cnt = v2_file_count;
+			_indices[idx]._rootpos = (int64_t)v2_root;
+			_indices[idx]._generation = v2_generation;
+			_indices[idx]._refcnt = 1;
+			_indices[idx]._files = calloc(v2_file_count, sizeof(FILES *));
+			_indices[idx]._rootdir = strdup(root);
+			_indices[idx]._lock.value = 0;
+			pthread_cond_init(&_indices[idx]._lock.cond, NULL);
+			pthread_mutex_init(&_indices[idx]._lock.mutex, NULL);
+			size = 0;
+			for (loop = 0; loop < v2_file_count; loop++)
+				size += strlen(v2_names[loop]) + 1;
+			if ((f_buff = malloc(size)) == NULL) {
+				for (loop = 0; loop < v2_file_count; loop++)
+					free(v2_names[loop]);
+				free(v2_names);
+				goto err;
+			}
+			ptr = f_buff;
+			memset(stuff, '\0', sizeof(stuff));
+			strcpy(stuff, root);
+			strcat(stuff, "/files/");
+			cptr = stuff + strlen(stuff);
+			for (loop = 0; loop < v2_file_count; loop++) {
+				strcpy(ptr, v2_names[loop]);
+				strcpy(cptr, v2_names[loop]);
+				_indices[idx]._files[loop] = get_file(stuff);
+				ptr += strlen(ptr) + 1;
+				free(v2_names[loop]);
+			}
+			free(v2_names);
+		}
 	}
 	pthread_mutex_unlock(&(_indices[idx]._mutex));
 
@@ -276,6 +295,5 @@ err:
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

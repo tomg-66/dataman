@@ -23,6 +23,13 @@
  *				how files are opened and referred to.  this makes
  *				for more efficient usage of resources.
  *				tomg
+ *
+ *				Mon Jul 27 08:21:37 PM MDT 2026
+ *				tomg
+ *				update to use the V2 index model.  This also sets
+ *				a flag to make sure no file edit routine can call
+ *				iopen on and index that is being built
+ *
  ************************************************************* */
 
 /*
@@ -32,32 +39,9 @@
    first record of the work file.  the routine 'sort' is used to place keys
    into the index in a sort prog, the routine 'include' puts keys into
    the index in file edit routines.  the number of keys and kids in the
-   index is defined in the node.h header file.
+   index is defined in the index_v2.h header file.
 
-   the layout of the index header is:
-        bytes 1-2       maximum key length
-        bytes 3-4       number of constituant files
-        bytes 5-12      pointer to root node
-        bytes 13 -??    file names
-
-   the layout of a leaf node is:
-        1 byte                  bit 0:    set
-                                bits 1-7: number of keys currently in node
-        N_KEYS keys; layout is:
-                _keylen bytes   the "sorted" key
-                one     bytes   the file number
-                eight   bytes   pointer to the record
-        PTR_SIZE bytes                 position of parent node
-
-   the layout of a branch node is:
-        1 byte                  bit 0:    unset
-                                bits 1-7: number of keys currently in node
-        N_KEYS keys		same layout as above
-        N_KIDS*PTR_SIZE	bytes
-				pointers to child nodes (N_KIDS per node)
-        PTR_SIZE bytes	position of parent node
-
-   the root node has a parent position of 0
+   the index header description is to be found in index_v2.h
 
    we are -not- worried about concurrency so much in here, because
    we are creating a new index.  if anyone is running an app that
@@ -97,9 +81,9 @@
 #include <pthread.h>
 
 #include "srv_index.h"			/* index description */
-#include "node.h"				/* node description */
 #include "errors.h"
 #include "misc.h"
+#include "index_v2.h"
 
 #define LEAF	0200			/* bit mask for the leaf node */
 #define PMODE   0666			/* default file creation mode */
@@ -146,6 +130,8 @@ int mkidx(char *cmd, int c_off, char **ret)
 	int64_t rootpos;
 	int64_t w_cur;			/* current work record */
 	int64_t w_next;			/* next work record */
+	uint64_t generation;
+	uint64_t v2_root;
 
 	char string[256];			/* misc string */
 	char ixname[512];			/* pathname to index */
@@ -286,38 +272,13 @@ retry:
 	}
 	strcpy(ixname, string);			/* save the built name */
 
-    buff = (char *)calloc(1,NODESIZE);			/* allocate the buffer */
-
-    put_short(buff,keylen);						/* put keylen in output */
-    put_short(buff+sizeof(short),maxfil-1);		/* and also # of files */
-
-    rootpos = INDEX_FILE_OFFSET + tmp;			/* calculate pointer to root */
-    put_ll(buff+INDEX_HEADER_LENGTH, rootpos);	/* and put into output */
-
-    if (write(ixchan,buff,INDEX_FILE_OFFSET) < INDEX_FILE_OFFSET) {
+	if (!index_v2_build_begin(ixchan, keylen, maxfil,
+			(const char *const *)fnames, &v2_root)) {
 		i = EHDRWRT;
 		goto err;
 	}
-	if (dbgsw) {
-		fprintf(stderr, "writing %d files to the index\n", maxfil);
-		fflush(stderr);
-	}
-    for (i = 0;i < maxfil;i++) {
-        if (write(ixchan, fnames[i], strlen(fnames[i])+1) < strlen(fnames[i])+1) {
-			i = EFILWRT;
-			goto err;
-		}
-    }
-
-    i = N_KEYS * (keylen+MISC_LEN) + MISC_LEN;	/* size of a node */
-    memset(buff, '\0', i);						/* make buffer a null node */
-    *buff |= LEAF;								/* tag this as a leaf */
-
-    if (write(ixchan,buff, i)  < i) {			/* write node */
-		i = ENODWRT;
-		goto err;
-	}
-    free(buff);									/* free up the buffer */
+	generation = 0;
+	rootpos = (int64_t)v2_root;
 /*
  * now the index file is created and has a null node residing therein.  Now,
  * the first file designated must be opened and the contents of the first
@@ -409,6 +370,7 @@ retry:
 	tptr->_idxname = strdup(ixname);
 	tptr->_rootdir = strdup(root);
 	tptr->_rootpos = rootpos;
+	tptr->_generation = generation;
 /*
  * put together the return buffer:
  */
@@ -444,6 +406,5 @@ err:
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

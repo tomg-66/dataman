@@ -20,9 +20,14 @@
  *				modified how fl_lock is used for the new file
  *				locking model.
  *				tomg
+ *
+ *				Mon Jul 27 08:31:04 PM MDT 2026
+ *				tomg
+ *				modified to use the new V2 indexing system.
+ *				this is for dataman 4.0.0
+ *
  ************************************************************* */
-
-/*
+/* Server-facing key lookup and removal for v2 indexes.
  * this routine removes from the named index the named key
  */
 /*
@@ -43,264 +48,104 @@
  *
  * The GNU General Public License is contained in the file COPYING.
  */
-
-#include <string.h>
-#include <malloc.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <stdint.h>
-#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "node.h"
 #include "srv_index.h"
 #include "lock.h"
 #include "errors.h"
+#include "index_v2.h"
 #include "misc.h"
 
-#define TRUE	1
-#define FALSE	0
-
-extern void put_ll(char *,int64_t);
-extern int read_node(int64_t, NODE *, int);
-extern int collapse_node(int64_t, NODE *, SPLIT *);
-
 extern int idx_cnt;
-
 extern INDEX *_indices;
+extern int64_t get_ll(void *);
+extern void put_ll(void *, int64_t);
 
-static int shift_node(int num, int64_t node, NODE *cur_node, INDEX *idx)
-
-{
-
-	int tmp;							/* offset into buff */
-	short len;							/* key length */
-	char buff[NODESIZE];
-
-	len = idx->_keylen + MISC_LEN;		/* save it here */
-	memset(buff,'\0',NODESIZE);			/* blank out the buffer */
-	tmp = num * len;
-	*buff = --cur_node->_isleaf;
-	memcpy(buff+1,cur_node->_keys,tmp);
-	memcpy(buff+1+tmp,cur_node->_keys+tmp+len,(N_KEYS-1)*len-tmp);
-	tmp = N_KEYS * len + 1;
-	llseek(idx->_idxchan, node, SEEK_SET);
-	if (write(idx->_idxchan,buff,tmp) != tmp)
-		return(ENODWRT);
-	return(1);
-}
-
+/*
+ * this removes the key from the index.  it will be called when the record
+ * that the key points at has been deleted from the datafile, or explicitly
+ * from remove
+ */
 int rm_key(int idxno, int xsw, char *key)
-
 {
+	INDEX *index;
+	uint16_t file_id = 0, keylen, file_count;
+	uint64_t record_offset = 0, root, generation;
+	uint32_t root_crc;
+	bool exact;
+	int result = 0;
 
-	int cnt,offs;					/* loop counter */
-	int i;							/* misc usage */
-	int len;						/* internal length of key */
-	int cmp_len;					/* the length to use in the compare */
-	int _rem;
-	int diff;
-	int size;
-
-	int64_t node;					/* another temporary node reg */
-	int64_t temp;					/* temporary node to read */
-	int64_t tnode;					/* another temporary node reg */
-
-	uint16_t compare16_value;
-	uint32_t compare32_value;
-
-	short kcount;					/* the count of keys in the node */
-
-	char bsw;						/* boolean variable */
-	char tkey[64];					/* temporary key pointer */
-	char buff[NODESIZE];			/* output buffer */
-
-	NODE cur_node;					/* the node information */
-	NODE tmp_node;					/* temporary node information */
-	INDEX *idx;
-	SPLIT cur_index;
-
-	idx = _indices+idxno;
-	if (idx == NULL)
+	if (idxno < 0 || idxno >= idx_cnt)
 		return(ENOINDEX);
-	if (!idx->_refcnt)
+	index = _indices + idxno;
+	if (!index->_refcnt)
 		return(EIDXNOO);
-	fl_lock(&idx->_lock, LOCK_EX);
-	pthread_mutex_lock(&(idx->_mutex));
-	node = idx->_rootpos;				/* search from root node */
-	pthread_mutex_unlock(&(idx->_mutex));
 
-	_rem = 0;
-	if (*(key+idx->_keylen)) {
-		cmp_len = idx->_keylen + MISC_LEN;
-		_rem = 1;					/* make it true */
-	} else
-		cmp_len = idx->_keylen;
-
-	if (idx->_keylen < 4)
-		compare16_value = htons(*(uint16_t *)key);
-	else
-		compare32_value = htonl(*(uint32_t *)key);
-
-	len = idx->_keylen + MISC_LEN;
-	bsw = 0;
-
-	while (1) {
-		if ((i = read_node(node,&cur_node,idxno)) < 0)
-			goto done;
-		for (cnt = 0;cnt <= N_KEYS-1;cnt++) {
-			i = cnt * len;                      /* beg pos of key */
-			if (*(cur_node._keys+i) == '\0')    /* get the key */
-				break;                          /* end of this node */
-			switch (idx->_keylen) {
-				case 1:
-					diff = *key - *(cur_node._keys+i);
-					size = sizeof(char);
-					break;
-				case 2:
-					diff = compare16_value - htons(*(int16_t *)(cur_node._keys+i));
-					size = sizeof(int16_t);
-					break;
-				case 3:
-					diff = compare16_value - htons(*(int16_t *)(cur_node._keys+i));
-					if (!diff)
-						diff = *(key+sizeof(int16_t))-*(cur_node._keys+i+sizeof(int16_t));
-					size = sizeof(int16_t) + sizeof(char);
-					break;
-				default:
-					diff = compare32_value - htonl(*(int32_t *)(cur_node._keys+i));
-					size = sizeof(int32_t);
-					break;
-			}
-
-			if (!diff)
-				diff = memcmp(key+size, cur_node._keys+i+size, cmp_len - size);
-			if (diff <= 0) {
-				if (diff == 0) {
-					bsw = 1;                   /* found it */
-					tnode = node;
-					offs = cnt;
-				}
-				break;                          /* quit this loop */
-			} 
-		}
-		if (bsw && _rem)
-			break;
-		if (cur_node._isleaf & LEAF)
-			break;                      /* we're at a leaf */
-		node = cur_node._kids[cnt];     /* pointer to next node to read */
+	exact = key[index->_keylen] != 0;
+	if (exact) {
+		file_id = (unsigned char)key[index->_keylen] - 1;
+		record_offset = (uint64_t)get_ll(key + index->_keylen + 1);
 	}
 
-	if (!bsw) {
-		i = FALSE;
-		goto done;						/* didn't find anything */
-	}
+	fl_lock(&index->_lock, LOCK_EX);
 
-	if (tnode != node) {
-		if ((i = read_node(tnode,&cur_node,idxno)) < 0)
-			goto done;
-		cnt = offs;                             /* the offset */
-		node = tnode;                           /* save the node number */
-	}
+	if (!index_v2_find(index->_idxchan, key, exact, &file_id,
+			&record_offset, key, NULL))
+		goto done;
+
+	memset(key + index->_keylen, 0, KEY_HEADER_LENGTH);
+	key[index->_keylen] = (char)(file_id + 1);
+	put_ll(key + index->_keylen + 1, (int64_t)record_offset);
 	if (xsw) {
-		memcpy(key, cur_node._keys+cnt*len, len);
-		i = len;
+		result = index->_keylen + KEY_HEADER_LENGTH;
 		goto done;
 	}
 
-	memset(tkey, '\0', sizeof(tkey));
-	memcpy(tkey, cur_node._keys+cnt*len, len);
-
-	if (cur_node._isleaf & LEAF) {
-		if ((i = shift_node(cnt, node, &cur_node, idx)) < 0)
-			goto done;
-	} else {
-		temp = cur_node._kids[cnt+1];           /* the kid node to read */
-		while (1) {
-			if ((i = read_node(temp,&tmp_node,idxno)) < 0)
-				goto done;
-			if (tmp_node._isleaf & LEAF)
-				break;                          /* found the leaf */
-			temp = tmp_node._kids[0];           /* get the lowest level kid */
-		}
-		memset(buff,'\0',sizeof(buff));
-		memset(tkey, '\0', sizeof(tkey));
-		memcpy(tkey, tmp_node._keys, len);
-
-		memcpy(cur_node._keys+cnt*len, tkey, len);
-		*buff = cur_node._isleaf;
-		i = N_KEYS * len;
-		memcpy(buff+1,cur_node._keys,i);
-		i++;
-		memcpy(buff+i, (char *)cur_node._kids, N_KIDS*PTR_LENGTH);
-		for(cnt = 0;cnt < N_KIDS;cnt++)
-			put_ll(buff+i+cnt*PTR_LENGTH, *(cur_node._kids+cnt));
-		i += N_KIDS * PTR_LENGTH;
-
-		llseek(idx->_idxchan, node, SEEK_SET);
-		if (write(idx->_idxchan, buff, i) != i) {
-			i = (ENODWRT);
-			goto done;
-		}
-		cur_node = tmp_node;
-		node = temp;
-		if ((i = shift_node(0, node, &cur_node, idx)) < 0)
-			goto done;
+	if (!index_v2_remove(index->_idxchan, key, file_id, record_offset) ||
+			!index_v2_read_header(index->_idxchan, &keylen, &file_count,
+				&root, &root_crc, &generation)) {
+		result = ENODWRT;
+		goto done;
 	}
-	kcount = cur_node._isleaf & ~LEAF;
-	if (!kcount) {
-		cur_index._keylen = idx->_keylen;
-		cur_index._idxchan = idx->_idxchan;
-		cur_index._curnode = node;
-		cur_index._prntnode = cur_node._parent;
-		cur_index._rootpos = idx->_rootpos;
-		cur_index._curleaf = cur_node._isleaf;
-		cur_index._idxno = idxno;
-		if ((i = collapse_node(node, &cur_node, &cur_index)) < 0)	/* do the collapse */
-			goto done;
-	}
-	i = TRUE;
+
+	pthread_mutex_lock(&index->_mutex);
+	index->_rootpos = (int64_t)root;
+	index->_generation = generation;
+	pthread_mutex_unlock(&index->_mutex);
+	result = 1;
+
 done:
-	fl_lock(&idx->_lock, LOCK_UN);
-	return(i);
+	fl_lock(&index->_lock, LOCK_UN);
+	return(result);
 }
 
 int dbremove(char *cmd, int c_off, char **ret)
 {
-	int i;
-	int ix;
-	int xsw;
-
 	char *cptr;
+	int result, idxno, xsw;
 
 	*ret = NULL;
-	ix = atoi(cmd+c_off);
-	if (ix < 0 || ix >= idx_cnt)
+	idxno = atoi(cmd + c_off);
+	if (idxno < 0 || idxno >= idx_cnt)
 		return(ENOINDEX);
-	if ((cptr = strchr(cmd+c_off, '|') + 1) == (char *)1)
+	if ((cptr = strchr(cmd + c_off, '|')) == NULL)
 		return(EINVMSG);
-	xsw = atoi(cptr);
-	if ((cptr = strchr(cptr, '|') + 1) == (char *)1)
+	xsw = atoi(++cptr);
+	if ((cptr = strchr(cptr, '|')) == NULL)
 		return(EINVMSG);
-
-
-	i = rm_key(ix, xsw, cptr);
-	if (i > 0) {
-		i = sprintf(cmd, "0|%d|", i);
+	cptr++;
+	result = rm_key(idxno, xsw, cptr);
+	if (result > 0) {
+		result = sprintf(cmd, "0|%d|", result);
 		if (xsw) {
-			memcpy(cmd+i, cptr, _indices[ix]._keylen+MISC_LEN);
-			i += _indices[ix]._keylen+MISC_LEN;
+			memcpy(cmd + result, cptr, _indices[idxno]._keylen + KEY_HEADER_LENGTH);
+			result += _indices[idxno]._keylen + KEY_HEADER_LENGTH;
 		}
 	}
-	return(i);
+	return(result);
 }
 
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
- */
+/* vim: set noet sw=4 sts=4 ts=4 fdm=marker: */

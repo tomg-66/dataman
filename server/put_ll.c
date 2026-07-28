@@ -11,13 +11,15 @@
 #include "misc.h"
 #endif
 #include <stdint.h>
+#include <string.h>
 
 extern int64_t get_ll(void *);
 
 void put_ll(void *ptr, int64_t value)
 {
 
-	*(int64_t *)ptr = get_ll(&value);
+	value = get_ll(&value);
+	memcpy(ptr, &value, sizeof(value));
 /*
 	long long tmp;
 	tmp = *(long long *)ptr;
@@ -46,6 +48,5 @@ void put_ll(void *ptr, int64_t value)
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

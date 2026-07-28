@@ -65,23 +65,23 @@ am_dataman_con_OBJECTS = serial.$(OBJEXT) serial_service.$(OBJEXT) \
 dataman_con_OBJECTS = $(am_dataman_con_OBJECTS)
 dataman_con_LDADD = $(LDADD)
 am_dataman_srv_OBJECTS = dbserve.$(OBJEXT) back.$(OBJEXT) \
-	clear.$(OBJEXT) collapse_node.$(OBJEXT) delete.$(OBJEXT) \
+	clear.$(OBJEXT) delete.$(OBJEXT) \
 	dispatch.$(OBJEXT) err_sys.$(OBJEXT) flush.$(OBJEXT) \
 	forward.$(OBJEXT) get.$(OBJEXT) get_current.$(OBJEXT) \
 	get_first.$(OBJEXT) get_last.$(OBJEXT) get_long.$(OBJEXT) \
-	get_next.$(OBJEXT) get_node.$(OBJEXT) get_prior.$(OBJEXT) \
+	get_next.$(OBJEXT) get_prior.$(OBJEXT) \
 	get_short.$(OBJEXT) iclose.$(OBJEXT) include.$(OBJEXT) \
 	insert.$(OBJEXT) iopen.$(OBJEXT) lock.$(OBJEXT) \
-	node_search.$(OBJEXT) pend.$(OBJEXT) protect.$(OBJEXT) \
+	pend.$(OBJEXT) protect.$(OBJEXT) \
 	put_long.$(OBJEXT) get_file.$(OBJEXT) put_short.$(OBJEXT) \
-	read_node.$(OBJEXT) remove.$(OBJEXT) split_node.$(OBJEXT) \
+	remove.$(OBJEXT) \
 	substr.$(OBJEXT) upd_idx.$(OBJEXT) verify_pid.$(OBJEXT) \
-	match.$(OBJEXT) get_desc.$(OBJEXT) init_dataman.$(OBJEXT) \
+	get_desc.$(OBJEXT) init_dataman.$(OBJEXT) \
 	release.$(OBJEXT) mkidx.$(OBJEXT) sort.$(OBJEXT) \
 	restore.$(OBJEXT) get_datafile_desc.$(OBJEXT) \
 	version.$(OBJEXT) get_blobs.$(OBJEXT) put_blobs.$(OBJEXT) \
 	get_ll.$(OBJEXT) put_ll.$(OBJEXT) get_rec.$(OBJEXT) \
-	blob_ctl.$(OBJEXT) undelete.$(OBJEXT)
+	blob_ctl.$(OBJEXT) undelete.$(OBJEXT) index_v2.$(OBJEXT)
 dataman_srv_OBJECTS = $(am_dataman_srv_OBJECTS)
 dataman_srv_DEPENDENCIES =
 am_dbclean_OBJECTS = clean.$(OBJEXT) check_it.$(OBJEXT) \
@@ -99,8 +99,7 @@ dfedit_DEPENDENCIES =
 dfedit_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(dfedit_LDFLAGS) \
 	$(LDFLAGS) -o $@
-am_dnodes_OBJECTS = dnodes.$(OBJEXT) substr.$(OBJEXT) \
-	get_short.$(OBJEXT) get_long.$(OBJEXT) get_ll.$(OBJEXT)
+am_dnodes_OBJECTS = dnodes.$(OBJEXT) index_v2.$(OBJEXT)
 dnodes_OBJECTS = $(am_dnodes_OBJECTS)
 dnodes_LDADD = $(LDADD)
 am_dumpdf_OBJECTS = dumpdf.$(OBJEXT) get_datafile_desc.$(OBJEXT) \
@@ -109,7 +108,8 @@ am_dumpdf_OBJECTS = dumpdf.$(OBJEXT) get_datafile_desc.$(OBJEXT) \
 dumpdf_OBJECTS = $(am_dumpdf_OBJECTS)
 dumpdf_LDADD = $(LDADD)
 am_dumpix_OBJECTS = dumpix.$(OBJEXT) substr.$(OBJEXT) \
-	get_short.$(OBJEXT) get_long.$(OBJEXT) get_ll.$(OBJEXT)
+	get_short.$(OBJEXT) get_long.$(OBJEXT) get_ll.$(OBJEXT) \
+	index_v2.$(OBJEXT)
 dumpix_OBJECTS = $(am_dumpix_OBJECTS)
 dumpix_LDADD = $(LDADD)
 am_mkdf_OBJECTS = mkdf.$(OBJEXT) substr.$(OBJEXT) put_short.$(OBJEXT) \
@@ -283,13 +283,13 @@ dataman_con_SOURCES = serial.c serial_service.c serial_setup.c \
 	serial_cleanup.c server_comm.c err_sys.c put_long.c verify_pid.c \
 	term_dbserve.c version.c xact.c commit.c rollback.c put_ll.c get_ll.c
 
-dataman_srv_SOURCES = dbserve.c back.c clear.c collapse_node.c delete.c \
+dataman_srv_SOURCES = dbserve.c back.c clear.c delete.c \
 	dispatch.c err_sys.c flush.c forward.c get.c get_current.c \
-	get_first.c get_last.c get_long.c get_next.c get_node.c \
+	get_first.c get_last.c get_long.c get_next.c \
 	get_prior.c get_short.c iclose.c include.c insert.c iopen.c \
-	lock.c node_search.c pend.c protect.c put_long.c get_file.c \
-	put_short.c read_node.c remove.c split_node.c substr.c \
-	upd_idx.c verify_pid.c match.c get_desc.c init_dataman.c \
+	lock.c pend.c protect.c put_long.c get_file.c \
+	put_short.c remove.c substr.c \
+	upd_idx.c verify_pid.c get_desc.c init_dataman.c \
 	release.c mkidx.c sort.c restore.c get_datafile_desc.c \
 	version.c get_blobs.c put_blobs.c get_ll.c put_ll.c get_rec.c \
 	blob_ctl.c undelete.c
@@ -306,12 +306,12 @@ dbclean_SOURCES = clean.c check_it.c rebuild.c get_datafile_desc.c get_ll.c \
 				  put_ll.c get_short.c put_short.c get_long.c
 
 dumpix_SOURCES = dumpix.c substr.c get_short.c get_long.c get_ll.c
-dnodes_SOURCES = dnodes.c substr.c get_short.c get_long.c get_ll.c
+dnodes_SOURCES = dnodes.c index_v2.c
 dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 				 put_long.c get_datafile_desc.c lock.c get_ll.c \
 				 put_ll.c
 
-noinst_HEADERS = dbfunc.h errors.h lock.h msg.h node.h srv_index.h \
+noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
 				 file_desc.h misc.h xact.h
 
 include_HEADERS = datafile_header.h
@@ -431,7 +431,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/check_it.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/clean.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/clear.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collapse_node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/commit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dataman.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dbserve.Po@am__quote@
@@ -455,7 +454,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_ll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_long.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_next.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_prior.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_rec.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_short.Po@am__quote@
@@ -465,17 +463,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/insert.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iopen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lock.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/match.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mkdf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mkidx.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/node_search.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pend.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/put_blobs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/put_ll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/put_long.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/put_short.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/read_node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rebuild.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/release.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remove.Po@am__quote@
@@ -487,7 +482,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serial_setup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server_comm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sort.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/split_node.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/substr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/term_dbserve.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undelete.Po@am__quote@

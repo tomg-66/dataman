@@ -9,6 +9,19 @@
  * AUTHOR:		Tom Green
  * 
  * FILES:
+ *
+ * MODIFICATION HISTORY:
+ *
+ *				Tue Jul 21 12:20:23 PM MDT 2026
+ *				tomg
+ *				changing the structure of the index file so that it is
+ *				more resilient.  using CopyOnWrite strategy, changing
+ *				the node structure so that all of the final keys are
+ *				contained in the leaf.  The original format was doing
+ *				anything to optomize disk space.  That's not really an
+ *				issue any more.
+ *				this is dataman version 4.0.0 compliant
+ *
  ************************************************************* */
 
 /*
@@ -45,8 +58,8 @@
 #include <errno.h>
 #include <inttypes.h>
 
-#include "node.h"
 #include "misc.h"
+#include "index_v2.h"
 
 #define LEAF    0200                    /* the leaf bit mask */
 
@@ -55,12 +68,12 @@ int pos[999];							/* the positions in the leve number */
 int level;								/* our level in the index */
 int chan;								/* channel of index */
 int loop,count,tmp,acc,bytes,idx;		/* misc usage */
-int64_t offs;								/* lseek offset */
-int64_t cur_node;							/* posittion of current node */
-int64_t prnt_node;							/* position of parent node */
+int64_t offs;							/* lseek offset */
+int64_t cur_node;						/* posittion of current node */
+int64_t prnt_node;						/* position of parent node */
 short keylen;							/* internal length of key */
 short fno;								/* number of files */
-char **fnames;						/* files the index point to */
+char **fnames;							/* files the index point to */
 char file;
 
 int cntr;
@@ -70,8 +83,29 @@ extern short get_short(char *);
 extern int64_t get_ll(void *);
 
 static void usage(void);
-static void write_node(char *);
 static void all_done(void);
+static int dump_v2(int);
+
+typedef struct v2_dump_context {
+	int fd;
+	uint16_t keylen;
+	uint16_t file_count;
+	uint16_t page_size;
+	char **file_names;
+	uint64_t file_size;
+	uint64_t node_start;
+	uint64_t *seen;
+	size_t seen_count;
+	size_t seen_size;
+	int leaf_keys;
+} V2_DUMP_CONTEXT;
+
+static uint16_t v2_get_u16(const unsigned char *);
+static uint64_t v2_get_u64(const unsigned char *);
+static int v2_dump_node(V2_DUMP_CONTEXT *, uint64_t, int,
+					unsigned char **, unsigned char **);
+static int v2_mark_seen(V2_DUMP_CONTEXT *, uint64_t);
+static void v2_free_names(char **, uint16_t);
 
 int main(int argc, char *argv[])
 
@@ -112,122 +146,242 @@ int main(int argc, char *argv[])
 		perror("");
 		exit(errno);
 	}
-#if !defined __gnu_linux__
-	check_endian();
-#endif
-	if (read(chan, stuff, INDEX_FILE_OFFSET) <  INDEX_FILE_OFFSET) {
-		fprintf(stderr, "Can't read index header ");
-		perror("");
+	if (pread(chan, stuff, strlen(INDEX_V2_MAGIC), 0) ==
+			(ssize_t)strlen(INDEX_V2_MAGIC) &&
+			memcmp(stuff, INDEX_V2_MAGIC, strlen(INDEX_V2_MAGIC)) == 0)
+		return(dump_v2(chan));
+	fprintf(stderr, "Cannot dump legacy or invalid index %s; rebuild it with dbclean -i\n", path);
+	close(chan);
+	return(EXIT_FAILURE);
+}
+
+static uint16_t v2_get_u16(const unsigned char *ptr)
+{
+	return((uint16_t)((ptr[0] << 8) | ptr[1]));
+}
+
+static uint64_t v2_get_u64(const unsigned char *ptr)
+{
+	uint64_t value = 0;
+	int i;
+
+	for (i = 0; i < 8; i++)
+		value = (value << 8) | ptr[i];
+	return(value);
+}
+
+static int v2_mark_seen(V2_DUMP_CONTEXT *context, uint64_t offset)
+{
+	size_t i;
+	uint64_t *new_seen;
+
+	for (i = 0; i < context->seen_count; i++)
+		if (context->seen[i] == offset) {
+			fprintf(stderr, "v2 index is not a tree: node at %" PRIu64
+					" is referenced more than once\n", offset);
+			return(0);
+		}
+	if (context->seen_count == context->seen_size) {
+		size_t new_size = context->seen_size ? context->seen_size * 2 : 64;
+		new_seen = realloc(context->seen, new_size * sizeof(*new_seen));
+		if (new_seen == NULL) {
+			fprintf(stderr, "Can't allocate v2 node validation space\n");
+			return(0);
+		}
+		context->seen = new_seen;
+		context->seen_size = new_size;
 	}
+	context->seen[context->seen_count++] = offset;
+	return(1);
+}
 
-	keylen = get_short(stuff);					/* get key length */
-	fno = get_short(stuff+sizeof(short));		/* get number of files */
-	cur_node = get_ll(stuff+2*sizeof(short));	/* get position of root node */
-	count = keylen + MISC_LEN;					/* length of internal key */
+static int v2_dump_node(V2_DUMP_CONTEXT *context, uint64_t offset, int level,
+					unsigned char **first_key, unsigned char **last_key)
+{
+	INDEX_V2_NODE node;
+	uint32_t expected;
+	uint32_t child_bytes;
+	unsigned char *first = NULL;
+	unsigned char *last = NULL;
+	uint16_t file_id;
+	uint64_t record_offset;
+	uint8_t i;
 
-	if ((fnames = (char **)calloc(fno+1, sizeof(char *))) == NULL) {
-		fprintf(stderr, "Can't allocate file name space");
-		perror("");
-		exit(errno);
+	*first_key = NULL;
+	*last_key = NULL;
+	if (offset < context->node_start || (offset % context->page_size) != 0 ||
+			offset > context->file_size - context->page_size ||
+			!v2_mark_seen(context, offset) ||
+			!index_v2_read_node(context->fd, offset, &node)) {
+		fprintf(stderr, "Invalid v2 node at %" PRIu64 "\n", offset);
+		return(0);
 	}
-	for (idx = 0;idx <= fno;idx++) {    /* get the names of the files */
-		for(i = 0; ; i++) {
-			if (read(chan, stuff+i, 1) < 1) {
-				fprintf(stderr,"Error reading file name number %d\n",idx);
-				exit(errno);
-			}
-			if (*(stuff+i) == '\0')
-				break;
-		}
-		fnames[idx] = strdup(stuff);
-    }
-
-	level= 0;
-	printf("Index is a member of %d datasets\n",fno+1);
-	cntr = 0;
-
-	while(1) {								/* could take a long time */
-		for ( ;level < 999;level++) {		/* assumes max of */
-			llseek(chan,cur_node,SEEK_SET);			/* 999 levels in idx */
-			pos[level] = 0;
-			if (read(chan,stuff,1) < 1) {
-				fprintf(stderr, "Can't read node desc byte ");
-				perror("");
-				exit(errno);
-			}
-			if (*stuff & LEAF)
-				break;
-			llseek(chan, (int64_t)(N_KEYS*(keylen+MISC_LEN)), SEEK_CUR);
-			if (read(chan, (char *)&cur_node, PTR_LENGTH) < PTR_LENGTH) {
-				fprintf(stderr, "Cant read node %"PRId64" ", cur_node);
-				perror("");
-				exit(errno);
-			}
-			cur_node = get_ll((char *)&cur_node);
-		}
-
-		bytes = N_KEYS * count;
-		if (read(chan, stuff, bytes+PTR_LENGTH) < bytes+PTR_LENGTH) {       /* get keys */
-			fprintf(stderr, "Can't read key buffer ");
-			perror("");
-			exit(errno);
-		}
-		prnt_node = get_ll(stuff+bytes);		/* get parent node */
-
-		write_node(stuff);
-		if (prnt_node == 0)
-			all_done();                         /* the root node is a leaf */
-		acc = 1;
-
-		while(acc) {                            /* get to next position */
-			level--;
-			llseek(chan, prnt_node+1, SEEK_SET);          /* get to parent node */
-			bytes = N_KEYS * count;
-			acc = 0;
-			if (read(chan,stuff,bytes) < bytes) {
-				fprintf(stderr, "Can't read parent node keys ");
-				perror("");
-				exit(errno);
-			}
-			tmp = pos[level]  * count;
-			key = substr(stuff, tmp, tmp+count-1);
-			if ((*key == '\0') || (pos[level] > N_KEYS)) {
-				llseek(chan, (int64_t)(N_KIDS * PTR_LENGTH), SEEK_CUR);
-				if (read(chan, stuff, PTR_LENGTH) < PTR_LENGTH) {
-					fprintf(stderr, "Can't read child pointer ");
-					perror("");
-					exit(errno);
-				}
-				prnt_node = get_ll(stuff);
-				if (prnt_node == 0 || level == 0)
-					all_done();                  /* this function exits */
-				else
-					acc = 1;
-				free(key);
-			}
-		}
-
-		cur_node = prnt_node;                           /* current node */
-		offs = *(key+keylen) - 1;                       /* file offset */
-		prnt_node = get_ll(key+keylen+1);		/* get rec pointer */
-		*(key+keylen) = '\0';                           /* terminate key */
-        
-		printf("key %s, file %s, pointer %"PRId64"\n", key, fnames[offs], prnt_node);
-		cntr++;
-		free(key);
-
-		offs = PTR_LENGTH * (pos[level]+1);
-		llseek(chan, offs, SEEK_CUR);
-		if (read(chan, (char *)&cur_node, PTR_LENGTH) < PTR_LENGTH) {
-			fprintf(stderr, "Can't read node pointer ");
-			perror("");
-			exit(errno);
-		}
-		cur_node = get_ll((char *)&cur_node);
-
-		pos[level] += 1;
-		level++;
+	if (node.key_count > INDEX_V2_MAX_KEYS) {
+		fprintf(stderr, "v2 node at %" PRIu64 " has too many keys (%u)\n",
+				offset, node.key_count);
+		goto bad;
 	}
+	if (node.flags & INDEX_V2_NODE_LEAF) {
+		expected = (uint32_t)node.key_count * (context->keylen + INDEX_V2_FILE_ID_SIZE + INDEX_V2_RECORD_OFFSET_SIZE);
+		if (node.payload_length != expected)
+			goto malformed;
+
+		for (i = 1; i < node.key_count; i++) {
+			if (memcmp(node.payload + (size_t)(i - 1) * (context->keylen + 10),
+					node.payload + (size_t)i *(context->keylen + 10),
+					context->keylen + 10) >= 0) {
+				fprintf(stderr, "v2 leaf at %" PRIu64 " is not sorted\n", offset);
+				goto bad;
+			}
+		}
+
+		for (i = 0; i < node.key_count; i++) {
+			unsigned char *entry = node.payload + (size_t)i * (context->keylen + 10);
+			file_id = v2_get_u16(entry + context->keylen);
+			record_offset = v2_get_u64(entry + context->keylen + 2);
+
+			if (file_id >= context->file_count) {
+				fprintf(stderr, "v2 leaf at %" PRIu64 " has invalid file id %u\n", offset, file_id);
+				goto bad;
+			}
+
+			printf("key %.*s, file %s, pointer %" PRIu64 "\n",
+				(int)context->keylen, entry, context->file_names[file_id], record_offset);
+			context->leaf_keys++;
+		}
+		if (node.key_count != 0) {
+			first = malloc(context->keylen + 10);
+			last = malloc(context->keylen + 10);
+			if (first == NULL || last == NULL)
+				goto bad;
+			memcpy(first, node.payload, context->keylen + 10);
+			memcpy(last, node.payload + (size_t)(node.key_count - 1) *
+					(context->keylen + 10), context->keylen + 10);
+		}
+	} else {
+		child_bytes = (uint32_t)(node.key_count + 1) * 8;
+		expected = child_bytes + (uint32_t)node.key_count *
+			(context->keylen + INDEX_V2_FILE_ID_SIZE + INDEX_V2_RECORD_OFFSET_SIZE);
+		if (node.key_count == 0 || node.payload_length != expected)
+			goto malformed;
+
+		for (i = 1; i < node.key_count; i++) {
+			if (memcmp(node.payload + child_bytes + (size_t)(i - 1) *
+					(context->keylen + 10), node.payload + child_bytes + (size_t)i *
+					(context->keylen + 10), context->keylen + 10) >= 0) {
+				fprintf(stderr, "v2 internal node at %" PRIu64 " is not sorted\n", offset);
+				goto bad;
+			}
+		}
+
+		for (i = 0; i <= node.key_count; i++) {
+			unsigned char *child_first;
+			unsigned char *child_last;
+			uint64_t child = v2_get_u64(node.payload + (size_t)i * 8);
+			if (!v2_dump_node(context, child, level + 1, &child_first, &child_last))
+				goto bad;
+			if (child_first == NULL || child_last == NULL) {
+				free(child_first);
+				free(child_last);
+				fprintf(stderr, "v2 internal node at %" PRIu64 " has an empty child\n", offset);
+				goto bad;
+			}
+			if (i != 0 && (memcmp(child_first, node.payload + child_bytes +
+					(size_t)(i - 1) * (context->keylen + 10), context->keylen + 10) != 0 ||
+					memcmp(last, child_first, context->keylen + 10) >= 0)) {
+				free(child_first);
+				free(child_last);
+				fprintf(stderr, "v2 separator mismatch at node %" PRIu64 "\n", offset);
+				goto bad;
+			}
+			if (i == 0)
+				first = child_first;
+			else
+				free(child_first);
+			free(last);
+			last = child_last;
+		}
+	}
+	index_v2_free_node(&node);
+	*first_key = first;
+	*last_key = last;
+	return(1);
+
+malformed:
+	fprintf(stderr, "v2 node at %" PRIu64 " has an invalid payload length\n", offset);
+bad:
+	free(first);
+	free(last);
+	index_v2_free_node(&node);
+	return(0);
+}
+
+static void v2_free_names(char **file_names, uint16_t file_count)
+{
+	uint16_t i;
+
+	if (file_names != NULL) {
+		for (i = 0; i < file_count; i++)
+			free(file_names[i]);
+		free(file_names);
+	}
+}
+
+static int dump_v2(int fd)
+{
+	V2_DUMP_CONTEXT context;
+	struct stat status;
+	uint64_t root;
+	uint32_t root_crc;
+	uint64_t generation;
+	INDEX_V2_NODE root_node;
+	unsigned char *first;
+	unsigned char *last;
+	uint32_t names_length;
+	unsigned char header[INDEX_V2_HEADER_SIZE];
+
+	memset(&context, 0, sizeof(context));
+	if (!index_v2_read_header(fd, &context.keylen, &context.file_count, &root, &root_crc, &generation) ||
+			!index_v2_read_file_names(fd, context.file_count, &context.file_names) ||
+			fstat(fd, &status) != 0 || pread(fd, header, sizeof(header), 0) != (ssize_t)sizeof(header)) {
+		fprintf(stderr, "Invalid v2 index header\n");
+		v2_free_names(context.file_names, context.file_count);
+		return(1);
+	}
+	if (!index_v2_read_page_size(fd, context.keylen, &context.page_size)) {
+		fprintf(stderr, "Invalid v2 page size\n");
+		v2_free_names(context.file_names, context.file_count);
+		return(1);
+	}
+	names_length = ((uint32_t)header[INDEX_V2_NAMES_LENGTH_OFFSET] << 24) |
+		((uint32_t)header[INDEX_V2_NAMES_LENGTH_OFFSET + 1] << 16) |
+		((uint32_t)header[INDEX_V2_NAMES_LENGTH_OFFSET + 2] << 8) |
+		header[INDEX_V2_NAMES_LENGTH_OFFSET + 3];
+	context.fd = fd;
+	context.file_size = (uint64_t)status.st_size;
+	context.node_start = ((INDEX_V2_HEADER_SIZE + names_length +
+		context.page_size - 1) / context.page_size) * context.page_size;
+	if (!index_v2_read_node(fd, root, &root_node) || root_node.crc != root_crc) {
+		fprintf(stderr, "v2 root slot does not match its root node\n");
+		index_v2_free_node(&root_node);
+		v2_free_names(context.file_names, context.file_count);
+		return(1);
+	}
+	index_v2_free_node(&root_node);
+	printf("Index v2: %u dataset%s, key length %u, generation %" PRIu64 "\n",
+		context.file_count, context.file_count == 1 ? "" : "s", context.keylen,
+		generation);
+	if (!v2_dump_node(&context, root, 0, &first, &last)) {
+		v2_free_names(context.file_names, context.file_count);
+		free(context.seen);
+		return(1);
+	}
+	free(first);
+	free(last);
+	printf("Keys dumped: %d; nodes validated: %zu\n", context.leaf_keys, context.seen_count);
+	v2_free_names(context.file_names, context.file_count);
+	free(context.seen);
+	return(0);
 }
 
 static void usage(void)
@@ -236,29 +390,6 @@ static void usage(void)
 	fprintf(stderr, "    -r database_root_directory\n");
 	exit(-1);
 }
-
-static void write_node(char *stuff)
-
-{
-	int64_t ptr;
-	register int i,j,idx;
-	char *key;
-
-	for (idx=0; idx < N_KEYS; idx++) {
-		i = idx * count;					/* offset to key */
-		j = *(stuff+i+keylen) - 1;
-		ptr = get_ll(stuff+i+keylen+1);		/* the rec pointer */
-		key = substr(stuff, i, i+keylen-1);	/* key */
-		if (*key == '\0') {
-			free(key);
-			break;
-		}
-		printf("key %s, file %s, pointer %"PRId64"\n",key,fnames[j],ptr);
-		cntr++;
-		free(key);
-	}
-}
-
 
 static void all_done(void)                      /* this is if finished with endex */
 {
@@ -271,6 +402,5 @@ static void all_done(void)                      /* this is if finished with ende
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

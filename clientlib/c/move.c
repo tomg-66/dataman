@@ -46,7 +46,6 @@
 #include <string.h>
 #include "proto.h"			/* this is for the declaration of type key */
 #include "misc.h"			/* keyheader length def */
-#include "node.h"			/* for declaration of MAX_KEY_SIZE */
 
 void mk_key(key dest, char *srce, int len)
 

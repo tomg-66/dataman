@@ -20,6 +20,14 @@
  *				changed how files are kept track of, mostly
  *				because of the new locking model
  *				tomg
+ *
+ *				Mon Jul 27 08:14:38 PM MDT 2026
+ *				tomg
+ *				updated to use the new V2 index format.  This
+ *				closes out a copy on write index, and makes sure
+ *				all of the control information in the header is
+ *				correct.
+ *
  ************************************************************* */
 /*
  * this procedure decrements the reference count for the given index,
@@ -51,11 +59,13 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <malloc.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <pthread.h>
 
 #include "srv_index.h"
+#include "index_v2.h"
 #include "errors.h"
 #include "misc.h"
 
@@ -73,12 +83,15 @@ int iclose(char *cmd, int c_off, char **ret)
 {
 	int idx;			/* index into array of indices */
 	int tmp;			/* misc usages */
+	bool abort_build;
 
 	char *ptr;
 
 	*ret = NULL;
 
 	idx = atoi(cmd+c_off);
+	ptr = strchr(cmd + c_off, '|');
+	abort_build = ptr != NULL && ptr[1] == '1';
 
 	if (idx < 0) {
 		idx *= -1;
@@ -100,6 +113,16 @@ int iclose(char *cmd, int c_off, char **ret)
 		return(EIDXNOO);
 
 	pthread_mutex_lock(&(_indices[idx]._mutex));
+	if (_indices[idx]._generation == 0 && !abort_build) {
+		uint64_t root;
+
+		if (!index_v2_build_finish(_indices[idx]._idxchan, &root)) {
+			pthread_mutex_unlock(&(_indices[idx]._mutex));
+			return(ENODWRT);
+		}
+		_indices[idx]._rootpos = (int64_t)root;
+		_indices[idx]._generation = 1;
+	}
 	_indices[idx]._refcnt--;
 	if (_indices[idx]._refcnt < 1) {
 		pthread_mutex_lock(&i_mutex);

@@ -20,16 +20,23 @@
  *				modified how fl_lock is used for the new file
  *				locking model.
  *				tomg
+ *
+ *				Mon Jul 27 07:57:27 PM MDT 2026
+ *				tomg
+ *				modified to use the new calling sequence from
+ *				index V2.  this added a cursor to allow lookups
+ *				to verify the copy on write header to the correct
+ *				internal key
+ *				this is now version 4.0.0
+ *
  ************************************************************* */
 
 /*
  * this procedure updates the current index structure
- * calling sequence is upd_idx(idx,nod,off,numb)
+ * The matched key and its generation-qualified leaf cursor come from the v2
+ * lookup.  The composite key remains the final, fixed-length wire field.
  * where:
  *      idx  is a pointer to the new index
- *      node is a pointer to the new node information to be put in idx
- *      off  is the offset into the node for this key
- *      numb is the current node number
  *
  * this is the heart of returning data for all of the get_* routines
  */
@@ -66,7 +73,7 @@
 #include <pthread.h>
 
 #include "srv_index.h"
-#include "node.h"
+#include "index_v2.h"
 #include "lock.h"
 #include "errors.h"
 #include "misc.h"
@@ -77,9 +84,7 @@
 
 extern int dbgsw;
 
-extern short get_short(char *);
-extern int64_t get_ll(char *);
-extern char *substr(char *,int,int);
+extern void put_ll(void *, int64_t);
 
 extern int get_datafile_desc(FILES *);
 extern int get_blobs (FILES *, int, int64_t, char **, int *);
@@ -114,38 +119,32 @@ static int check_rec(FILES *file, int64_t offs)
 /*
  * do the data update stuff.
  */
-int upd_idx(register INDEX *idx,
-			register NODE *nod,
-			int off,
-			int64_t numb,
-			int64_t spec,			/* specific rec, not from key */
-			char *cmd,				/* originally command buf, holds return */
-			char **buff)			/* holds shared memory portion of return */
+int upd_idx(INDEX *idx, const unsigned char *inkey, uint16_t file_number,
+		uint64_t rec_number, const INDEX_V2_CURSOR *cursor, char *cmd, char **buff)
 {
-
-	int len;							/* misc length usage */
-	int ret;							/* return value */
-	int offs;
+	bool file_locked = false;
+	bool record_locked = false;
+	int len;
+	int ret;
 	int i;
-
-	int64_t msc;						/* misc usage */
-
-	char *inkey;						/* temporary key storage */
 	char *tptr;
-
 	FILES *fptr;
 
-	msc = idx->_keylen + MISC_LEN;
-	inkey = substr(nod->_keys, (int)msc*off, (int)((off+1)*msc-1));
-	offs = *(inkey+idx->_keylen) - 1;
-	fptr = idx->_files[offs];
+	if (idx == NULL || inkey == NULL || cursor == NULL || cmd == NULL ||
+			buff == NULL || file_number >= (uint16_t)idx->_f_cnt ||
+			file_number >= UINT8_MAX)
+		return(EINVMSG);
+	*buff = NULL;
+	fptr = idx->_files[file_number];
+	if (fptr == NULL)
+		return(EINVMSG);
 	if (dbgsw) {
 		fprintf(stderr, "enter upd_idx\n");
 		fflush(stderr);
 	}
 
 /*
- * check this index file.  if it has never been opened, need to
+ * check this data file.  if it has never been opened, need to
  * do so, read the file header, and other stuff
  */
 	pthread_mutex_lock(&(idx->_mutex));
@@ -160,17 +159,11 @@ int upd_idx(register INDEX *idx,
 /*
  * find out if the pointed to record has been deleted
  */
-	if (spec == 0) 
-		msc = get_ll(inkey+idx->_keylen+1);       /* get record pointer */
-	else
-		msc = spec;
-/*
- * remember that when when we return good from check_rec() that the mutex
- * for that file (fptr->_mutex) is locked!
- */
 	fl_lock(&fptr->_lock, LOCK_SH);					/* lock the file for reading */
-	if ((ret = check_rec(fptr, msc)) <= 0)
+	file_locked = true;
+	if ((ret = check_rec(fptr, (int64_t)rec_number)) <= 0)
 		goto err;
+	record_locked = true;
 	if (dbgsw) {
 		fprintf(stderr, "record format to get is %d\n", ret);
 		fflush(stderr);
@@ -199,15 +192,17 @@ int upd_idx(register INDEX *idx,
 		goto err;
 	}
 	pthread_mutex_unlock(&fptr->_mutex);
+	record_locked = false;
 
 	if (fptr->_filedesc->record_desc[ret-1].has_blob) {
-		if ((len = get_blobs(fptr, ret, msc, &tptr, NULL)) < 0) {
+		if ((len = get_blobs(fptr, ret, (int64_t)rec_number, &tptr, NULL)) < 0) {
 			ret = len;
 			free(tptr);
 			goto err;
 		}
 	}
 	fl_lock(&fptr->_lock, LOCK_UN);
+	file_locked = false;
 	if (dbgsw) {
 		fprintf(stderr, "read %d bytes for record\n", len);
 		fflush(stderr);
@@ -216,19 +211,28 @@ int upd_idx(register INDEX *idx,
  * put together the return buffer.  the information being returned is:
  * len = length of shared memory portion (data record)
  * ret = record format number
- * numb = node number
- * off = key offset in node
+ * generation = root generation containing the leaf
+ * node_offset = leaf page offset
+ * entry_index = key offset in the leaf
  * found system key (no terminating '|')
  * the node number and offset in node are saved and returned for things like
  * get_next and so on as a hint for where to start looking for the original key
  */
 	if (dbgsw) {
-		fprintf(stderr, "in upd_idx, len = %d, ret = %d, numb = %"PRId64", off = %d, cmd = 0x%p\n", len, ret, numb, off, cmd);
+		fprintf(stderr, "in upd_idx, len = %d, ret = %d, generation = %"PRIu64
+			", node = %"PRIu64", off = %u, cmd = 0x%p\n", len, ret,
+			cursor->generation, cursor->node_offset,
+			(unsigned)cursor->entry_index, cmd);
 		fflush(stderr);
 	}
-	i = sprintf(cmd, "%d|%d|%"PRId64"|%d|", len, ret, numb, off);
-	memcpy(cmd+i, inkey, idx->_keylen+MISC_LEN);
-	i += idx->_keylen+MISC_LEN;
+	i = sprintf(cmd, "%d|%d|%"PRIu64"|%"PRIu64"|%u|", len, ret,
+		cursor->generation, cursor->node_offset,
+		(unsigned)cursor->entry_index);
+	memcpy(cmd + i, inkey, idx->_keylen);
+	i += idx->_keylen;
+	cmd[i++] = (char)(file_number + 1);
+	put_ll(cmd + i, (int64_t)rec_number);
+	i += sizeof(int64_t);
 	if (dbgsw) {
 		fprintf(stderr, "at end of updidx msg = ");
 		fwrite(cmd, 1, i, stderr);
@@ -238,18 +242,14 @@ int upd_idx(register INDEX *idx,
 		fflush(stderr);
 	}
 	*buff = tptr;
-	free(inkey);
 	return(i);
 
 err:
-/*
- * these unlocks don't hurt to do again if it was already done, and
- * can come here for other errors
- */
-	pthread_mutex_unlock(&fptr->_mutex);
-	fl_lock(&fptr->_lock, LOCK_UN);
+	if (record_locked)
+		pthread_mutex_unlock(&fptr->_mutex);
+	if (file_locked)
+		fl_lock(&fptr->_lock, LOCK_UN);
 	*buff = NULL;
-	free(inkey);									/* deleted record */
 	return(ret);
 }
 

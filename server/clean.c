@@ -15,6 +15,12 @@
  *				Tom Green
  *				re-wrote for *nix based and uses the newer
  *				functions.
+ *
+ *				Mon Jul 27 08:07:00 PM MDT 2026
+ *				tomg
+ *				added a switch to force index rebuild even if no
+ *				files were cleaned up
+ *				this is now for dataman version 4.0.0
  ************************************************************* */
 /*
  * this program reads the file named Cleanfile if no arg is passed. if arg is
@@ -60,7 +66,7 @@
 #define MAX_DIRTY	   5			   /* clean file when this percent unused */
 
 int dbgsw;
-static char *verstr = "0.0.2";
+static char *verstr = "0.0.5";
 
 extern int check_it(char *, char *, int);
 
@@ -75,8 +81,9 @@ void usage(char *name)
 	copy = strdup(name);
 	strcpy (str, basename(copy));
 	free(copy);
-	fprintf(stderr, "%s: usage: %s [-v | -f filename -p min -r root]\n"
+	fprintf(stderr, "%s: usage: %s [-v | -i -f filename -p min -r root]\n"
 			"    -f filename where filename is the cleanfile definition\n"
+			"    -i rebuild indexes even if no data files were modified\n"
 			"    -p min where min is the minimum allowable fragmentation\n"
 			"        if the fragmentation is less than or equal to this \n"
 			"        percentage the file will not optimised\n"
@@ -140,6 +147,7 @@ int main(int argc, char *argv[])
 	int max = MAX_DIRTY;
 	int fd;
 	int sw;
+	int force_indexes = 0;
 
 	char cmd[512];
 	char fname[512] = "Cleanfile";
@@ -155,7 +163,10 @@ int main(int argc, char *argv[])
 		if (*argv[i] != '-')
 			usage(argv[0]);
 		for (j = 1; j < strlen(argv[i]); j++) {
-			switch(argv[i][j]) {
+				switch(argv[i][j]) {
+				case 'i':
+					force_indexes = 1;
+					break;
 				case 'f':
 					if (argv[i][++j])
 						usage(argv[0]);
@@ -345,7 +356,7 @@ int main(int argc, char *argv[])
  * find the INDEX keyword and execute each command line up
  * until a \n\n or end of file
  */
-	if (!sw) {
+	if (!sw && !force_indexes) {
 		printf ("No files modified, not rebuilding indexes\n");
 		exit(0);
 	}
@@ -383,6 +394,5 @@ int main(int argc, char *argv[])
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

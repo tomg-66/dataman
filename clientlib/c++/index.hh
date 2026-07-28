@@ -169,6 +169,7 @@ class index {
 		int 			_longest;		// longest master record
 		int64_t			_curnode;		// pointer to current node
 		int64_t			_rptr;			// pointer to current record
+		int64_t			_generation;	// V2 index generation flag
 		unsigned char	_offs;			// offset into node
 		key				_curkey;
 		files			*_files;		// each of the files in the index

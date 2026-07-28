@@ -20,6 +20,11 @@
  *				modified how fl_lock is used for the new file
  *				locking model.
  *				tomg
+ *
+ *				Tue Jul 28 11:05:50 AM MDT 2026
+ *				tomg
+ *				modified to use the V2 index routines
+ *				this is for dataman v4.0.0
  ************************************************************* */
 
 /*
@@ -48,86 +53,76 @@
  *
  * The GNU General Public License is contained in the file COPYING.
  */
-#include <string.h>
-#include <malloc.h>
-#include <stdlib.h>
 
+#include <string.h>
+#include <stdlib.h>
+#include <malloc.h>
+
+#include "index_v2.h"
 #include "srv_index.h"
-#include "node.h"
 #include "lock.h"
 #include "errors.h"
 #include "misc.h"
 
-#define TRUE    1
 #define FALSE   0
-#define LEAF    0200                    /* leaf indicator mask */
-#define ROOT	1
 
 extern int idx_cnt;
 
-extern INDEX *_indices;			
+extern INDEX *_indices;
 
 extern void rm_key(int, int, char *);
-extern int read_node(int64_t, NODE *, int);
-extern int upd_idx(INDEX *,NODE *,int,int64_t, int64_t, char *, char **);
-extern char *substr(char *,int,int);
+extern void put_ll(void *, int64_t);
+extern int upd_idx(INDEX *, const unsigned char *, uint16_t, uint64_t,
+		const INDEX_V2_CURSOR *, char *, char **);
 
 int get_last(char *cmd, int c_off, char **ret)
 {
-	int tmp;							/* temporary storage */
+	int tmp;					/* misc usage */
 	int idxno;
 
-	int64_t node;					/* node to search for */
+	uint64_t record_ptr;
+	uint16_t file_id;
 
-	char *tkey;
 	char *rptr;
+	unsigned char last_key[MAX_KEY_SIZE] = {0};
+	char system_key[KEY_BUFFER_SIZE];
 
-	INDEX *idx;							/* the working index */
-	NODE cur_node;						/* last accessed node */
+	INDEX *idx;					/* the current index */
+	INDEX_V2_CURSOR cursor;
 
-	rptr = NULL;
 	*ret = NULL;
-
-	idxno = atoi(cmd+c_off);			/* get the index */
+	idxno = atoi(cmd+c_off);	/* get the current index */
 	if (idxno < 0 || idxno >= idx_cnt)
 		return(EINVMSG);
-	if ((idx = _indices+idxno) == NULL)
+	if (!_indices || (idx = _indices+idxno) == NULL)		/* this index */
 		return(ENOINDEX);
 	if (!idx->_refcnt)
 		return(EIDXNOO);
 
+	rptr = NULL;
 	fl_lock(&idx->_lock, LOCK_SH);
-	while (1) {
-		node = ROOT;									/* root pos */
-		while (1) {
-			if ((tmp = read_node(node,&cur_node,idxno)) < 0) {
-				goto done;
-			}
-			if (cur_node._isleaf & LEAF)
-				break;									/* at a leaf */
-			node = cur_node._kids[cur_node._isleaf];	/* next kid to get */
-		}
-		if (*(cur_node._keys) == '\0') {
+	while(1) {
+		if (!index_v2_last(idx->_idxchan, &file_id, &record_ptr, last_key, &cursor)) {
 			tmp = FALSE;
 			goto done;
 		}
 
-		tmp = (cur_node._isleaf & ~LEAF) - 1;			/* last key offset */
-		if ((tmp = upd_idx(idx,&cur_node,tmp,node,0,cmd,&rptr)))
-			break;										/* worked */
-		tmp = (tmp - 1) * (idx->_keylen + MISC_LEN);	/* offset to key */
+		tmp = upd_idx(idx, last_key, file_id, record_ptr, &cursor, cmd, &rptr);
+		if (tmp != 0)
+			break;
 
-		tkey = substr(cur_node._keys,tmp,tmp+idx->_keylen+PTR_LENGTH); /* get key */
+		memcpy(system_key, last_key, idx->_keylen);
+		system_key[idx->_keylen] = (char)(file_id+1);
+		put_ll(system_key+idx->_keylen+1, (int64_t)record_ptr);
 		fl_lock(&idx->_lock, LOCK_UN);
-		rm_key(idxno, NOXACT, tkey);					/* remove key */
+		rm_key(idxno, NOXACT, system_key);
 		fl_lock(&idx->_lock, LOCK_SH);
-		free(tkey);										/* free temp space */
-
 	}
+
 done:
 	fl_lock(&idx->_lock, LOCK_UN);
 	*ret = rptr;
-	return(tmp);										/* evrything worked */
+	return(tmp);
 }
 
 /*

@@ -45,12 +45,13 @@
 #include "misc.h"
 #endif
 #include <stdint.h>
+#include <string.h>
 
 int64_t get_ll(void *ptr)
 {
 
 	int64_t tmp;
-	tmp = *(int64_t *)ptr;
+	memcpy(&tmp, ptr, sizeof(tmp));
 
 #ifdef __gnu_linux__
 	if (__BYTE_ORDER == __LITTLE_ENDIAN)
@@ -75,6 +76,5 @@ int64_t get_ll(void *ptr)
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

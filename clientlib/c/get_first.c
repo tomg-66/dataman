@@ -106,6 +106,8 @@ int db_g_frst(char *index_name)
 	cptr = strchr(ret, '|') + 1;
 	m_fmt = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
+	idx->_generation = strtoll(cptr, NULL, 0);
+	cptr = strchr(cptr, '|') + 1;
 	idx->_curnode = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 	idx->_offs = atoi(cptr);

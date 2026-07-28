@@ -89,14 +89,12 @@ int db_g_key(char *idx, key key_val)
  * get_current function is better suited to that.
  */
     if (*(key_val+index->_keylen) != 0) {
-		sprintf(cmd, "%d|%d|%"PRId64"|%d|", GET_CURRENT, index->_idxno,
-						index->_curnode, index->_offs);
-		i = strlen(cmd);
+		i = sprintf(cmd, "%d|%d|%" PRId64 "|%" PRId64 "|%d|", GET_CURRENT, index->_idxno,
+						index->_generation, index->_curnode, index->_offs);
 		memcpy(cmd+i, key_val, index->_keylen+KEY_HEADER_LENGTH);
 		i += index->_keylen+KEY_HEADER_LENGTH;
 	} else {
-		sprintf(cmd, "%d|%d|%s|", GET, index->_idxno, key_val);
-		i = strlen(cmd);
+		i = sprintf(cmd, "%d|%d|%s|", GET, index->_idxno, key_val);
     }
 /*
  * send the command and deal with the return.
@@ -115,9 +113,12 @@ int db_g_key(char *idx, key key_val)
 	}
 /*
  * parse the return and update the globals
+   "%d|%d|%"PRIu64"|%"PRIu64"|%u|", len, ret, cursor->generation, cursor->node_offset, (unsigned)cursor->entry_index);
  */
 	cptr = strchr(buff, '|') + 1;
 	m_fmt = atoi(cptr);
+	cptr = strchr(cptr, '|') + 1;
+	index->_generation = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 	index->_curnode = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;

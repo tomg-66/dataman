@@ -65,7 +65,6 @@ using namespace Dataman;
 int index::restore()
 {
 	int i;							/* misc usage */
-	int len;                            /* internal key len */
 
 	char cmd[128];
 	char *buff;
@@ -77,8 +76,6 @@ int index::restore()
     if (this->_savptr == NULL)
 		db_err(0, "%s: in restore, index %s has not been saved\n",
 					_progname, this->_idxname);
-
-    len = this->_keylen + KEY_HEADER_LENGTH;		/* internal key length */
 
 	sprintf(cmd, "%d|%d|%" PRId64 "|%d|%" PRId64 "|", RESTORE, this->_idxno,
 					this->_savptr->_savnode, this->_savptr->_savoffs,
@@ -112,6 +109,8 @@ int index::restore()
 	master.len = i;
 	ptr = strchr(buff, '|') + 1;
 	master.fmt = atoi(ptr);
+	ptr = strchr(ptr, '|') + 1;
+	this->_generation = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;
 	this->_curnode = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;

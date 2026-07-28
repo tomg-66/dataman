@@ -20,7 +20,14 @@
  *				modified how fl_lock is used for the new file
  *				locking model.
  *				tomg
+ *
+ *				Tue Jul 28 08:57:37 AM MDT 2026
+ *				tomg
+ *				modified to use the V2 index model.
+ *
  ************************************************************* */
+
+/* this retrieves the lowest order key from an index */
 
 /*
  * This program is free software; you can redistribute it and/or
@@ -44,44 +51,43 @@
 #include <stdlib.h>
 #include <malloc.h>
 
+#include "index_v2.h"
 #include "srv_index.h"
-#include "node.h"
 #include "lock.h"
 #include "errors.h"
 #include "misc.h"
 
-#define TRUE    1
 #define FALSE   0
-#define LEAF    0200
-#define ROOT	1
 
 extern int idx_cnt;
 
 extern INDEX *_indices;
 
 extern void rm_key(int, int, char *);
-extern int read_node(int64_t, NODE *, int);
-extern int upd_idx(INDEX *, NODE *, int, int64_t, int64_t, char *, char **);
-extern char *substr(char *, int, int);
+extern void put_ll(void *, int64_t);
+extern int upd_idx(INDEX *, const unsigned char *, uint16_t, uint64_t,
+		const INDEX_V2_CURSOR *, char *, char **);
 
 int get_first(char *cmd, int c_off, char **ret)
 {
 	int tmp;					/* misc usage */
 	int idxno;
 
-	int64_t node;				/* node to search */
+	uint64_t record_ptr;
+	uint16_t file_id;
 
-	char *tkey;					/* temporary key */
 	char *rptr;
+	unsigned char first_key[MAX_KEY_SIZE] = {0};
+	char system_key[KEY_BUFFER_SIZE];
 
 	INDEX *idx;					/* the current index */
-	NODE cur_node;				/* the last accessed node */
+	INDEX_V2_CURSOR cursor;
 
 	*ret = NULL;
 	idxno = atoi(cmd+c_off);	/* get the current index */
 	if (idxno < 0 || idxno >= idx_cnt)
 		return(EINVMSG);
-	if ((idx = _indices+idxno) == NULL)		/* this index */
+	if (!_indices || (idx = _indices+idxno) == NULL)		/* this index */
 		return(ENOINDEX);
 	if (!idx->_refcnt)
 		return(EIDXNOO);
@@ -89,28 +95,23 @@ int get_first(char *cmd, int c_off, char **ret)
 	rptr = NULL;
 	fl_lock(&idx->_lock, LOCK_SH);
 	while(1) {
-		node = ROOT;							/* pointer to root pos */
-		while (1) {								/* go until leaf found */
-			if ((tmp = read_node(node,&cur_node,idxno)) < 0) {
-				goto done;
-			}
-			if (cur_node._isleaf & LEAF)		/* at a leaf? */
-				break;							/* quit loop */
-			node = cur_node._kids[0];			/* next kid to check */
-		}
-		if (*(cur_node._keys) == '\0') {
+		if (!index_v2_first(idx->_idxchan, &file_id, &record_ptr, first_key, &cursor)) {
 			tmp = FALSE;
 			goto done;
 		}
 
-		if ((tmp = upd_idx(idx,&cur_node,0,node, 0, cmd, &rptr)))
+		tmp = upd_idx(idx, first_key, file_id, record_ptr, &cursor, cmd, &rptr);
+		if (tmp != 0)
 			break;
-		tkey = substr(cur_node._keys,0,idx->_keylen+PTR_LENGTH);
+
+		memcpy(system_key, first_key, idx->_keylen);
+		system_key[idx->_keylen] = (char)(file_id+1);
+		put_ll(system_key+idx->_keylen+1, (int64_t)record_ptr);
 		fl_lock(&idx->_lock, LOCK_UN);
-		rm_key(idxno, NOXACT, tkey);
+		rm_key(idxno, NOXACT, system_key);
 		fl_lock(&idx->_lock, LOCK_SH);
-		free(tkey);
 	}
+
 done:
 	fl_lock(&idx->_lock, LOCK_UN);
 	*ret = rptr;

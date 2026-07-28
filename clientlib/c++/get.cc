@@ -78,14 +78,12 @@ int index::get(const key &info)
  * get_current function is better suited to that.
  */
     if (*(kpt+this->_keylen) != 0) {
-		sprintf(cmd, "%d|%d|%" PRId64 "|%d|", GET_CURRENT, this->_idxno,
-						this->_curnode, this->_offs);
-		i = strlen(cmd);
+		i = sprintf(cmd, "%d|%d|%" PRId64 "|%" PRId64 "|%d|", GET_CURRENT, this->_idxno,
+						this->_generation, this->_curnode, this->_offs);
 		::memcpy(cmd+i, kpt, this->_keylen+KEY_HEADER_LENGTH);
 		i += this->_keylen+KEY_HEADER_LENGTH;
 	} else {
-		sprintf(cmd, "%d|%d|%s|", GET, this->_idxno, kpt);
-		i = strlen(cmd);
+		i = sprintf(cmd, "%d|%d|%s|", GET, this->_idxno, kpt);
     }
 /*
  * send the command and deal with the return.

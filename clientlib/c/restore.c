@@ -69,7 +69,6 @@ int db_restore(char *idx_name)
 	INDEX *idx;                         /* pointer to index */
 
 	int i;							/* misc usage */
-	int len;                            /* internal key len */
 
 	char cmd[128];
 	char *buff;
@@ -82,8 +81,6 @@ int db_restore(char *idx_name)
     if (idx->_savptr == NULL)
 		db_err(0, "%s: in restore, index %s has not been saved\n",
 					_progname, idx->_idxname);
-
-    len = idx->_keylen + KEY_HEADER_LENGTH;		/* internal key length */
 
 	sprintf(cmd, "%d|%d|%"PRId64"|%d|%"PRId64"|", RESTORE, idx->_idxno,
 					idx->_savptr->_savnode, idx->_savptr->_savoffs,
@@ -110,6 +107,8 @@ int db_restore(char *idx_name)
  */
 	ptr = strchr(buff, '|') + 1;
 	m_fmt = atoi(ptr);
+	ptr = strchr(ptr, '|') + 1;
+	idx->_generation = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;
 	idx->_curnode = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;

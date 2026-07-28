@@ -28,7 +28,6 @@
 #include "proto.h"			/* the function prototypes */
 #include "wind.h"			/* the window definitions */
 #include "index.h"			/* current index description */
-//#include "node.h"			/* current node description */
 #include "w_params.h"		/* work file parameters */
 
 #define ENDLIST		-1					/* end of arg list */

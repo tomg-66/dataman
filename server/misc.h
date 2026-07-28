@@ -64,11 +64,13 @@ extern int d_endian;				/* flag for endian ness */
 #define OFFSET_TO_PREV				(sizeof(char))
 #define OFFSET_TO_NEXT				(sizeof(int64_t) + sizeof(char))
 #define KEY_HEADER_LENGTH			(sizeof(int64_t) + sizeof(char))
-#define KEY_BUFFER_SIZE				(MAX_KEY_SIZE+sizeof(int64_t)+sizeof(char))
+#define KEY_BUFFER_SIZE				(MAX_KEY_SIZE+KEY_HEADER_LENGTH)
 #define NODE_FLAG_LENGTH			(sizeof(char))
 #define INDEX_HEADER_LENGTH			(sizeof(int16_t)*2)
 #define INDEX_FILE_OFFSET			(INDEX_HEADER_LENGTH + sizeof(int64_t))
 #define PTR_LENGTH					(sizeof(int64_t))
+#define MAX_KEY_SIZE				32
+#define MIN_KEY_SIZE				1
 
 #define FALSE						0
 #define TRUE						1

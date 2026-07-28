@@ -100,8 +100,8 @@ int db_g_pror(char *index_name)
     if (idx->_curkey == 0)
         db_err(ENOGET, "%s: Can't get_prior", _progname);
 
-	sprintf(msg, "%d|%d|%"PRId64"|%d|", GET_PRIOR, idx->_idxno,
-					idx->_curnode, idx->_offs);
+	sprintf(msg, "%d|%d|%"PRId64"|%"PRId64"|%d|", GET_PRIOR, idx->_idxno,
+					idx->_generation, idx->_curnode, idx->_offs);
 	i = strlen(msg);
 	memcpy(msg+i, idx->_curkey, idx->_keylen+KEY_HEADER_LENGTH);
 	i += idx->_keylen+KEY_HEADER_LENGTH;
@@ -119,6 +119,8 @@ int db_g_pror(char *index_name)
  */
 	cptr = strchr(ret, '|') + 1;
 	m_fmt = atoi(cptr);
+	cptr = strchr(cptr, '|') + 1;
+	idx->_generation = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 	idx->_curnode = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;

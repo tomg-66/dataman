@@ -12,6 +12,11 @@
  *
  * MODIFICATION HISTORY:
  *
+ *				Mon Jul 27 08:37:53 PM MDT 2026
+ *				tomg
+ *				added an index V2 generation flag and moved the
+ *				split information into the index_v2.h file
+ *
  ************************************************************* */
 
 /*
@@ -44,6 +49,8 @@
 #define _INDEX_INCLUDED_
 
 #include <sys/types.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <pthread.h>
 #include "file_desc.h"
 #include "lock.h"
@@ -59,21 +66,12 @@ typedef struct _idxbuf_   {			/* main index information */
 	int				 _f_cnt;		/* count of files in this index */
 	int				 _refcnt;		/* reference count */
 	int64_t			 _rootpos;		/* position of root node */
+	uint64_t		 _generation;	/* published v2 root generation */
 	char			*_idxname;		/* name of index */
 	char			*_rootdir;		/* root of database */
 	FILES			**_files;		/* list of files */
 	P_LOCK			 _lock;			/* cond var for sh/ex locking */
 } INDEX;
-
-typedef struct _split_ {
-	int16_t			 _keylen;		/* length of key */
-	int				 _idxchan;		/* channel number of index file */
-	int				 _idxno;
-	int64_t			 _curnode;		/* pointer to current node */
-	int64_t			 _prntnode;		/* pointer to parent node */
-	int64_t			 _rootpos;		/* pointer to root node */
-	unsigned char	 _curleaf;		/* current leaf information */
-} SPLIT;
 
 #endif
 
@@ -82,6 +80,5 @@ typedef struct _split_ {
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim600: noet sw=4 ts=4 fdm=marker
- * vim<600: noet sw=4 ts=4
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
  */

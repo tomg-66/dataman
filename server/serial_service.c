@@ -310,7 +310,7 @@ static int read_command_prefix(int fd, char *buf, int frame_len, int *cmd,
 			buf[len - 1] = '\0';
 			*cmd = atoi(buf);
 			buf[len - 1] = '|';
-			if (*cmd < FLUSH) {
+			if (*cmd != FLUSH) {
 				*prefix_len = len;
 				return(0);
 			}
@@ -476,19 +476,22 @@ ok_conn:
 		if (stream_input == 0) {
 			j = size + 1;
 			if (j > maxread) {
-				if ((rcvbuf = realloc(rcvbuf, (size_t)j)) == NULL) {
+				char *newbuf = realloc(rcvbuf, (size_t)j);
+
+				if (newbuf == NULL) {
 					fprintf(stderr, "pid %d: failed realloc 1 - size = %d: ", context.mypid, j);
 					perror("");
 					break;
 				}
+				rcvbuf = newbuf;
 				maxread = j;
 			}
-			memset(rcvbuf, '\0', (size_t)j);
-				if (!read_exact(sock, rcvbuf + prefix_len, (size_t)(size - prefix_len))) {
+			if (!read_exact(sock, rcvbuf + prefix_len, (size_t)(size - prefix_len))) {
 				fprintf(stderr, "pid %d: command read failed: ", context.mypid);
 				perror("");
 				break;
 			}
+			rcvbuf[size] = '\0';
 			cmd = atoi(rcvbuf);
 		} else {
 			size = prefix_len;

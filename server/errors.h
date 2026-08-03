@@ -95,6 +95,8 @@
 #define EJAVAREAD		-50		/* in the java classlib a read error */
 #define EMULTIPLE		-51		/* multiple errors, your database may be corrupt */
 #define EBLOBWRT		-52		/* can't write blob to file */
+#define EOUTREC			-53		/* error in outrec */
+#define EINREC			-54		/* error in inrec */
 
 
 #ifdef DBERROR
@@ -157,6 +159,8 @@ char *db_err_strings[] = {
 	"java error reading socket",
 	"Multiple errors, your database may be corrupt",
 	"Can't write blob to file",
+	"Error writing record to database",
+	"Error reading record from database",
 	NULL
 };
 #endif					/* ifdef DBERROR */

@@ -144,7 +144,8 @@ int iclose(char *cmd, int c_off, char **ret)
 	} else
 		pthread_mutex_unlock(&(_indices[idx]._mutex));
 done:
-	tmp = sprintf(cmd, "%d|%d|", 0, idx);
+	/* No shared payload; return an explicit positive success status. */
+	tmp = sprintf(cmd, "%d|%d|", 0, 1);
 	return(tmp);
 }
 

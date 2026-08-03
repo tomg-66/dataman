@@ -669,7 +669,8 @@ ok_conn:
 					store_ix(msgbuf.txt, isw);
 					break;
 				case ICLOSE:
-					do_iclose(msgbuf.txt, context.msgid);
+					/* The response no longer needs to expose the server slot. */
+					do_iclose(rcvbuf, context.msgid);
 					break;
 				case PROTECT:
 					store_prot(msgbuf.txt);

@@ -305,7 +305,7 @@ dumpdf_SOURCES = dumpdf.c get_datafile_desc.c substr.c get_short.c \
 dbclean_SOURCES = clean.c check_it.c rebuild.c get_datafile_desc.c get_ll.c \
 				  put_ll.c get_short.c put_short.c get_long.c
 
-dumpix_SOURCES = dumpix.c substr.c get_short.c get_long.c get_ll.c
+dumpix_SOURCES = dumpix.c substr.c get_short.c get_long.c get_ll.c index_v2.c
 dnodes_SOURCES = dnodes.c index_v2.c
 dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 				 put_long.c get_datafile_desc.c lock.c get_ll.c \

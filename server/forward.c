@@ -29,7 +29,7 @@
 
 /*
  * this routine releases the current record in the database and moves
- * to the previous logical record in the database.
+ * to the next logical record in the database.
  * the calling sequence (using the #define) is:
  *      forward(idx_name)
  * where idx_name is either the name of an IOPENed index or a NULL (meaning

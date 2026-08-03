@@ -51,6 +51,7 @@
 #include "globs.h"
 #include "w_params.h"
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
 
 #define FALSE   0
 #define TRUE    1
@@ -59,8 +60,8 @@ extern char **_fnames;					/* the file names */
 extern int _fileno;						/* the current file number */
 extern short _maxfil;						/* maximum number of files */
 
-extern void in_rec(int, char *);			/* format the work record */
-extern void out_rec(int);
+extern int in_rec(int, char *);			/* format the work record */
+extern int out_rec(int);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
@@ -74,7 +75,11 @@ int db_rel()
 	char *cptr;
 
     _file = FALSE;
-    out_rec(WORK);
+    if (!out_rec(WORK)) {
+		db_err(EOUTREC, "%s: RELEASE", _progname);
+		return FALSE;
+	}
+
     if (!w_next) {
 		if (++_fileno == _maxfil) {
 			_fileno--;
@@ -94,6 +99,10 @@ int db_rel()
  * send the command and wait for the response.
  */
 	ptr = db_send(cmd, strlen(cmd), __FILE__);
+
+	if (!ptr)
+		return FALSE;
+
 	if (dbgsw) {
 		fprintf(stderr, "release returns ->%s<-\n", ptr);
 		fflush(stderr);
@@ -101,8 +110,12 @@ int db_rel()
 
 	cptr = ptr;
 	i = atoi(cptr);
-	if (i < 0)
-		db_err(i, "%s: error in release", _progname);
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: error in release", _progname);
+		free(ptr);
+		return FALSE;
+	}
 /*
  * parse the response and save the appropriate stuff
  */
@@ -119,7 +132,12 @@ int db_rel()
 /*
  * ok, done!
  */
-	in_rec(WORK, cptr);					/* read record into memory */
+	if (!in_rec(WORK, cptr)) {					/* read record into memory */
+		db_err(EINREC, "%s: RELEASE", _progname);
+		free(ptr);
+		return FALSE;
+	}
+
 	free(ptr);
     return (TRUE);
 }

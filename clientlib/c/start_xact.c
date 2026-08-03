@@ -55,7 +55,7 @@ extern char *_progname;
 
 int in_xact;
 
-void start_transaction(void)
+int start_transaction(void)
 {
     int i;								/* temporary */
 
@@ -69,15 +69,24 @@ void start_transaction(void)
  * send the command and deal with the return.
  */
 	buff = db_send(cmd, i, __FILE__);
+
+	if (!buff)
+		return FALSE;
 /*
  * the first field of the return is an error code if necessary,
  * otherwise the command worked.
  */
 	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: Error during START_XACT", _progname);
-	free(buff);
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: Error during START_XACT", _progname);
+		free(buff);
+		return FALSE;
+	}
+
 	in_xact = TRUE;
+	free(buff);
+	return i;
 }
 
 /*

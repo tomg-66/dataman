@@ -58,7 +58,10 @@ extern int  _fileno;                           /* current file number */
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
-void sort(char *pkey)
+#define FALSE 0
+#define TRUE  1
+
+int sort(char *pkey)
 {
 
 	int i;
@@ -69,14 +72,19 @@ void sort(char *pkey)
 	sprintf(cmd, "%d|%d|%d|%"PRId64"|%s|", SORT, cur_index._idxno,
 					_fileno, w_cur, pkey);
 	buff = db_send(cmd, strlen(cmd), __FILE__);
-	if (dbgsw) {
-		fprintf(stderr, "sort returns %s\n", buff);
-		fflush(stderr);
+	if (buff) {
+		if (dbgsw) {
+			fprintf(stderr, "sort returns %s\n", buff);
+			fflush(stderr);
+		}
+		i = atoi(buff);
+		if (i < 0)
+			db_err(i, "%s: error during sort", _progname);
+		free(buff);
+		if (i > 0)
+			return TRUE;
 	}
-	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: error during sort", _progname);
-	free(buff);
+	return FALSE;
 }
 
 /*

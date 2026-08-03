@@ -76,10 +76,14 @@ int db_rm_key(key key_val, char *ixname)
 
 	INDEX *idx;
 
-    idx = findex(ixname);
-	if (!idx->_wrmode)
+    if ((idx = findex(ixname)) == NULL) {
+		return FALSE;
+	}
+	if (!idx->_wrmode) {
 		db_err(0, "%s: in remove - index %s not opened for update\n",
 						_progname, idx->_idxname);
+		return FALSE;
+	}
 /*
  * what happened to strnchr?  not int the lib any more?
  *
@@ -90,8 +94,10 @@ int db_rm_key(key key_val, char *ixname)
  */
 	memset(cmd, '\0', sizeof(cmd));
 	memcpy(cmd, key_val, idx->_keylen);
-	if (strchr(key_val, '*'))
+	if (strchr(key_val, '*')) {
 		db_err(0, "%s: can't use wildcard in remove\n", _progname);
+		return FALSE;
+	}
 
 	if (*(key_val+idx->_keylen))
 		tmp = idx->_keylen + KEY_HEADER_LENGTH;
@@ -103,13 +109,16 @@ int db_rm_key(key key_val, char *ixname)
 	i += tmp;
 
 	buff = db_send(cmd, i, __FILE__);
+	if (!buff)
+		return FALSE;
 
 	i = atoi(buff);
 	free(buff);
-	if (i < 0)
-		db_err(i, "%s: remove error", _progname);
-	else if (i == 0)
-		return(FALSE);
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: remove error", _progname);
+		return FALSE;
+	}
 	return(TRUE);
 }
 

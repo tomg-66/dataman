@@ -56,6 +56,8 @@
 #define protect(idx)					if (db_prtct(idx)) ;
 #define restore(idx)					if (db_restore(idx)) ;
 #define commit							if (db_commit()) ;
+#define delete(idx)						if (db_delete(idx)) ;
+#define include(idx1, idx2, key)		if (db_include(idx1, idx2, key)) ;
 
 #define itoa(val,buf)					sprintf(buf, "%d", val)
 

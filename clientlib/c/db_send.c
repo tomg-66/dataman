@@ -29,6 +29,11 @@
  *				Sun Jul 19 03:44:27 PM MDT 2026
  *				tomg
  *				doing clean up.  using better send/receive routines
+ *
+ *				Wed Jul 29 01:53:46 PM MDT 2026
+ *				tomg
+ *				make call to db_err not exit and return false
+ *
  ************************************************************* */
 
 /*
@@ -68,10 +73,6 @@
 #include <arpa/inet.h>		/* for def of ntohl */
 
 #include "globs.h"
-/*
- * this is what is was!
-int db_send(char *cmd, int len)
- */
 
 extern void db_err(int, char *, ...);
 
@@ -126,34 +127,48 @@ char * db_send(char *cmd, int len, char *module)
 		return(NULL);
 
 	size = htonl((int32_t)len);
-	if (!write_all(dm_sock, (char *)&size, sizeof(int32_t)))
+	if (!write_all(dm_sock, (char *)&size, sizeof(int32_t))) {
 		db_err(0, "%s: Can't write wrap to socket", _progname);
+		return NULL;
+	}
 
-	if (!write_all(dm_sock, cmd, (size_t)len))
+	if (!write_all(dm_sock, cmd, (size_t)len)) {
 		db_err(0, "%s: Can't write to socket", _progname);
+		return NULL;
+	}
 
 /*
  * Read the length wrapper, then exactly that many response bytes.
  */
-	if (!read_exact(dm_sock, (char *)&size, sizeof(int32_t)))
+	if (!read_exact(dm_sock, (char *)&size, sizeof(int32_t))) {
 		db_err(0, "%s: Can't read response wrapper", _progname);
+		return NULL;
+	}
 
 	size = ntohl(size);
-	if (size < 0)
+	if (size < 0) {
 		db_err(0, "%s: invalid response length %"PRId32, _progname, size);
+		return NULL;
+	}
 
 	if (dbgsw) {
 		fprintf(stderr, "header says to read %"PRId32" bytes\n", size);
 		fflush(stderr);
 	}
 
-	if ((ret = malloc(size+1)) == NULL)
+	if ((ret = malloc(size+1)) == NULL) {
 		db_err(0, "%s: Cannot allocate buffer memory in db_send for %s",
 					_progname, module);
+		return NULL;
+	}
+
 	memset(ret, '\0', size+1);
-	if (!read_exact(dm_sock, ret, (size_t)size))
+	if (!read_exact(dm_sock, ret, (size_t)size)) {
 		db_err(0, "%s: Can't read socket response in %s",
 					_progname, module);
+		free(ret);
+		return NULL;
+	}
 	j = size;
 
 	if (dbgsw) {

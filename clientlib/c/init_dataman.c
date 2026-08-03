@@ -63,6 +63,7 @@
 
 #include "globs.h"
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
 #include "../../config.h"
 
 INDEX _indices[6];
@@ -73,7 +74,7 @@ extern int in_xact;
 extern int db_connect(char *);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
-extern void in_rec(int, char *);
+extern int in_rec(int, char *);
 extern void db_discon(void);
 extern void flush(void);
 
@@ -82,6 +83,9 @@ extern void data_globs(void);
 #ifdef DWINDOW
 extern void init_dwin(void);
 #endif
+
+#define FALSE 0
+#define TRUE  1
 
 void useage()
 {
@@ -92,7 +96,7 @@ void useage()
 					_progname, _progname);
 }
 
-void init_dataman(int argc, char *argv[])
+int init_dataman(int argc, char *argv[])
 {
 	int i, j;			/* argument handling */
 
@@ -114,35 +118,46 @@ void init_dataman(int argc, char *argv[])
 		for (j = 1; j < strlen(argv[i]); j++) {
 			switch(argv[i][j]) {
 				case 'D':
-					if (dbgsw)
+					if (dbgsw) {
 						useage();
+						return FALSE;
+					}
 					dbgsw++;
 					break;
 				case 'h':
-					if (host)
+					if (host) {
 						useage();
+						return FALSE;
+					}
 					host = strdup(argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				case 'n':
-					if (!traditional)
+					if (!traditional) {
 						useage();
+						return FALSE;
+					}
 					traditional = 0;
 					break;
 				case 'p':
-					if (dataman_has_php)
+					if (dataman_has_php) {
 						useage();
+						return FALSE;
+					}
 					dataman_has_php = 1;
 					break;
 				case 'r':
-					if (strlen(_root))
+					if (strlen(_root)) {
 						useage();
+						return FALSE;
+					}
 					strcpy(_root, argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				default:
 					db_err(0, "unknown switch '%c'\n", argv[i][j]);
 					useage();
+					return FALSE;
 			}
 		}
 	}
@@ -153,19 +168,25 @@ void init_dataman(int argc, char *argv[])
  */
 	in_xact = 0;
 	if (dataman_has_php) {
-		if (i > argc)
+		if (i > argc) {
 			useage();
+			return FALSE;
+		}
 	} else {
-		if (i >= argc)
+		if (i >= argc) {
 			useage();
+			return FALSE;
+		}
 	}
 /*
  * if we need to get the root of the database directory on the host
  */
 	if (!strlen(_root)) {
 		ptr = getenv("ROOT");
-		if (ptr == NULL)
+		if (ptr == NULL) {
 			db_err(0, "ROOT not defined\n");
+			return FALSE;
+		}
 
 		strcpy(_root, ptr);
 	}
@@ -180,8 +201,10 @@ void init_dataman(int argc, char *argv[])
 			host = strdup(ptr);
 	}
 
-	if ((dm_sock = db_connect(host)) < 0)
+	if ((dm_sock = db_connect(host)) < 0) {
 		db_err(dm_sock, "%s: Can't connect to host", _progname);
+		return FALSE;
+	}
 /*
  * for php, we don't use a work file, so we skip all of that
  * part.  when we do non-traditional, that will be the case
@@ -199,9 +222,16 @@ void init_dataman(int argc, char *argv[])
 	}
 	ptr = db_send(cmd, strlen(cmd), __FILE__);
 
+	if (!ptr)
+		return FALSE;
+
 	i = atoi(ptr);
-	if (i < 0)
-		db_err(i, "%s: Error during INIT_DATAMAN", _progname);
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: Error during INIT_DATAMAN", _progname);
+		free(ptr);
+		return FALSE;
+	}
 
 	cptr = strchr(ptr, '|') + 1;
 	w_chan = atoi(cptr);
@@ -216,7 +246,12 @@ void init_dataman(int argc, char *argv[])
 	w_next = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 
-	in_rec(WORK, cptr);			/* read the work record */
+	if (!in_rec(WORK, cptr)) {			/* read the work record */
+		db_err(EINREC, "%s: %s: Can't read record", _progname, __func__);
+		free(ptr);
+		return FALSE;
+	}
+
 	free(ptr);
 php_done:
 	atexit(db_discon);			/* clean up on exit */
@@ -226,6 +261,7 @@ php_done:
 	if (!dataman_has_php)
 		init_dwin();
 #endif
+	return TRUE;
 }
 
 void dataman_disconnect()

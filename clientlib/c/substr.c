@@ -32,21 +32,21 @@ int arg2,arg3;
 
 {
 
-    char *buff;					/* returned buffer */
+	char *buff;					/* returned buffer */
 
-    register unsigned idx;			/* index value */
+	register unsigned idx;			/* index value */
 
-    if (arg2 > arg3)				/* validate args */
-        return(NULL);
+	if (arg2 > arg3)				/* validate args */
+		return(NULL);
 
-    idx = arg3 - arg2 + 2;			/* length of buffer + \0 */
-    buff = (char *)malloc(idx);			/* get return buffer */
-    if (buff == NULL)
-	return(NULL);
+	idx = arg3 - arg2 + 2;			/* length of buffer + \0 */
+	buff = (char *)malloc(idx);			/* get return buffer */
+	if (buff == NULL)
+		return(NULL);
 
-    buff = memcpy(buff,arg1+arg2,idx-1);	/* copy in substring */
-    *(buff + idx - 1) = '\0';			/* null terminate */
-    return(buff);				/* return */
+	buff = memcpy(buff,arg1+arg2,idx-1);	/* copy in substring */
+	*(buff + idx - 1) = '\0';			/* null terminate */
+	return(buff);				/* return */
 }
 
 /*

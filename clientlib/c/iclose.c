@@ -49,13 +49,17 @@
 #include "m_params.h"
 #include "globs.h"
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
 
-extern void out_rec(int);
+extern int out_rec(int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
-void iclose(char *ixname)
+#define FALSE 0
+#define TRUE  1
+
+int iclose(char *ixname)
 {
 	INDEX *idx;			/* pointer to index structure to close */
 
@@ -64,20 +68,33 @@ void iclose(char *ixname)
 	char cmd[128];
 	char *buff;
 
-	if (cur_index._wrmode)
-		out_rec(MASTER);					/* flush the record */
+	if (cur_index._wrmode) {
+		if (!out_rec(MASTER)) {				/* flush the record */
+			db_err(EOUTREC, "%s: ICLOSE", _progname);
+			return FALSE;
+		}
+	}
 
 /*
  * don't need to check the return of this, because if the named
  * index isn't open, then findex will message and terminate
  */
-	idx = findex(ixname);
+	if ((idx = findex(ixname)) == NULL) {
+		return FALSE;
+	}
 	sprintf(cmd, "%d|%d|", ICLOSE, idx->_idxno);
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
+	if (!buff)
+		return FALSE;
+
 	tmp = atoi(buff);
-	if (tmp < 0)
-		db_err(tmp, "%s: iclose error", _progname);
+	if (tmp < 1) {
+		if (tmp < 0)
+			db_err(tmp, "%s: iclose error", _progname);
+		free(buff);
+		return FALSE;
+	}
 
 	if (idx->_savptr != NULL) {				/* has a save been done? */
 		if (idx->_savptr->_savkey != NULL)	/* is the saved key ok? */
@@ -104,6 +121,7 @@ void iclose(char *ixname)
 	}
 	memset((char *)idx, '\0', sizeof(INDEX));
 	free(buff);
+	return TRUE;
 }
 
 /*

@@ -58,7 +58,7 @@
 
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
-extern void in_rec(int, char *);
+extern int in_rec(int, char *);
 extern void db_err(int, char *, ...);
 extern void add_protect(int, int, int);
 
@@ -88,7 +88,9 @@ int db_prtct(char *ixname)
  * yet, and no one else can have it anyway, so just say ok.
  */
 	if (ixname) {
-		idx = findex(ixname);
+		if ((idx = findex(ixname)) == NULL) {
+			return FALSE;
+		}
 		if (idx->_rptr < 0)
 			return(TRUE);
 		sprintf(cmd, "%d|%d|%d|%"PRId64"|", PROTECT, idx->_idxno, idx->_fno, idx->_rptr);
@@ -97,10 +99,13 @@ int db_prtct(char *ixname)
 
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
+	if (!buff)
+		return FALSE;
+
 	tmp = atoi(buff);
-	if (tmp < 0)
-		db_err(tmp, "%s: error in protect", _progname);
-	else if (tmp == 0) {
+	if (tmp < 1) {
+		if (tmp < 0)
+			db_err(tmp, "%s: error in protect", _progname);
 		free(buff);
 		return(FALSE);
 	}
@@ -118,10 +123,16 @@ int db_prtct(char *ixname)
 		m_cur = idx->_rptr;
 		m_chan = idx->_fno;
 		m_fmt = fmt;
-		in_rec(MASTER, ptr);
+		if (!in_rec(MASTER, ptr)) {
+			db_err(EINREC, "%s: Error reading master record:", _progname);
+			return (FALSE);
+		}
 		add_protect(idx->_idxno, idx->_fno, idx->_rptr);
 	} else {
-		in_rec(WORK, ptr);
+		if (!in_rec(WORK, ptr)) {
+			db_err(EINREC, "%s: Error reading work record:", _progname);
+			return (FALSE);
+		}
 		add_protect(-w_chan, 0, w_cur);
 	}
 	free(buff);

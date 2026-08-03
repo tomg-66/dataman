@@ -47,6 +47,7 @@
 #include "m_params.h"
 
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
 #include "../../server/misc.h"
 
 #define TRUE    1
@@ -54,7 +55,7 @@
 
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
-extern void out_rec(int);
+extern int out_rec(int);
 
 extern int in_xact;
 
@@ -71,22 +72,32 @@ int db_commit(void)
 /*
  * if need be, flush the current record before the commit
  */
-	if (cur_index._wrmode)			/* do only if in update mode */
-    	if (mfld && *mfld)			/* has the array been allocated yet? */
-			out_rec(MASTER);		/* write it */
+	if (cur_index._wrmode) {			/* do only if in update mode */
+		if (mfld && *mfld) {			/* has the array been allocated yet? */
+			if (!out_rec(MASTER)) {		/* write it */
+				db_err(EOUTREC, "In %s: error in out_rec", _progname);
+				return FALSE;
+			}
+		}
+	}
 
 	i = sprintf(cmd, "%d|", COMMIT);
 /*
  * send the command and deal with the return.
  */
 	buff = db_send(cmd, i, __FILE__);
+
+	if (!buff)
+		return FALSE;
 /*
  * the first field of the return is an error code if necessary,
  * otherwise the command worked.
  */
 	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: Error during COMMIT", _progname);
+	if (i < 0) {
+		db_err(i, "In %s: Error during COMMIT", _progname);
+		i = FALSE;
+	}
 	free(buff);
 	in_xact = FALSE;
 	return(i);

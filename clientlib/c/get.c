@@ -14,6 +14,11 @@
  * 				March 2002
  * 				Tom Green
  * 				modified to use call interface to server.
+ *
+ * 				Tue Jul 28 10:48:53 PM MDT 2026
+ * 				tomg
+ * 				modified to use the V2 index
+ *
  ************************************************************* */
 
 /*
@@ -58,6 +63,7 @@
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "proto.h"					/* need for definition of type key */
+#include "../../server/errors.h"
 
 #define TRUE    1
 #define FALSE   0
@@ -66,8 +72,8 @@ extern INDEX *findex(char *);
 extern char *substr(char *, int, int);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
-extern void in_rec(int, char *);
-extern void out_rec(int);
+extern int in_rec(int, char *);
+extern int out_rec(int);
 extern int64_t get_ll(char *);
 
 int db_g_key(char *idx, key key_val)
@@ -77,12 +83,21 @@ int db_g_key(char *idx, key key_val)
 	char cmd[128];
 	char *buff;
 	char *cptr;
+	char *tmp_key;
 
 	INDEX *index;
 
-	if (cur_index._wrmode)
-		out_rec(MASTER);					/* flush the current record */
-    index = findex(idx);					/* find the index number */
+	if (cur_index._wrmode) {
+		if (!out_rec(MASTER)) {					/* flush the current record */
+			db_err(EOUTREC, "%s: error reading master record", _progname);
+			return FALSE;
+		}
+	}
+
+    if ((index = findex(idx)) == NULL) {					/* find the index number */
+		db_err(EIDXNOO, "%s: %s: index named %d is not open", _progname, __func__, idx);
+		return FALSE;
+	}
 /*
  * if this byte isn't a null (we should be getting a proper key)
  * this indicates that they are using the system KEY, and the
@@ -100,14 +115,17 @@ int db_g_key(char *idx, key key_val)
  * send the command and deal with the return.
  */
 	buff = db_send(cmd, i, __FILE__);
+
+	if (!buff)
+		return FALSE;
 /*
  * the first field of the return is an error code if necessary,
  * zero of the key wasn't found, or the length of the data record
  */
 	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: Error during GET", _progname);
-	else if (i == 0) {
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: Error during GET", _progname);
 		free(buff);
 		return(FALSE);
 	}
@@ -124,9 +142,16 @@ int db_g_key(char *idx, key key_val)
 	cptr = strchr(cptr, '|') + 1;
 	index->_offs = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
+
+	tmp_key = substr(cptr, 0, index->_keylen+KEY_HEADER_LENGTH);
+	if (!tmp_key) {
+		free(buff);
+		return FALSE;
+	}
 	if (index->_curkey)
 		free(index->_curkey);
-	index->_curkey = substr(cptr, 0, index->_keylen+KEY_HEADER_LENGTH);
+	index->_curkey = tmp_key;
+
 	index->_fno = *(index->_curkey+index->_keylen) - 1;
 	cptr += index->_keylen + KEY_HEADER_LENGTH;
 
@@ -135,7 +160,11 @@ int db_g_key(char *idx, key key_val)
 	m_fdesc = index->_files[m_chan]._filedesc;
 	m_head = index->_files[m_chan]._hlen;
 	cur_index = *index;
-	in_rec(MASTER, cptr);
+	if (!in_rec(MASTER, cptr)) {
+		db_err(EINREC, "%s: Error reading master record", _progname);
+		free(buff);
+		return FALSE;
+	}
 	free(buff);
 
 	return(TRUE);

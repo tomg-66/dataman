@@ -64,8 +64,8 @@ extern INDEX *findex(char *);
 extern char *substr(char *,int,int);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
-extern void in_rec(int, char *);
-extern void out_rec(int);
+extern int in_rec(int, char *);
+extern int out_rec(int);
 extern int64_t get_ll(char *);
 
 int db_g_last(char *index_name)
@@ -77,26 +77,33 @@ int db_g_last(char *index_name)
 	char msg[128];
 	char *ret;
 	char *cptr;
+	char *tmp_key;
 
 	int64_t recno;
 
-    idx = findex(index_name);      /* get the index */
-/*
-	recno = get_ll(idx->_curkey+idx->_keylen+1);
-	if (in_xact && recno < 0)
-		return(FALSE);
-*/
-	if (cur_index._wrmode)
-		out_rec(MASTER);
+    if ((idx = findex(index_name)) == NULL) {      /* get the index */
+		db_err(EIDXNOO, "%s: %s: index named %s is not open", _progname, __func__, index_name);
+		return FALSE;
+	}
+
+	if (cur_index._wrmode) {
+		if (!out_rec(MASTER)) {
+			db_err(EOUTREC, "%s: %s: error writing record", _progname, __func__);
+			return FALSE;
+		}
+	}
 
 	sprintf(msg, "%d|%d|", GET_LAST, idx->_idxno);
 	i = strlen(msg);
 	ret = db_send(msg, i, __FILE__);
 
+	if (!ret)
+		return FALSE;
+
 	i = atoi(ret);
-	if (i < 0)
-		db_err(i, "%s: error during get_last", _progname);
-	else if (i == 0) {
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: error during get_last", _progname);
 		free(ret);
 		return(FALSE);
 	}
@@ -112,9 +119,16 @@ int db_g_last(char *index_name)
 	cptr = strchr(cptr, '|') + 1;
 	idx->_offs = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
+
+	tmp_key = substr(cptr, 0, idx->_keylen+KEY_HEADER_LENGTH);
+	if (!tmp_key) {
+		free(ret);
+		return FALSE;
+	}
 	if (idx->_curkey)
 		free(idx->_curkey);
-	idx->_curkey = substr(cptr, 0, idx->_keylen+KEY_HEADER_LENGTH);
+	idx->_curkey = tmp_key;
+
 	idx->_fno = *(idx->_curkey+idx->_keylen) - 1;
 	cptr += idx->_keylen + KEY_HEADER_LENGTH;
 
@@ -123,9 +137,13 @@ int db_g_last(char *index_name)
 	m_fdesc = idx->_files[m_chan]._filedesc;
 	m_head = idx->_files[m_chan]._hlen;
 	cur_index = *idx;
-	in_rec(MASTER, cptr);
-	free(ret);
+	if (!in_rec(MASTER, cptr)) {
+		db_err(EINREC, "%s: GET_LAST", _progname);
+		free(ret);
+		return FALSE;
+	}
 
+	free(ret);
 	return(TRUE);
 }
 

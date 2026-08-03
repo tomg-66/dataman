@@ -53,17 +53,21 @@
 #include "m_params.h"
 #include "w_params.h"
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
 
 extern INDEX cur_index;					/* the current operation index */
 
-extern void out_rec(int);
+extern int out_rec(int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
 
 extern void db_err(int, char *, ...);
 extern void del_protect(int, int, int);
 
-void clear(char *idx_name)
+#define FALSE 0
+#define TRUE  1
+
+int clear(char *idx_name)
 
 {
 	int i;
@@ -75,27 +79,45 @@ void clear(char *idx_name)
 
 	if (idx_name) {
 		if (cur_index._wrmode)
-			out_rec(MASTER);
-		idx = findex(idx_name);			/* get the index */
+			if (!out_rec(MASTER)) {
+				db_err(EOUTREC, "In %s: CLEAR", _progname);
+				return FALSE;
+			}
+		if ((idx = findex(idx_name)) == NULL) {			/* get the index */
+			db_err(EIDXNOO, "In %s: index named %s not open in clear", _progname, idx_name);
+			return FALSE;
+		}
 		if (idx->_rptr < 0)
-			return;
+			return FALSE;
 		sprintf(cmd, "%d|%d|%d|%"PRId64"|", CLEAR, idx->_idxno, idx->_fno, idx->_rptr);
 	} else {
 		sprintf(cmd, "%d|%d|%"PRId64"|", CLEAR, -w_chan, w_cur);
-		out_rec(WORK);
+		if (!out_rec(WORK)) {
+			db_err(EOUTREC, "%s: CLEAR", _progname);
+			return FALSE;
+		}
 	}
 
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
+	if (!buff)
+		return FALSE;
+
 	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: error in clear", _progname);
-	free(buff);
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "In %s: error in clear", _progname);
+		free(buff);
+		return FALSE;
+	}
 
 	if (idx_name)
 		del_protect(idx->_idxno, idx->_fno, idx->_rptr);
 	else
 		del_protect(-w_chan, 0, w_cur);
+
+	free(buff);
+	return TRUE;
 }
 
 /*

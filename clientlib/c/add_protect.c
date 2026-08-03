@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <stdbool.h>
 
 #include "globs.h"
 
@@ -59,7 +60,7 @@ typedef struct _pchain_ {
 
 static PCHAIN *phead = NULL;	/* head of chain */
 
-void add_protect(int idxno, int fileno, int64_t recno)
+bool add_protect(int idxno, int fileno, int64_t recno)
 {
 
 	PCHAIN *tmp;
@@ -67,27 +68,30 @@ void add_protect(int idxno, int fileno, int64_t recno)
 	tmp = phead;
 
 	if (tmp == NULL) {
-		if ((tmp = phead = (PCHAIN *)calloc(1, sizeof(PCHAIN))) == NULL)
+		if ((tmp = phead = (PCHAIN *)calloc(1, sizeof(PCHAIN))) == NULL) {
 			db_err(0, "%s: Can't allocate list header in add_protect", _progname);
+			return false;
+		}
 	} else {
 		while (tmp->next) {
 			if (tmp->idxno == idxno && tmp->fileno == fileno && tmp->recno == recno)
-				return;
+				return true;
 			tmp = tmp->next;
 		}
-		if ((tmp->next  = (PCHAIN *)calloc(1, sizeof(PCHAIN))) == NULL)
+		if ((tmp->next  = (PCHAIN *)calloc(1, sizeof(PCHAIN))) == NULL) {
 			db_err(0, "%s: Can't allocate list element in add_protect", _progname);
+			return false;
+		}
 		tmp = tmp->next;
 	}
 	tmp->idxno = idxno;
 	tmp->fileno = fileno;
 	tmp->recno = recno;
+	return true;
 }
 
 void del_protect(int idxno, int fileno, int64_t recno)
 {
-
-
 	PCHAIN *tmp;
 	PCHAIN *ptr;
 

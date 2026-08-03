@@ -71,16 +71,25 @@ void db_discon(void)
  * routine, then it gets called again because it is registered with
  * atexit.  we do -not- want to do this twice
  */
+/*
+ * we are, for now, going to assume every iclose just works, since we need
+ * to continue on and close everything left open.
+ */
 	if (dm_sock == -1)
 		return;
 
 	if (is_sort) {
 		sprintf(msg, "%d|%d|", ICLOSE, cur_index._idxno);
 		buff = db_send(msg, strlen(msg), __FILE__);
-		free(buff);
+
+		if (buff)
+			free(buff);
+
 		sprintf(msg, "%d|%d|", ICLOSE, -w_chan);
 		buff = db_send(msg, strlen(msg), __FILE__);
-		free(buff);
+
+		if (buff)
+			free(buff);
 	} else {
 /*
  * TODO:
@@ -90,22 +99,25 @@ void db_discon(void)
 			if (strlen(_indices[i]._idxname)) {
 				sprintf(msg, "%d|%d|", ICLOSE, _indices[i]._idxno);
 				buff = db_send(msg, strlen(msg), __FILE__);
-				free(buff);
+				if (buff)
+					free(buff);
 			}
 		}
 		if (!dataman_has_php) {
 			sprintf(msg, "%d|%d|", ICLOSE, -w_chan);
 			buff = db_send(msg, strlen(msg), __FILE__);
-			free(buff);
+			if (buff)
+				free(buff);
 		}
 	}
 	sprintf(msg, "%d", DISCON);
 	buff = db_send(msg, strlen(msg), __FILE__);
-	if (dbgsw)
+	if (dbgsw && buff)
 		fprintf(stderr, "discon response was ->%s<-\n", buff);
-	if (memcmp(buff, "ok", 2))
+	if (buff && memcmp(buff, "ok", 2))
 		fprintf(stderr, "Didn't get proper shutdown reply\n");
-	free(buff);
+	if (buff)
+		free(buff);
 	close(dm_sock);
 	dm_sock = -1;
 }

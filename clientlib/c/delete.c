@@ -63,15 +63,18 @@
 #include "../../server/errors.h"
 
 
-extern void in_rec(int, char *);
-extern void out_rec(int);
+extern int in_rec(int, char *);
+extern int out_rec(int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
 extern int in_xact;
 
-void delete(char *idx_name)
+#define FALSE 0
+#define TRUE  1
+
+int db_delete(char *idx_name)
 {
 
 	INDEX *idx;					/* the insert index structure */
@@ -87,24 +90,39 @@ void delete(char *idx_name)
 		fflush(stderr);
 	}
 
-	if (cur_index._wrmode)
-    	out_rec(MASTER);			/* write out the current record */
+	if (cur_index._wrmode) {
+    	if (!out_rec(MASTER)) {			/* write out the current record */
+			db_err(EOUTREC, "In %s: error in out_rec", _progname);
+			return FALSE;
+		}
+	}
 
-    idx = findex(idx_name);			/* get the index structure */
-    if (idx->_rptr == 0)			/* can't del if we don't have it */
+    if ((idx = findex(idx_name)) == NULL) {			/* get the index structure */
+		return FALSE;
+	}
+    if (idx->_rptr == 0) {			/* can't del if we don't have it */
 		db_err(ENOGET, "%s: delete error", _progname);
+		return FALSE;
+	}
 
 	sprintf(cmd, "%d|%d|%d|%"PRId64"|%d|", DELETE, idx->_idxno,
 					idx->_fno, idx->_rptr,in_xact);
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
-	tmp = atoi(buff);
-	if (tmp < 0)
-		db_err(tmp, "%s: delete error", _progname);
+	if (!buff)
+		return FALSE;
 
 	if (dbgsw) {
 		fprintf(stderr, "returnd buffer is %s\n", buff);
 		fflush(stderr);
+	}
+
+	tmp = atoi(buff);
+	if (tmp < 1) {
+		if (tmp < 0)
+			db_err(tmp, "%s: delete error", _progname);
+		free(buff);
+		return FALSE;
 	}
 
 	ptr = strchr(buff, '|') + 1;
@@ -120,8 +138,13 @@ void delete(char *idx_name)
 		fprintf(stderr, "m_fmt = %d, m_cur = %"PRId64"\n", m_fmt, m_cur);
 		fflush(stderr);
 	}
-	in_rec(MASTER, ptr);
+	if (!in_rec(MASTER, ptr)) {
+		db_err(EINREC, "In %s: Error in out_rec", _progname);
+		free(buff);
+		return FALSE;
+	}
 	free(buff);
+	return TRUE;
 }
 
 /*

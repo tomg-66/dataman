@@ -72,23 +72,27 @@ extern void put_ll(void *, int64_t);
 
 extern int in_xact;
 
-void include(char *idx1, char *idx2, char *key)
+int db_include(char *idx1, char *idx2, char *key)
 {
 
     int tmp;						/* temporary, misc. usage */
     char buff[128];					/* output buffer */
 	char *cptr;
 	char *ret;
+	char *tmp_key;
 
     INDEX *idx_1;					/* structure for the first index */
 	INDEX *idx_2;					/* same for second */
 
-	idx_1 = findex(idx1);
-	idx_2 = findex(idx2);
+	if ((idx_1 = findex(idx1)) == NULL || (idx_2 = findex(idx2)) == NULL) {
+		return FALSE;
+	}
 
-	if (!idx_2->_wrmode)
+	if (!idx_2->_wrmode) {
 		db_err(0, "%s: index %s not opened for update\n",
 						_progname, idx_2->_idxname);
+		return FALSE;
+	}
 /*
  * make sure the file currently referred to in idx_1 is also
  * found in idx_2
@@ -100,6 +104,7 @@ void include(char *idx1, char *idx2, char *key)
 	if (tmp >= idx_2->_nfiles) {
 		db_err(0, "%s: Include error: file %s not a member of index %s\n",
 				_progname, idx_1->_files[idx_1->_fno]._fname, idx_2->_idxname);
+		return FALSE;
 	}
 	idx_2->_fno = tmp;
 
@@ -107,9 +112,16 @@ void include(char *idx1, char *idx2, char *key)
 				idx_1->_fno, idx_2->_idxno, idx_2->_fno, idx_1->_rptr, key);
 	ret = db_send(buff, strlen(buff), __FILE__);
 
+	if (!ret)
+		return FALSE;
+
 	tmp = atoi(ret);
-	if (tmp < 0)
-		db_err(tmp, "%s: error in include",_progname);
+	if (tmp < 1) {
+		if (tmp < 0)
+			db_err(tmp, "%s: error in include",_progname);
+		free(ret);
+		return FALSE;
+	}
 
 	idx_2->_offs = tmp;
 	cptr = strchr(ret, '|') + 1;
@@ -122,13 +134,21 @@ void include(char *idx1, char *idx2, char *key)
 		cptr = buff;
 	} else
 		cptr = strchr(cptr, '|') + 1;
+
+	tmp_key = substr(cptr, 0, idx_2->_keylen+KEY_HEADER_LENGTH);
+	if (!tmp_key) {
+		free(ret);
+		return FALSE;
+	}
 	if (idx_2->_curkey)
 		free(idx_2->_curkey);
-	idx_2->_curkey = substr(cptr, 0, idx_2->_keylen+KEY_HEADER_LENGTH);
+	idx_2->_curkey = tmp_key;
+
 	idx_2->_fno = *(idx_2->_curkey+idx_2->_keylen) - 1;
 	if (cur_index._idxno == idx_2->_idxno)
 		cur_index = *idx_2;
 	free(ret);
+	return TRUE;
 }
 
 /*

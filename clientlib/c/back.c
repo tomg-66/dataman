@@ -64,8 +64,8 @@
 extern INDEX cur_index;					/* the current operation index */
 extern int in_xact;						/* transaction switch */
 
-extern void out_rec(int);
-extern void in_rec(int, char *);
+extern int out_rec(int);
+extern int in_rec(int, char *);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
 
@@ -85,27 +85,43 @@ int db_bck(char *idx_name)
 	char *cptr;
 
 	if (idx_name) {
-		idx = findex(idx_name);			/* get the index */
+		if ((idx = findex(idx_name)) == NULL) {			/* get the index */
+			return FALSE;
+		}
 		if (in_xact && idx->_rptr < 0)
 			return(FALSE);
-		if (cur_index._wrmode)
-			out_rec(MASTER);
-		if (idx->_curkey == NULL)
+		if (cur_index._wrmode) {
+			if (!out_rec(MASTER)) {
+				db_err(EOUTREC, "In %s: error in back", _progname);
+				return FALSE;
+			}
+		}
+		if (idx->_curkey == NULL) {
 			db_err(ENOGET, "%s: error in back", _progname);
+			return FALSE;
+		}
 		if (in_xact && idx->_rptr < 0)
 			return(FALSE);
 		sprintf(cmd, "%d|%d|%d|%"PRId64"|", BACK, idx->_idxno, idx->_fno, idx->_rptr);
 	} else {
 		sprintf(cmd, "%d|%d|%"PRId64"|", BACK, -w_chan, w_cur);
-		out_rec(WORK);
+		if (!out_rec(WORK)) {
+			db_err(EOUTREC, "%s: error in back", _progname);
+			return FALSE;
+		}
 	}
 
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
+	if (!buff) {
+		return FALSE;
+	}
+
 	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: error in back", _progname);
-	else if (i == 0) {
+	if (i < 1) {
+		if (i < 0) {
+			db_err(i, "%s: error in back", _progname);
+		}
 		free(buff);
 		return(FALSE);					/* no next record in this file */
 	}
@@ -122,11 +138,19 @@ int db_bck(char *idx_name)
 		m_fdesc = idx->_files[idx->_fno]._filedesc;
 		m_head = idx->_files[idx->_fno]._hlen;
 		m_fmt = fmt;
-		in_rec(MASTER, cptr);
+		if (!in_rec(MASTER, cptr)) {
+			db_err(EINREC, "Error reading master record", _progname);
+			free(buff);
+			return FALSE;
+		}
 	} else {
 		w_cur = curr;
 		w_fmt = fmt;
-		in_rec(WORK, cptr);
+		if (!in_rec(WORK, cptr)) {
+			db_err(EINREC, "Error reading work record", _progname);
+			free(buff);
+			return FALSE;
+		}
 	} 
 	free(buff);
 	return(TRUE);						/* give the ok signal */

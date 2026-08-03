@@ -52,6 +52,7 @@
 #include "globs.h"
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+#include "../../server/errors.h"
 #include "../../config.h"
 
 /* -------- these are globals declared here -------- */
@@ -90,7 +91,7 @@ static void useage(char *name)
 /*
  * make the index
  */
-void mkidx(int argc, char *argv[])		/* the command line args from main */
+int mkidx(int argc, char *argv[])		/* the command line args from main */
 
 {
     int i, j;					/* general usage */
@@ -103,8 +104,10 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
 	char *cptr;
 
 	_progname = argv[0];		/* save the program name */
-    if (argc < 3)               /* got to get at least the right # of args */
+    if (argc < 3) {             /* got to get at least the right # of args */
         useage(argv[0]);
+		return FALSE;
+	}
 
     data_globs();               /* init global vars */
 
@@ -120,47 +123,62 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
 		for(j = 1; j < strlen(argv[i]); j++) {
 			switch(argv[i][j]) {
 				case 'D':					/* turn on debugging */
-					if (dbgsw)
+					if (dbgsw) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					dbgsw++;
 					break;
 				case 'h':					/* run in daemon mode */
-					if (strlen(host))
+					if (strlen(host)) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					strcpy(host, argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				case 'p':
-					if (phpsw)
+					if (phpsw) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					phpsw++;
 					break;
 				case 'r':
-					if (strlen(_root))
+					if (strlen(_root)) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					strcpy(_root, argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				case '0': case '1': case '2': case '3': case '4':
 				case '5': case '6': case '7': case '8': case '9':
-					if (cur_index._keylen)
+					if (cur_index._keylen) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					cur_index._keylen = atoi(argv[i]+j);
         			if (cur_index._keylen > MAX_KEY_SIZE||cur_index._keylen
-									< MIN_KEY_SIZE)
+									< MIN_KEY_SIZE) {
 						db_err(0, " %s: keysize %d invalid - min %d, "
 										"max %d\n", argv[0], cur_index._keylen,
 										MIN_KEY_SIZE, MAX_KEY_SIZE);
+						return FALSE;
+					}
 					j = strlen(argv[i]) + 1;
 					break;
 				default:
 					db_err(0, "unknown switch %c\n", argv[i][j]);
 					useage(argv[0]);
+					return FALSE;
 			}
 		}
 	}
-	if (i == argc)
+	if (i == argc) {
 		useage(argv[0]);
+		return FALSE;
+	}
 	strcpy(cur_index._idxname, argv[i++]);
 	_maxfil = argc - i;
 	if ((_fnames = calloc(_maxfil, sizeof(char *))) == NULL) {
@@ -170,8 +188,10 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
 	}
 	h_len = 0;
 	for(j = 0; i < argc; i++,j++) {
-		if (*argv[i] == '-')
+		if (*argv[i] == '-') {
 			useage(argv[0]);
+			return FALSE;
+		}
 		if ((_fnames[j] = strdup(argv[i])) == NULL) {
 			fprintf(stderr, "Can't allocate filename space for %s", argv[i]);
 			perror("");
@@ -184,8 +204,10 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
  */
 	if (!strlen(_root)) {
 		ptr = getenv("ROOT");				/* get root env var */
-		if (ptr == NULL)					/* is it set? */
+		if (ptr == NULL) {					/* is it set? */
 			db_err(0, "%s: no database ROOT set\n", argv[0]);
+			return FALSE;
+		}
 
 		strcpy(_root, ptr);
 	}
@@ -217,8 +239,10 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
  * dm_sock is a global. connect up to the server, and arrange to
  * disconnect if something screws up.
  */
-	if ((dm_sock = db_connect(host)) < 0)
+	if ((dm_sock = db_connect(host)) < 0) {
 		db_err(dm_sock, "%s: Can't connect to database server: ", argv[0]);
+		return FALSE;
+	}
 	atexit(db_discon);
 
 /*
@@ -226,6 +250,10 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
  * the response from the server
  */
 	ptr = db_send(cptr, j, __FILE__);
+
+	if (!ptr)
+		return FALSE;
+
 	free(cptr);
 /*
  * now parse the return for all of the pertinant information.
@@ -235,8 +263,10 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
 /*
  * if the first field returned is negative, there was an error
  */
-	if (i < 0)
+	if (i < 0) {
 		db_err(i, "%s: mkidx failed with", argv[0]);
+		return FALSE;
+	}
 
 	cptr = strchr(cptr, '|') + 1;
 	cur_index._idxno = atoi(cptr);			/* idxno- offset in server */
@@ -260,7 +290,12 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
 		fflush(stderr);
 	}
 
-	in_rec(WORK, cptr);
+	if (!in_rec(WORK, cptr)) {
+		db_err(EINREC, "%s: MKIDX", _progname);
+		free(ptr);
+		return FALSE;
+	}
+
 	_file = 1;
 	free(ptr);
 	is_sort = 1;
@@ -270,7 +305,7 @@ void mkidx(int argc, char *argv[])		/* the command line args from main */
 		init_dwin();
 #endif
 
-	return;
+	return TRUE;
 }
 
 

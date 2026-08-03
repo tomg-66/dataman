@@ -54,7 +54,10 @@ extern char *substr(char *, int, int);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
-void iopen(char *index, int mode)
+#define FALSE 0
+#define TRUE  1
+
+int iopen(char *index, int mode)
 {
     int idx;                    /* loop counter */
     int x;                      /* use only because open requires it */
@@ -73,11 +76,14 @@ void iopen(char *index, int mode)
 		if (!strcmp(index, _indices[idx]._idxname)) {
 			db_err(0, "%s: index named %s already open\n",
 							_progname, index);
+			return FALSE;
 		}
 	}
 
-	if (x == -1)
+	if (x == -1) {
 		db_err(0, "%s: too many open indices\n", _progname);
+		return FALSE;
+	}
 	idx = x;
 /*
  * send the message and wait for the return
@@ -85,9 +91,16 @@ void iopen(char *index, int mode)
 	sprintf(stuff, "%d|%s|%s|", IOPEN, index, _root);
 	buff = db_send(stuff, strlen(stuff), __FILE__);
 
+	if (!buff)
+		return FALSE;
+
 	i = atoi(buff);
-	if (i < 0)
-		db_err(i, "%s: server error in iopen", _progname);
+	if (i < 1) {
+		if (i < 0)
+			db_err(i, "%s: server error in iopen", _progname);
+		free(buff);
+		return FALSE;
+	}
 /*
  * parse the message
  */
@@ -100,16 +113,27 @@ void iopen(char *index, int mode)
 	cptr = strchr(cptr, '|') + 1;
 
 	_indices[idx]._files = calloc(i, sizeof(FILES));
+	if (!_indices[idx]._files) {
+		free(buff);
+		return FALSE;
+	}
+
 	for (i = 0; i < _indices[idx]._nfiles; i++) {
-/*		_indices[idx]._files[i]._fname = substr(cptr, 0, 10); */
 		_indices[idx]._files[i]._fname = strdup(cptr);
+		if (!_indices[idx]._files[i]._fname) {
+			for (int k = 0; k < i; k++)
+				free(_indices[idx]._files[k]._fname);
+			free(_indices[idx]._files);
+			free(buff);
+			return FALSE;
+		}
 		_indices[idx]._files[i]._fno = i;
-/*		cptr += 10; */
 		cptr += strlen(cptr) + 1;
 	}
 	strcpy(_indices[idx]._idxname, index);
 	_indices[idx]._wrmode = mode;
 	free(buff);
+	return TRUE;
 }
 
 /*

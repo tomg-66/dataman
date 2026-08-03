@@ -56,8 +56,10 @@ INDEX *findex(char *name)
 {
     register int tmp;           /* the index to return */
 
-	if (!name)
+	if (!name) {
 		db_err(0, "%s: findex: looking for unnamed index\n", _progname);
+		return NULL;
+	}
 
     for (tmp = 0;tmp < 6;tmp++) {
         if (strcmp(name,_indices[tmp]._idxname) == 0) {
@@ -69,6 +71,7 @@ INDEX *findex(char *name)
  * "control reaches end of non-void function" is ok
  */
 	db_err(0, "%s: index named %s is not open\n", _progname, name);
+	return NULL;
 }
 
 /*

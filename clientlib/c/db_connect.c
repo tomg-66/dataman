@@ -127,20 +127,25 @@ int db_connect(char *host)
 				continue;			/* interrupted - reaped child? */
 			} else {
 				db_err(0, "%s, Can't accept new connection: ", _progname);
+				return -1;
 			}
 		}
 		break;
 	}
-	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0)
+	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0) {
 		db_err(0, "%s: ioctl failed, socket gone", _progname);
+		return -1;
+	}
 
 	if (read(sock, resp, i) != i)
 		return(ENORESP);
 /*
- * return the response
+ * return the response - "ok" if good, negative int if not
  */
-	if (strcmp(resp, "ok"))
+	if (strcmp(resp, "ok")) {
+		close(sock);
 		sock = atoi(resp);
+	}
 	return(sock);
 }
 

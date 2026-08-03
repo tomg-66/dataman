@@ -56,7 +56,7 @@ extern int in_xact;
 
 extern char *_progname;
 
-void rollback(void)
+int rollback(void)
 {
     int i;								/* temporary */
 
@@ -70,15 +70,23 @@ void rollback(void)
  * send the command and deal with the return.
  */
 	buff = db_send(cmd, i, __FILE__);
+
+	if (!buff)
+		return FALSE;
 /*
  * the first field of the return is an error code if necessary,
  * otherwise the command worked.
  */
 	i = atoi(buff);
+	free(buff);
+
+	if (i > 0) {
+		in_xact = FALSE;
+		return TRUE;
+	}
 	if (i < 0)
 		db_err(i, "%s: Error during ROLLBACK", _progname);
-	free(buff);
-	in_xact = FALSE;
+	return FALSE;
 }
 
 /*

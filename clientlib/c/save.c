@@ -54,27 +54,47 @@ extern char *substr(char *,int, int);
 extern INDEX *findex(char *);
 extern void db_err(int, char *, ...);
 
-void save(idx_name)
+int save(idx_name)
 char *idx_name;                         /* the index name to save info from */
 
 {
     INDEX *idx;                         /* pointer to the index to change */
+	char *tmp_key;
 
-    idx = findex(idx_name);				/* get the index */
-    if (idx->_curkey == 0)
+    if ((idx = findex(idx_name)) == NULL) {				/* get the index */
+		return FALSE;
+	}
+    if (idx->_curkey == 0) {
 		db_err(ENOGET, "%s: error in save", _progname);
-
+		return FALSE;
+	}
+#if 0
     if (idx->_savptr)
         free(idx->_savptr->_savkey);					/* free the substring */
     else
         idx->_savptr = (SAVE *)malloc(sizeof(SAVE));	/* get new space */
+#else
+	if (!idx->_savptr) {
+		idx->_savptr = (SAVE *)calloc(1, sizeof(SAVE));
+		if (!idx->_savptr) {
+			return FALSE;
+		}
+	}
+#endif
+	tmp_key =  substr(idx->_curkey,0,idx->_keylen+KEY_HEADER_LENGTH);
+	if (!tmp_key)
+		return FALSE;
+
+	if (idx->_savptr->_savkey)
+		free(idx->_savptr->_savkey);
 
     idx->_savptr->_savnode = idx->_curnode;
     idx->_savptr->_savrec = idx->_rptr;
-    idx->_savptr->_savkey = substr(idx->_curkey,0,idx->_keylen+KEY_HEADER_LENGTH);
+	idx->_savptr->_savkey = tmp_key;
     idx->_savptr->_savfile = idx->_fno;
 	idx->_savptr->_savfmt = m_fmt;
 	idx->_savptr->_savoffs = idx->_offs;
+	return TRUE;
 }
 
 /*

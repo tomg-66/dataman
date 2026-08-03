@@ -62,7 +62,6 @@ void db_err(int val, char *fmt, ...)
 		if (errno != 0)
 			perror("");
 	}
-	exit(0);
 }
 
 /*

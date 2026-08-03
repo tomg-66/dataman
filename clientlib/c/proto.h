@@ -44,22 +44,25 @@ extern int db_rel(void);
 extern int db_prtct(char *);
 extern int db_restore(char *);
 extern int match(char *, char *);
+extern int sort(char *);
+extern int iopen(char *, int);
+extern int insert(int, int, char *);
+extern int rollback(void);
+extern int start_transaction(void);
+extern int db_commit(void);
+extern int iclose(char *);
+extern int init_dataman(int, char **);
+extern int mkidx(int, char **);
+extern int clear(char *);
+extern int save(char *);
 
 extern int acept(int, int, char *, int);
 extern int pop_win(void);
 
-extern void init_dataman(int, char **);
-extern void insert(int, int, char *);
-extern void iopen(char *, int);
-extern void save(char *);
-extern void clear(char *);
 extern void flush(void);
 extern void mk_key(key, char *, int);
-extern void iclose(char *);
-extern void mkidx(int, char **);
-extern void sort(char *);
 extern void show(int, ...);
-extern void pause(int, int, char *);
+//extern void pause(int, int, char *);
 extern void grow_win(int, int, int, int, int);
 
 extern char *substr(char *, int, int);

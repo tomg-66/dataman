@@ -59,13 +59,13 @@
 
 extern INDEX cur_index;         /* the current operating index */
 
-extern void in_rec(int, char *);
-extern void out_rec(int);
+extern int in_rec(int, char *);
+extern int out_rec(int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
-void insert(int fmt, int mode, char *ixname)
+int insert(int fmt, int mode, char *ixname)
 {
 
 	INDEX *idx;							/* the insert index structure */
@@ -76,26 +76,46 @@ void insert(int fmt, int mode, char *ixname)
 	char *buff;
 	char *ptr;
 
-	if (cur_index._wrmode)
-    	out_rec(MASTER);			/* write out the current record */
-	idx = findex(ixname);
-	if (!idx->_wrmode)
+	if (cur_index._wrmode) {
+    	if (!out_rec(MASTER)) {			/* write out the current record */
+			db_err(EOUTREC, "%s: Error writing master recored", _progname);
+			return FALSE;
+		}
+	}
+
+	if ((idx = findex(ixname)) == NULL) {
+		return FALSE;
+	}
+	if (!idx->_wrmode) {
 		db_err(0, "%s: index %s not opened for update\n",
 						_progname, idx->_idxname);
-	if (fmt < 1 || fmt > idx->_files[idx->_fno]._filedesc->n_rformats)
+		return FALSE;
+	}
+	if (fmt < 1 || fmt > idx->_files[idx->_fno]._filedesc->n_rformats) {
 		db_err(EBADFMT, "%s: insert error: fmt=%d, file=%s\n",
 						_progname, fmt, idx->_files[idx->_fno]._fname);
+		return FALSE;
+	}
 
-	if (!idx->_curkey)					/* can't insert around nothing */
+	if (!idx->_curkey) {			/* can't insert around nothing */
 		db_err(ENOGET, "%s: insert error", _progname);
+		return FALSE;
+	}
 
 	sprintf(cmd, "%d|%d|%d|%d|%d|%"PRId64"|", INSERT, fmt, mode,
 					idx->_idxno, idx->_fno, idx->_rptr);
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
+	if (!buff)
+		return FALSE;
+
 	tmp = atoi(buff);
-	if (tmp < 0)
-		db_err(tmp, "%s: insert error", _progname);
+	if (tmp < 1) {
+		if (tmp < 0)
+			db_err(tmp, "%s: insert error", _progname);
+		free(buff);
+		return FALSE;
+	}
 
 	m_fmt = fmt;
 	m_chan = idx->_files[idx->_fno]._fno;
@@ -108,9 +128,13 @@ void insert(int fmt, int mode, char *ixname)
 	ptr = malloc(tmp);
 	memset(ptr, ' ', tmp);
     cur_index = *idx;					/* save the new current index */
-    in_rec(MASTER, ptr);				/* read in the empty record */
-	free(ptr);
+    if (!in_rec(MASTER, ptr)) {				/* read in the empty record */
+		db_err(EINREC, "Error reading master record", _progname);
+		free(buff);
+		return FALSE;
+	}
 	free(buff);
+	return TRUE;
 }
 
 /*

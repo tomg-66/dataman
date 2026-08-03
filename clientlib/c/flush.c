@@ -47,21 +47,35 @@
 #include "m_params.h"
 #include "index.h"
 #include "globs.h"
+#include "../../server/errors.h"
 
-extern void out_rec(int);
+extern int out_rec(int);
 
 extern int in_xact;
 
-void flush()
+extern int db_err(int, char *, ...);
+
+#define FALSE 0
+#define TRUE  1
+
+int flush()
 {
 	if (dm_sock == -1)
-		return;
+		return FALSE;
+
 	if (!in_xact && wfld && *wfld)
-		out_rec(WORK);				/* write out work record */
+		if (!out_rec(WORK)) {				/* write out work record */
+			db_err(EOUTREC, "%s: error writing work record", _progname);
+			return FALSE;
+		}
 
 	if (cur_index._wrmode)			/* do only if in update mode */
     	if (mfld && *mfld)			/* has the array been allocated yet? */
-			out_rec(MASTER);		/* write it */
+			if (!out_rec(MASTER)) {		/* write it */
+				db_err(EOUTREC, "%s: error writing work record", _progname);
+				return FALSE;
+			}
+	return TRUE;
 }
 
 /*

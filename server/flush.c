@@ -110,7 +110,7 @@ int flush(char *cmd, int c_off, char **data)
 /*
  * seek to the record and past the record header
  *
- * this file has an exclusive lock on it at this, point so
+ * this file has an exclusive lock on it at this point so
  * don't need a mutex around the lseek/write
  */
 	len = fptr->_filedesc->record_desc[fmt-1].rf_len;

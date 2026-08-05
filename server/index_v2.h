@@ -118,7 +118,7 @@ bool index_v2_read_file_names(int fd, uint16_t file_count, char ***file_names);
 bool index_v2_publish_root(int fd, uint64_t root_offset, uint32_t root_crc,
 						uint64_t generation);
 bool index_v2_insert(int fd, const void *key, uint16_t file_id,
-					uint64_t record_offset);
+					uint64_t record_offset, INDEX_V2_CURSOR *cursor, uint64_t *root_offset);
 bool index_v2_remove(int fd, const void *key, uint16_t file_id,
 					uint64_t record_offset);
 bool index_v2_find(int fd, const void *key, bool exact,

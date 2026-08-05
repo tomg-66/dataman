@@ -264,13 +264,28 @@ bool recv_from_server_stream(context_t *ctx, MSG *msgbuf, int sock)
 		if (errno != EINTR)
 			return(false);
 	}
+
+	char *response;
+	int response_len;
+
 	msgbuf->txt[fixed_len] = '\0';
 	payload_len = atoi(msgbuf->txt);
-	if (payload_len < 0)
+	// if the first field is negative that is an application error
+	if (payload_len < 0) {
 		payload_len = 0;
-	frame_len = htonl((int32_t)(fixed_len + payload_len));
+		response = msgbuf->txt;
+		response_len = fixed_len;
+	} else {
+		response = strchr(msgbuf->txt, '|');
+		if (response == NULL)
+			return false;
+		response++;
+		response_len = fixed_len -(int)(response - msgbuf->txt);
+	}
+
+	frame_len = htonl((int32_t)(response_len + payload_len));
 	if (!write_socket_chunk(sock, &frame_len, sizeof(frame_len)) ||
-			!write_socket_chunk(sock, msgbuf->txt, (size_t)fixed_len))
+			!write_socket_chunk(sock, response, (size_t)response_len))
 		return(false);
 	while (payload_len) {
 		if (!sem_wait_for_zero(ctx->semid, ctx->mypid))

@@ -495,6 +495,8 @@ typedef struct v2_insert_result {
 	bool split;
 	uint64_t right_offset;
 	unsigned char *separator;
+	uint64_t leaf_offset;
+	uint8_t leaf_index;
 } V2_INSERT_RESULT;
 
 static bool v2_write_node(V2_INSERT_CONTEXT *context, bool leaf,
@@ -662,6 +664,8 @@ static bool v2_insert_node(V2_INSERT_CONTEXT *context, uint64_t offset,
 				return(false);
 			}
 			free(new_entries);
+			result->leaf_offset = result->offset;
+			result->leaf_index = position;
 			return(true);
 		}
 		if (!v2_write_node(context, true, INDEX_V2_MAX_KEYS / 2, new_entries, NULL,
@@ -672,6 +676,17 @@ static bool v2_insert_node(V2_INSERT_CONTEXT *context, uint64_t offset,
 			free(new_entries);
 			return(false);
 		}
+
+		uint8_t split_position = INDEX_V2_MAX_KEYS / 2;
+
+		if (position < split_position) {
+			result->leaf_offset = result->offset;
+			result->leaf_index = position;
+		} else {
+			result->leaf_offset = result->right_offset;
+			result->leaf_index = position - split_position;
+		}
+
 		result->separator = malloc(context->entry_size);
 		if (result->separator == NULL) {
 			free(new_entries);
@@ -689,6 +704,10 @@ static bool v2_insert_node(V2_INSERT_CONTEXT *context, uint64_t offset,
 			break;
 	if (!v2_insert_node(context, children[position], entry, &child))
 		goto fail;
+
+	result->leaf_offset = child.leaf_offset;
+	result->leaf_index = child.leaf_index;
+
 	new_count = count + (child.split ? 1 : 0);
 	new_entries = malloc((size_t)new_count * context->entry_size);
 	new_children = malloc((size_t)(new_count + 1) * sizeof(*new_children));
@@ -851,10 +870,12 @@ static bool v2_collect_free_pages(V2_INSERT_CONTEXT *context)
 }
 
 bool index_v2_insert(int fd, const void *key, uint16_t file_id,
-					uint64_t record_offset)
+					uint64_t record_offset, INDEX_V2_CURSOR *cursor,
+					uint64_t *root_offset)
 {
 	V2_INSERT_CONTEXT context = { 0 };
 	V2_INSERT_RESULT result;
+
 	struct stat status;
 	uint64_t root;
 	uint64_t generation;
@@ -867,22 +888,27 @@ bool index_v2_insert(int fd, const void *key, uint16_t file_id,
 			context.keylen > 32 || file_id >= context.file_count ||
 			fstat(fd, &status) != 0 || status.st_size < 0)
 		return(false);
+
 	context.fd = fd;
-	context.entry_size = context.keylen + INDEX_V2_FILE_ID_SIZE +
-		INDEX_V2_RECORD_OFFSET_SIZE;
+	context.entry_size = context.keylen + INDEX_V2_FILE_ID_SIZE + INDEX_V2_RECORD_OFFSET_SIZE;
+
 	if (!index_v2_read_page_size(fd, context.keylen, &context.page_size))
 		return(false);
-	context.next_offset = (((uint64_t)status.st_size + context.page_size - 1) /
-		context.page_size) * context.page_size;
+
+	context.next_offset = (((uint64_t)status.st_size + context.page_size - 1) / context.page_size) * context.page_size;
+
 	if (!v2_collect_free_pages(&context))
 		return(false);
+
 	memcpy(entry, key, context.keylen);
 	put_u16(entry + context.keylen, file_id);
 	put_u64(entry + context.keylen + INDEX_V2_FILE_ID_SIZE, record_offset);
+
 	if (!v2_insert_node(&context, root, entry, &result)) {
 		free(context.free_pages);
 		return(false);
 	}
+
 	if (result.split) {
 		children[0] = result.offset;
 		children[1] = result.right_offset;
@@ -894,12 +920,21 @@ bool index_v2_insert(int fd, const void *key, uint16_t file_id,
 		}
 		free(result.separator);
 	}
+
 	if (fdatasync(fd) != 0) {
 		free(context.free_pages);
 		return(false);
 	}
+
 	free(context.free_pages);
-	return(index_v2_publish_root(fd, result.offset, result.crc, generation + 1));
+	if (!index_v2_publish_root(fd, result.offset, result.crc, generation + 1))
+		return(false);
+
+	*root_offset = result.offset;
+	cursor->generation = generation+1;
+	cursor->node_offset = result.leaf_offset;
+	cursor->entry_index = result.leaf_index;
+	return true;
 }
 
 bool index_v2_build_insert(int fd, const void *key, uint16_t file_id,

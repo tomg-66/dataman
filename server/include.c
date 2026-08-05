@@ -212,23 +212,28 @@ int include(char *cmd, int c_off, char **ret)
 	*(ikey+idx->_keylen) = fileno + 1;
 	put_ll(ikey+idx->_keylen+1, rptr);
 
-	uint16_t disk_keylen, disk_file_count;
-	uint32_t root_crc;
-	uint64_t root, generation;
+	INDEX_V2_CURSOR cursor = {0};
+	uint64_t rootpos;
 
-	if (!index_v2_insert(idx->_idxchan, ikey, fileno, rptr) ||
-			!index_v2_read_header(idx->_idxchan, &disk_keylen,
-				&disk_file_count, &root, &root_crc, &generation)) {
+	if (!index_v2_insert(idx->_idxchan, ikey, fileno, rptr, &cursor, &rootpos)) {
 		i = ENODWRT;
 		goto done;
 	}
 	pthread_mutex_lock(&(idx->_mutex));
-	idx->_rootpos = (int64_t)root;
-	idx->_generation = generation;
+	idx->_rootpos = rootpos;
+	idx->_generation = cursor.generation;
 	pthread_mutex_unlock(&(idx->_mutex));
-	tmp = sprintf(cmd, "0|0|");
+	tmp = sprintf(cmd, "0|1|%"PRId64"|%"PRId64"|%u|", cursor.generation,
+			cursor.node_offset, (unsigned)cursor.entry_index);
 	memcpy(cmd+tmp, ikey, idx->_keylen + KEY_HEADER_LENGTH);
 	i = tmp + idx->_keylen + KEY_HEADER_LENGTH;
+
+	if (dbgsw) {
+		fprintf(stderr, "include final packet ->");
+		fwrite(cmd, 1, i, stderr);
+		fprintf(stderr, "<-, i = %d, keylen = %d, tmp = %d\n", i, idx->_keylen, tmp);
+		fflush(stderr);
+	}
 
 done:
 	fl_lock(&idx->_lock, LOCK_UN);

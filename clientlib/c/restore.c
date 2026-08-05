@@ -128,7 +128,7 @@ int db_restore(char *idx_name)
 	idx->_offs = atoi(ptr);
 	ptr = strchr(ptr, '|') + 1;
 
-	tmp_key = substr(buff, 0, idx->_keylen+KEY_HEADER_LENGTH);
+	tmp_key = substr(ptr, 0, idx->_keylen+KEY_HEADER_LENGTH);
 	if (!tmp_key) {
 		free(buff);
 		return FALSE;

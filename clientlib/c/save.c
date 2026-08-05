@@ -62,25 +62,21 @@ char *idx_name;                         /* the index name to save info from */
 	char *tmp_key;
 
     if ((idx = findex(idx_name)) == NULL) {				/* get the index */
+		db_err(EIDXNOO, "%s: %s:", _progname, idx_name);
 		return FALSE;
 	}
     if (idx->_curkey == 0) {
 		db_err(ENOGET, "%s: error in save", _progname);
 		return FALSE;
 	}
-#if 0
-    if (idx->_savptr)
-        free(idx->_savptr->_savkey);					/* free the substring */
-    else
-        idx->_savptr = (SAVE *)malloc(sizeof(SAVE));	/* get new space */
-#else
+
 	if (!idx->_savptr) {
 		idx->_savptr = (SAVE *)calloc(1, sizeof(SAVE));
 		if (!idx->_savptr) {
 			return FALSE;
 		}
 	}
-#endif
+
 	tmp_key =  substr(idx->_curkey,0,idx->_keylen+KEY_HEADER_LENGTH);
 	if (!tmp_key)
 		return FALSE;

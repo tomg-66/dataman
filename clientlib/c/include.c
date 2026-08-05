@@ -123,9 +123,13 @@ int db_include(char *idx1, char *idx2, char *key)
 		return FALSE;
 	}
 
-	idx_2->_offs = tmp;
 	cptr = strchr(ret, '|') + 1;
+	idx_2->_generation = strtoull(cptr, NULL, 10);
+	cptr = strchr(cptr, '|') + 1;
 	idx_2->_curnode = strtoll(cptr, NULL, 0);
+	cptr = strchr(cptr, '|') + 1;
+	idx_2->_offs = atoi(cptr);
+
 	if (in_xact) {
 		memset(buff, '\0', sizeof(buff));
 		strcpy(buff, key);

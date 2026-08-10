@@ -1,0 +1,85 @@
+This gives you instructions to build and install the PHP plugin for dataman:
+
+### Building it ###
+
+You do not need to rebuild PHP. The normal supported method is to compile a shared extension with phpize, install the resulting .so, and enable it in PHP configuration.
+PHP’s official phpize instructions (https://www.php.net/manual/en/install.pecl.phpize.php) describe this workflow.
+
+after installing the dataman source:
+
+cd /path/to/dataman/clientlib/php
+
+phpize
+./configure --with-dataman=/usr/local
+make -j
+make test
+
+Using /usr/local is correct if the C client library has been built and installed in the default location:
+/usr/local/include/dataman/dataman.h
+/usr/local/lib/libdataman.so
+
+At present you should skip
+
+make test
+
+because the file and index the tests use have not yet been included
+
+For a temporary development test:
+
+php -n \
+  -d extension=/path/to/dataman/clientlib/php/modules/dataman.so \
+  -r 'var_dump(extension_loaded("dataman"));'
+
+And:
+
+php -n \
+  -d extension=/path/to/dataman/clientlib/php/modules/dataman.so \
+  --ri dataman
+
+### Installing it into PHP ###
+
+Install the shared object:
+
+cd /path/to/dataman/clientlib/php
+
+php-config --extension-dir should report something similar to:
+
+/usr/lib/php/20240924
+
+so make install should place dataman.so in your extension-dir directory.
+
+as root:
+
+make install
+
+Then create the PHP module configuration (assuming your php version is 8.4):
+
+echo 'extension=dataman' |
+    sudo tee /etc/php/8.4/mods-available/dataman.ini
+
+Enable it for the installed PHP 8.4 SAPIs (as root):
+
+phpenmod -v 8.4 dataman
+
+Verify CLI loading:
+
+php -m | grep -i dataman
+php --ri dataman
+
+For web use, restart whichever PHP service is active (on systemd systems):
+
+sudo systemctl restart php8.4-fpm
+
+or, for Apache’s PHP module:
+
+sudo systemctl restart apache2
+
+PHP extensions are enabled separately for each SAPI. It is possible for CLI PHP to
+load the extension while PHP-FPM or Apache does not, so php --ini only verifies the CLI
+configuration. PHP’s documentation also notes that the web service must be restarted
+after enabling a newly installed shared extension. PHP extension installation overview
+(https://www.php.net/manual/en/install.pecl.intro.php)
+
+One ongoing requirement: PHP extensions are tied to PHP’s module ABI. When the system
+upgrades to a PHP release with a different extension API directory, rebuild and
+reinstall dataman.so using that release’s phpize and php-config.

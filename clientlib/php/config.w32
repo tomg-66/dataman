@@ -1,0 +1,7 @@
+ARG_ENABLE('dataman', 'dataman support', 'no');
+
+if (PHP_DATAMAN != 'no') {
+	AC_DEFINE('HAVE_DATAMAN', 1, "Define to 1 if the PHP extension 'dataman' is available.");
+
+	EXTENSION('dataman', 'dataman.c', null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+}

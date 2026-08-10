@@ -67,10 +67,9 @@ INDEX *findex(char *name)
         }
     }
 /*
- * db_err never returns, so a warning about 
- * "control reaches end of non-void function" is ok
+ * send a message to the user that the named index wasn't open
  */
-	db_err(0, "%s: index named %s is not open\n", _progname, name);
+	db_err(EIDXNOO, "%s: index named %s is not open\n", _progname, name);
 	return NULL;
 }
 

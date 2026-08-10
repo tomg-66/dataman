@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	proto.hh
+ * PROCEDURE:	proto.hpp
  *
  * PROJECT:		dataman client side
  * 
@@ -50,10 +50,10 @@
 #if !defined _PROTO_H_
 #define _PROTO_H_
 
-#include "index.hh"
-#include "datarecord.hh"
-#include "datafield.hh"
-#include "key.hh"
+#include "index.hpp"
+#include "datarecord.hpp"
+#include "datafield.hpp"
+#include "key.hpp"
 
 using Dataman::index;
 using Dataman::datarecord;
@@ -75,9 +75,9 @@ extern void sort(const char *);
 extern void sort(datafield&);
 extern void sort(int);
 
-extern void init_dataman(int, char **);
+extern int init_dataman(int, char **);
 extern void dataman_disconnect(void);
-extern void mkidx(int, char **);
+extern int mkidx(int, char **);
 extern void flush(void);
 
 extern char *substr(const char *, int, int);

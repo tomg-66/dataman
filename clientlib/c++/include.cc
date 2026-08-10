@@ -54,27 +54,35 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 
-extern void db_err(int, const char *, ...);
+#include <memory>
+
 extern void put_ll(void *, int64_t);
+
+#define FALSE 0
+#define TRUE  1
 
 using namespace Dataman;
 
-void index::include(index *idx_1, const char *key)
+int index::include(index *idx_1, const char *key)
 {
 
     int tmp;						/* temporary, misc. usage */
     char buff[128];					/* output buffer */
 	char *cptr;
-	char *ret;
 
-	if (!this->get_wrmode())
-		db_err(0, "%s: index %s not opened for update\n",
-						_progname, this->get_ixname());
+	if (!idx_1 || !key)
+		return FALSE;
+
+	if (!this->get_wrmode()) {
+		db_err(0, "%s: index %s not opened for update\n", _progname, this->get_ixname());
+		return FALSE;
+	}
 /*
  * make sure the file currently referred to in 'this' is also
  * found in idx_1
@@ -86,60 +94,68 @@ void index::include(index *idx_1, const char *key)
 	if (tmp >= this->get_nfiles()) {
 		db_err(0, "%s: Include error: file %s not a member of index %s\n",
 				_progname, idx_1->_files[idx_1->get_fno()].get_fname(), this->get_ixname());
+		return FALSE;
 	}
 	this->_fno = tmp;
 
 	db_comm comm;
-	if (!in_xact && (this->_rptr < 0 || idx_1->get_rptr() < 0))
-		comm.db_err(0, "%s: memory corruption detected in include", _progname);
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in include", _progname);
-	if (idx_1->get_idxno() < 0 || idx_1->get_idxno() > MAX_INDEX || idx_1->get_fno() < 0 || idx_1->get_fno() > idx_1->get_nfiles() < 0)
-		comm.db_err(0, "%s: memory corruption detected in include", _progname);
+	if (!in_xact && idx_1->get_rptr() < 0) {
+		db_err(0, "%s: memory corruption detected in include", _progname);
+		return FALSE;
+	}
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles) {
+		db_err(0, "%s: memory corruption detected in include", _progname);
+		return FALSE;
+	}
+	if (idx_1->get_idxno() < 0 || idx_1->get_idxno() >= MAX_INDEX ||
+			idx_1->get_fno() < 0 || idx_1->get_fno() >= idx_1->get_nfiles()) {
+		db_err(0, "%s: memory corruption detected in include", _progname);
+		return FALSE;
+	}
 
 	sprintf(buff, "%d|%d|%d|%d|%d|%" PRId64 "|%s|", INCLUDE, idx_1->get_idxno(),
 				idx_1->get_fno(), this->_idxno, this->_fno, idx_1->get_rptr(), key);
-	try {
-		ret = comm.db_send(buff, strlen(buff));
-	}
-	catch (int tmp) {
-		comm.db_err(0, "%s: Can't read socket response in INCLUDE", _progname);
-	}
+	std::unique_ptr<char[]> ret(comm.db_send(buff, strlen(buff)));
 
-	tmp = atoi(ret);
+	tmp = atoi(ret.get());
 	if (tmp < 0)
-		comm.db_err(tmp, "%s: error in include",_progname);
+		throw makeError(tmp, "%s: error in include",_progname);
+	if (tmp == 0)
+		return FALSE;
 
-	this->_offs = tmp;
-	cptr = strchr(ret, '|') + 1;
+	cptr = strchr(ret.get(), '|') + 1;
+	this->_generation = strtoull(cptr, NULL, 10);
+	cptr = strchr(cptr, '|') + 1;
 	this->_curnode = strtoll(cptr, NULL, 0);
+	cptr = strchr(cptr, '|') + 1;
+	this->_offs = atoi(cptr);
 	if (in_xact) {
 		memset(buff, '\0', sizeof(buff));
-		strcpy(buff, key);
-		*(buff+this->_keylen) = idx_1->_fno+1;
+		::strncpy(buff, key, this->_keylen);
+		*(buff+this->_keylen) = this->_fno+1;
 		put_ll(buff+this->_keylen+1, idx_1->_rptr);
 		cptr = buff;
 	} else
 		cptr = strchr(cptr, '|') + 1;
-	class key *tmp_key = new class key(cptr, this->get_keylen());
-	this->_curkey = *tmp_key;
+	class key tmp_key(cptr, this->get_keylen());
+	this->_curkey = tmp_key;
 	this->_fno = this->_curkey.get_fno() - 1;
-	delete[] ret;
+	return TRUE;
 }
 
-void index::include(index& idx_1, datafield& d)
+int index::include(index& idx_1, datafield& d)
 {
-	this->include(&idx_1, d.getptr());
+	return this->include(&idx_1, d.getptr());
 }
 
-void index::include(index& idx_1, const char *s)
+int index::include(index& idx_1, const char *s)
 {
-	this->include(&idx_1, s);
+	return this->include(&idx_1, s);
 }
 
-void index::include(index *idx_1, datafield& d)
+int index::include(index *idx_1, datafield& d)
 {
-	this->include(idx_1, d.getptr());
+	return this->include(idx_1, d.getptr());
 }
 
 /*

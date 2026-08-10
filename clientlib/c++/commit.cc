@@ -42,11 +42,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+
+#include <memory>
 
 #define TRUE    1
 #define FALSE   0
@@ -58,33 +61,29 @@ int commit(void)
     int i;								/* temporary */
 
 	char cmd[128];
-	char *buff;
 
 /*
  * if need be, flush the current record before the commit
  */
 	if (cur_index && cur_index->get_wrmode())		/* do only if in update mode */
-		master.out_rec();							/* write it */
+		masterRecord.out_rec();							/* write it */
 
-	i = sprintf(cmd, "%d|", COMMIT);
 /*
  * send the command and deal with the return.
  */
+	i = sprintf(cmd, "%d|", COMMIT);
 	Dataman::db_comm comm;
-	try {
-		buff = comm.db_send(cmd, i);
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: Can't read socket response in COMMIT", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, i));
 /*
  * the first field of the return is an error code if necessary,
  * otherwise the command worked.
  */
-	i = atoi(buff);
-	if (i < 0)
-		comm.db_err(i, "%s: Error during COMMIT", _progname);
-	delete[] buff;
+	i = atoi(buff.get());
+
+	if (i < 0) {
+		in_xact = FALSE;
+		throw makeError(i, "%s: Error during COMMIT", _progname);
+	}
 	in_xact = FALSE;
 	return(i);
 }

@@ -44,12 +44,15 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
+
+#include <memory>
 
 #define TRUE    1
 #define FALSE   0
@@ -61,20 +64,24 @@ int index::get_next()
     int i;			/* misc usage */
 
 	char msg[128];
-	char *ret;
 
 	db_comm comm;
 
 	if (in_xact && this->_curkey.get_rec() < 0)
 		return(FALSE);
+
 	if (cur_index && cur_index->get_wrmode())
-		master.out_rec();
+		masterRecord.out_rec();
 
-    if (this->_curkey.get_len() == 0)
-        comm.db_err(ENOGET, "%s: Can't get_next", _progname);
+    if (this->_curkey.get_len() == 0) {
+        db_err(ENOGET, "%s: Can't get_next", _progname);
+		return FALSE;
+	}
 
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in get_next", _progname);
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+		db_err(0, "%s: memory corruption detected in get_next", _progname);
+		return FALSE;
+	}
 
 	sprintf(msg, "%d|%d|%" PRId64 "|%" PRId64 "|%d|", GET_NEXT,
 					this->_idxno, this->_generation, this->_curnode, this->_offs);
@@ -82,25 +89,20 @@ int index::get_next()
 	::memcpy(msg+i, this->_curkey.get_data(), this->_keylen+KEY_HEADER_LENGTH);
 	i += this->_keylen+KEY_HEADER_LENGTH;
 
-	try {
-		ret = comm.db_send(msg, i);
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: error reading server socket in get_next", _progname);
-	}
+	std::unique_ptr<char[]> ret(comm.db_send(msg, i));
 
-	i = atoi(ret);
+	i = atoi(ret.get());
 	if (i < 0)
-		comm.db_err(i, "%s: error during get_next", _progname);
-	else if (i == 0) {
-		delete[] ret;
-		return(FALSE);
-	}
+		throw makeError(i, "%s: error during get_next", _progname);
+	if (i == 0)
+		return FALSE;
 /*
  * parse the return and update the globals
  */
-	this->parse_get(i, ret);
-	return(TRUE);
+	i = this->parse_get(i, ret.get());
+	if (!i)
+		return FALSE;
+	return TRUE;
 }
 
 /*

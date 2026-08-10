@@ -1,10 +1,10 @@
 /* ***************************************************************
  *
- * PROCEDURE:	key.hh
+ * PROCEDURE:	db_comm.hpp
  *
  * PROJECT:		dataman client side c++ header file
  * 
- * DATE:		Wed Jul  7 16:53:31 MDT 2004
+ * DATE:		Wed Jul  7 16:46:59 MDT 2004
  * 
  * AUTHOR:		Tom Green
  * 
@@ -16,9 +16,9 @@
  * 				added namespace support
  *
  ************************************************************* */
-//
-// this class defines the internal structure of the key
-//
+/*
+ * define how the communication with the server happens.
+ */
 /*
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -37,47 +37,25 @@
  *
  * The GNU General Public License is contained in the file COPYING.
  */
-
-#if !defined _DATAMAN_KEY_INCLUDED_
-#define _DATAMAN_KEY_INCLUDED_
-
-#include <string.h>
-#include <stdint.h>
-
-#define MIN_KEY_SIZE	1
-#define MAX_KEY_SIZE	32
-
-extern unsigned long get_long(char *);
+#if !defined _DATAMAN_COMM_DEFINED_
+#define _DATAMAN_COMM_DEFINED_
 
 namespace Dataman {
 
-class key {
+class db_comm {
 	private:
-		char data[64];						// the combined key string
-		int _len;							// length of the key (minus pointers)
-		char _fno;							// the file number for the key
-		int64_t _rec;						// the record number of the key
-		char key_str[MAX_KEY_SIZE+1];		// maximum key length == 32
+		static int db_sock;					// socket to talk out
+		int db_connect(const char *host);	// connect to server
 	public:
-//define the constructors and destructor
-		key();
-		key(const char *s, int i = 0);
-		key(key &k);
-		~key();
-//now a couple of operators that we want to use
-		void operator=(const char *s);
-		void operator=(const key& k);
-		inline operator const char *() const { return(key_str); }
-//and finally, a few access methods
-		int get_len() { return(this->_len); }
-		int get_fno() { return((int)this->_fno); }
-		int64_t get_rec() { return(this->_rec); }
-		const char *get_data() { return(this->data); }
-		const char *get_kstr() { return(this->key_str); }
-
+		db_comm(void);						// construct from nothing
+		db_comm(const char *host);			// construct from name
+		~db_comm();	
+		char *db_send(char *msg, int len);	// send a message
+		static int get_sock() { return(db_sock); }
+		void db_discon(void);
 };
 
-};	// end of namespace
+};
 
 #endif
 

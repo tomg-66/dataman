@@ -48,44 +48,47 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 
+#include <memory>
+
 using namespace Dataman;
 
-using Dataman::master;
+using Dataman::masterRecord;
 
-void index::clear()
+#define FALSE 0
+#define TRUE  1
+
+int index::clear()
 
 {
 	int i;
 
 	char cmd[128];
-	char *buff;
 
 	if (in_xact && this->_rptr < 0)
-		return;
+		return FALSE;
+
 	if (cur_index && cur_index->get_wrmode())
-		master.out_rec();
+		masterRecord.out_rec();
 
 	db_comm comm;
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0)
-		comm.db_err(0, "%s: memory corruption detected in clear", _progname);
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0) {
+		return FALSE;
+	}
 	sprintf(cmd, "%d|%d|%d|%" PRId64 "|", CLEAR, this->_idxno, this->_fno, this->_rptr);
 
-	try {
-		buff = comm.db_send(cmd, strlen(cmd));
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: socket read error in clear", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, strlen(cmd)));
 
-	i = atoi(cmd);
+	i = atoi(buff.get());
+
 	if (i < 0)
-		comm.db_err(i, "%s: error in clear", _progname);
-	delete[] buff;
+		throw makeError(i, "%s: error in clear", _progname);
+	return i;
 }
 
 /*

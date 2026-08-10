@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	index.hh
+ * PROCEDURE:	index.hpp
  *
  * PROJECT:		dataman client side c++ header file
  * 
@@ -50,8 +50,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "datafield.hh"
-#include "key.hh"
+#include "datafield.hpp"
+#include "key.hpp"
 
 #include "datafile_header.h"
 
@@ -127,17 +127,18 @@ class index {
 		int forward();					// get next record in data file
 		int back();						// get prior record from data file
 		int protect();					// protect the current data record
-		void clear();					// clear the protect from the rec
-		void delrec();					// delete record from database
+		int clear();						// clear the protect from the rec
+		int delrec();					// delete record from database
 		int remove(const key&);			// remove key from database
 		int remove(const char *);		// remove key using string
 		void save();					// save index state
 		int restore();					// restore index state
-		void insert(const int fmt, const int where);
-		void include(index& , const char *);
-		void include(index&, datafield&);
-		void include(index *, const char *);
-		void include(index *, datafield&);
+		int insert(const int fmt, const int where);
+		int include(index& , const char *);
+		int include(index&, datafield&);
+		int include(index *, const char *);
+		int include(index *, datafield&);
+		void iclose();
 
 		const key& get_key(void) { return(_curkey); }
 //
@@ -152,7 +153,7 @@ class index {
 		char *get_ixname() { return(this->_idxname); }
 		int64_t get_rptr() { return(this->_rptr); }
 
-		void _mkidx(int, char **);		// internal mkidx routine
+		int _mkidx(int, char **);		// internal mkidx routine
 
 		files *get_file(int i) { return(this->_files+i); };
 		files *get_files() { return(this->_files); }
@@ -177,9 +178,10 @@ class index {
 //
 // ummm- non interface routines
 //
-		void iopen(char *name, int mode);	// constructor will call this
-		void iclose();						// destructor will call this
-		void parse_get(int, char *);		// parse ret from get* routines
+		void _iopen(const char *name, int mode);	// constructor will call this
+		void _iclose();						// destructor will call this
+		void _unwind();                 // clean up if _iclose throws
+		int parse_get(int, char *);		// parse ret from get* routines
 };
 
 };	// end of namespace

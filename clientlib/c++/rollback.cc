@@ -43,17 +43,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+
+#include <memory>
 
 #define TRUE    1
 #define FALSE   0
 
 using Dataman::in_xact;
 using Dataman::_progname;
+
+using namespace Dataman;
 
 /*
  * this isn't a member of a class.  just a callable function
@@ -63,27 +68,22 @@ void rollback(void)
     int i;								/* temporary */
 
 	char cmd[128];
-	char *buff;
 
-	i = sprintf(cmd, "%d|", ROLLBACK);
 /*
  * send the command and deal with the return.
  */
+	i = sprintf(cmd, "%d|", ROLLBACK);
 	Dataman::db_comm comm;
-	try {
-		buff = comm.db_send(cmd, i);
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: Can't read socket response in ROLLBACK", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, i));
 /*
  * the first field of the return is an error code if necessary,
  * otherwise the command worked.
  */
-	i = atoi(buff);
+	i = atoi(buff.get());
+
 	if (i < 0)
-		comm.db_err(i, "%s: Error during ROLLBACK", _progname);
-	delete [] buff;
+		throw makeError(i, "%s: Error during ROLLBACK", _progname);
+
 	in_xact = FALSE;
 }
 

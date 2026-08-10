@@ -57,21 +57,26 @@
 #include <malloc.h>
 #include <ctype.h>
 
-#include <endSort.hh>
-#include <db_comm.hh>
+#include "endSort.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../config.h"
 
+#include <memory>
+
+#define FALSE 0
+#define TRUE  1
+
 namespace Dataman {
-	Dataman::datarecord master(MASTER);
+	Dataman::datarecord masterRecord(MASTER);
 	bool in_xact;
 };
 
 using namespace Dataman;
 
 extern void flush(void);
-extern void db_err(int, const char *, ...);
 
 #ifdef DWINDOW
 extern void init_dwin(void);
@@ -95,7 +100,7 @@ void dataman_disconnect(void)
 }
 
 
-void init_dataman(int argc, char **argv)
+int init_dataman(int argc, char **argv)
 
 {
 	int i, j;			/* argument handling */
@@ -119,19 +124,25 @@ void init_dataman(int argc, char **argv)
 		for (j = 1; j < strlen(argv[i]); j++) {
 			switch(argv[i][j]) {
 				case 'D':
-					if (dbgsw)
+					if (dbgsw) {
 						useage();
+						return FALSE;
+					}
 					dbgsw = true;
 					break;
 				case 'h':
-					if (host)
+					if (host) {
 						useage();
+						return FALSE;
+					}
 					host = strdup(argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				case 'n':
-					if (!traditional)
+					if (!traditional) {
 						useage();
+						return FALSE;
+					}
 					traditional = 0;
 					break;
 				case 'p':
@@ -140,14 +151,17 @@ void init_dataman(int argc, char **argv)
 					dataman_has_php = true;
 					break;
 				case 'r':
-					if (_root)
+					if (_root) {
 						useage();
+						return FALSE;
+					}
 					_root = strdup(argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				default:
 					db_err(0, "unknown switch '%c'\n", argv[i][j]);
 					useage();
+					return FALSE;
 			}
 		}
 	}
@@ -157,19 +171,25 @@ void init_dataman(int argc, char **argv)
  * that out, or make it a switch
  */
 	if (dataman_has_php) {
-		if (i > argc)
+		if (i > argc) {
 			useage();
+			return FALSE;
+		}
 	} else {
-		if (i >= argc)
+		if (i >= argc) {
 			useage();
+			return FALSE;
+		}
 	}
 /*
  * if we need to get the root of the database directory on the host
  */
 	if (!_root) {
 		ptr = getenv("ROOT");
-		if (ptr == NULL)
+		if (ptr == NULL) {
 			db_err(0, "ROOT not defined\n");
+			return FALSE;
+		}
 
 		_root = strdup(ptr);
 	}
@@ -189,8 +209,8 @@ void init_dataman(int argc, char **argv)
 	try {
 		db_comm comm(host);
 	}
-	catch(int comm_err) {
-		db_err(comm_err, "%s: Can't connect to host %s", _progname, host);
+	catch(const datamanError &) {
+		return FALSE;
 	}
 	db_comm comm;
 	if (traditional)
@@ -205,37 +225,37 @@ void init_dataman(int argc, char **argv)
 		fprintf(stderr, "file to open is %s\n", cmd);
 		fflush(stderr);
 	}
-	try {
-		ptr = comm.db_send(cmd, strlen(cmd));
-	}
-	catch (int err_val) {
-		comm.db_err(0, "%s: Can't read INIT_DATAMAN response from socket",
-						_progname);
-	}
 
-	i = atoi(ptr);
+// send the message. db_send allocates space for the answer or it
+// will throw an error.  let the user deal with catching it.
+	std::unique_ptr<char[]> response(comm.db_send(cmd, strlen(cmd)));
+
+	cptr = response.get();
+	i = atoi(cptr);
 	if (i < 0)
-		comm.db_err(i, "%s: Error during INIT_DATAMAN", _progname);
+		throw makeError(i, "%s: Error during INIT_DATAMAN", _progname);
 
-	workfile.len = i;
+	workRecord.len = i;
 	cptr = strchr(ptr, '|') + 1;
-	workfile.chan = atoi(cptr);
+	workRecord.chan = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
-	workfile.longest = atoi(cptr);
+	workRecord.longest = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
-	workfile.fmt = atoi(cptr);
+	workRecord.fmt = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
-	workfile.cur = strtoll(cptr, NULL, 0);
+	workRecord.cur = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
-	workfile.prev = strtoll(cptr, NULL, 0);
+	workRecord.prev = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
-	workfile.next = strtoll(cptr, NULL, 0);
+	workRecord.next = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 
-	workfile.in_rec(cptr);			/* read the work record */
-	delete[] ptr;
+	if (!workRecord.in_rec(cptr)) {			/* read the work record */
+		return FALSE;
+	}
+
 done:
-	master.init();
+	masterRecord.init();
 	atexit(dataman_disconnect);			/* clean up on exit */
 	atexit(flush);				/* flush any modified recs */
 
@@ -243,6 +263,7 @@ done:
 	if (!dataman_has_php)
 		init_dwin();
 #endif
+	return TRUE;
 }
 
 /*

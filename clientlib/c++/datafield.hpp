@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	datafield.hh
+ * PROCEDURE:	datafield.hpp
  *
  * PROJECT:		dataman client side c++ header
  * 
@@ -56,8 +56,8 @@ namespace Dataman {
 enum fieldTypes {type_non = -1, type_chr, type_int, type_flt, type_blob = 4};
 #define TYPE_MASK	007
 
-#if !defined min
-#define min(a,b)	((a) <= (b) ? (a) : (b))
+#if !defined MIN
+#define MIN(a,b)	((a) <= (b) ? (a) : (b))
 #endif
 
 class datafield {

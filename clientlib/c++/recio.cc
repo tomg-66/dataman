@@ -59,17 +59,24 @@
 
 #include <netinet/in.h>				// for declaration of htonl
 
-#include <endSort.hh>
-#include <datafile_header.h>
-#include <db_comm.hh>
+#include "endSort.hpp"
+#include "datafile_header.h"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
+
+#include <memory>
 
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
+
+#define FALSE 0
+#define TRUE  1
 
 extern unsigned long get_long(char *);
 
 using namespace Dataman;
 
-void datarecord::in_rec(char *buff)
+int datarecord::in_rec(char *buff)
 {
 	int idx,i,j;			// misc usage
 
@@ -80,7 +87,7 @@ void datarecord::in_rec(char *buff)
 
 	short *desc;			// point to unparsed description
 
-    datafield *flds;		// pointers to the fields
+    datafield *fields;		// pointers to the fields
 	char string[128];
 	char *cptr;
 	char *tptr;
@@ -91,11 +98,6 @@ void datarecord::in_rec(char *buff)
 	db_comm comm;
 
 	files *cur_file;
-//
-// get rid of the prior recrd
-//
-	if (this->field)
-		delete[] this->field;
 
 //
 // do we need to now manually retrieve the file description?
@@ -106,25 +108,20 @@ void datarecord::in_rec(char *buff)
 							this->getchan());
 		else
 			sprintf(string, "%d|%d|", GET_DESC, -(this->getchan()));
-		try {
-			cptr = comm.db_send(string, strlen(string));
-		}
-		catch(int errval) {
-			comm.db_err(0, "%s: Can't read socket in RECIO", _progname);
-		}
 
-		len = atoi(cptr);
+		std::unique_ptr<char[]> ret(comm.db_send(string, strlen(string)));
+
+		len = atoi(ret.get());
 		if (len < 0)
-			comm.db_err(len, "%s: get_desc failed", _progname);
+			throw makeError(len, "%s: get_desc failed", _progname);
 //
 //ok, we now have the description of the file from the server, we now
 //need to parse the results
-//
-//we do this here for one purpose only.  do it only once!  if we don't
 //do it here, then we need to search through the description for lengths
 //and offsets every time we need to input and output a record.  we are
 //trying to make this a tad snappier!
 //
+		cptr = ret.get();
 		tptr = strchr(cptr, '|') + 1;
 		tptr = strchr(tptr, '|') + 1;
 		desc = (short *)tptr;
@@ -158,7 +155,6 @@ void datarecord::in_rec(char *buff)
 					rfdesc->has_blob++;
 			}
 		}
-		delete[] cptr;
 	}
 //
 //i know, i know, i'm allocating two more datafields than is needed for the
@@ -168,24 +164,30 @@ void datarecord::in_rec(char *buff)
 //the bounded array is implemented?
 //
 	rfdesc = fdesc->record_desc+this->getfmt()-1;
-	flds = new datafield[rfdesc->n_fields+2];
+	fields = new datafield[rfdesc->n_fields+2];
 	offs = rfdesc->rf_len;
 
 	j = 0;
 	for (i = 0; i < rfdesc->n_fields; i++) {
 		if (rfdesc->field_sizes[i] != 0) {
-			flds[i+1].make_field(buff+j, rfdesc->field_sizes[i], this->which);
+			fields[i+1].make_field(buff+j, rfdesc->field_sizes[i], this->which);
 		} else {
 			b_len = get_long(buff+offs);
 			offs += sizeof(long);
-			flds[i+1].make_field(buff+offs, -((int)b_len), this->which);
+			fields[i+1].make_field(buff+offs, -((int)b_len), this->which);
 			offs += b_len;
 		}
 		j += rfdesc->field_sizes[i];
 	}
-	this->field = flds;
+//
+// get rid of the prior recrd
+//
+	if (this->_fields)
+		delete[] this->_fields;
+
+	this->_fields = fields;
 	this->setdirty(0);
-	return;
+	return TRUE;
 }
 
 /*
@@ -210,8 +212,8 @@ void datarecord::out_rec()
 
 	RFDESC *rfdesc;
 
-	char *rec_buff;
-	char *nbuf;
+	char *sendBuffer;
+	char *answerBuffer;
 
 	db_comm comm;
 
@@ -220,7 +222,7 @@ void datarecord::out_rec()
  * any of the fields and this procedure would invalidate any record
  * there will allways be a work field
  */
-	if (this->field == NULL)
+	if (this->_fields == NULL)
 		return;
 
 //
@@ -237,48 +239,58 @@ void datarecord::out_rec()
 		chan = 0;
 		idx = -this->getchan();
 	}
+
 	rfdesc = (this->get_desc())->record_desc+this->getfmt()-1;
 	b_size = (long)rfdesc->rf_len;
+
 	for (i = 0, tmp = 0; tmp < rfdesc->has_blob; i++) {
-		if (this->field[i].get_type() == type_blob) {
-			b_size += this->field[i].datalen() + sizeof(long);
+		if (this->_fields[i].get_type() == type_blob) {
+			b_size += this->_fields[i].datalen() + sizeof(long);
 			tmp++;
 		}
 	}
-	rec_buff = (char *)malloc(b_size+64);
-	sprintf(rec_buff, "%d|%d|%d|%" PRId64 "|%d|%ld|", FLUSH, idx, chan,
+
+	sendBuffer = new (std::nothrow) char[b_size+64];
+	if (!sendBuffer)
+		throw makeError(ENOALLOC, "%s: can't allocate communication buffer", _progname);
+
+	sprintf(sendBuffer, "%d|%d|%d|%" PRId64 "|%d|%ld|", FLUSH, idx, chan,
 					this->getcur(), this->getfmt(), b_size);
-	i = strlen(rec_buff);
+	i = strlen(sendBuffer);
 	val = i + rfdesc->rf_len;
 
 	for (tmp = 1; tmp <= rfdesc->n_fields; tmp++) {
-		if (this->field[tmp].get_type() == type_blob) {
-//			put_long(rec_buff+val, (long)this->field[tmp].datalen());
-// use the inline function ntohl instead of put_long
-			*(unsigned long *)(rec_buff+val) = ntohl((long)this->field[tmp].datalen());
+		if (this->_fields[tmp].get_type() == type_blob) {
+			*(unsigned long *)(sendBuffer+val) = ntohl((long)this->_fields[tmp].datalen());
 			val += sizeof(long);
-			::memcpy(rec_buff+val, this->field[tmp].getptr(), this->field[tmp].datalen());
-			val += this->field[tmp].datalen();
+			::memcpy(sendBuffer+val, this->_fields[tmp].getptr(), this->_fields[tmp].datalen());
+			val += this->_fields[tmp].datalen();
 		} else {
-			::memcpy(rec_buff+i, ((this->field)+tmp)->getptr(),
+			::memcpy(sendBuffer+i, ((this->_fields)+tmp)->getptr(),
 						rfdesc->field_sizes[tmp-1]);
 		}
 		i += rfdesc->field_sizes[tmp-1];
 	}
 
+// answerBuffer doesn't get anything if db_send throws.  but we don't want
+// to operate on a null buffer, so catch the error and propogate it
 	try {
-		nbuf = comm.db_send(rec_buff, val);
+		answerBuffer = comm.db_send(sendBuffer, val);
 	}
-	catch(int err_val) {
-		comm.db_err(0, "%s: Can't read socket in OUT_REC", _progname);
+	catch(const datamanError &) {
+		delete [] sendBuffer;
+		throw;
 	}
-	free(rec_buff);
+	delete [] sendBuffer;
 
-	i = atoi(nbuf);
+	i = atoi(answerBuffer);
+	delete[] answerBuffer;
+
 	if (i < 0)
-		comm.db_err(i, "%s: error in out_rec", _progname);
-	delete[] nbuf;
+		throw makeError(i, "%s: error in out_rec", _progname);
+
 	this->setdirty(0);
+	return;
 }
 
 /*

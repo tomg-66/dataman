@@ -55,19 +55,18 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <datafield.hh>
-#include <datarecord.hh>
-#include <fileEdit.hh>
+#include "datafield.hpp"
+#include "datarecord.hpp"
+#include "fileEdit.hpp"
+#include "datamanError.hpp"
 
 using namespace Dataman;
 
 #include "../../server/errors.h"
 
-#if !defined min
-#define min(x,y)	((x)<(y)?(x):(y))
+#if !defined MIN
+#define MIN(x,y)	((x)<(y)?(x):(y))
 #endif
-
-extern void db_err(int, const char *, ...);
 
 static int trmlen(const char *s)
 {
@@ -126,7 +125,7 @@ datafield::~datafield() {
 }
 /*
  * is this datafield a work record or master record, and what
- * field number is it? < 0 it's in the workfile, == not a
+ * field number is it? < 0 it's in the workRecord, == not a
  * field.  > 0 is in the master record.
  */
 /*
@@ -160,11 +159,12 @@ int datafield::locate(void)
 //
 void datafield::operator=(const datafield& d)
 {
-	if (this->type == type_blob || d.type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob || d.type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	if (this->data) {
 		memset(this->data, ' ', this->length);
-		::strncpy(this->data, d.data, min(this->length, d.length));
+		::strncpy(this->data, d.data, MIN(this->length, d.length));
 	} else {
 		this->length = d.length;
 		this->data = new char[d.length+1];
@@ -172,9 +172,9 @@ void datafield::operator=(const datafield& d)
 	}
 	this->type = d.type;
 	if (this->which == MASTER)
-		master.setdirty(true);
+		masterRecord.setdirty(true);
 	else
-		workfile.setdirty(true);
+		workRecord.setdirty(true);
 }
 
 //
@@ -182,12 +182,13 @@ void datafield::operator=(const datafield& d)
 //
 void datafield::operator=(const char *s)
 {
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	if (this->data) {
 		memset(this->data, ' ', this->length);
 		if (s)
-			::strncpy(this->data, s, min(this->length, strlen(s)));
+			::strncpy(this->data, s, MIN(this->length, strlen(s)));
 	} else if (s) {
 		this->length = strlen(s);
 		this->data = new char[this->length+1];
@@ -195,9 +196,9 @@ void datafield::operator=(const char *s)
 	}
 	this->type = type_chr;
 	if (this->which == MASTER)
-		master.setdirty(true);
+		masterRecord.setdirty(true);
 	else
-		workfile.setdirty(true);
+		workRecord.setdirty(true);
 
 }
 
@@ -207,12 +208,13 @@ void datafield::operator=(const char *s)
 void datafield::operator=(int i)
 {
 	char buff[32];
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	sprintf(buff, "%d", i);
 	if (this->data) {
 		memset(this->data, ' ', this->length);
-		::strncpy(this->data, buff, min(this->length, strlen(buff)));
+		::strncpy(this->data, buff, MIN(this->length, strlen(buff)));
 	} else {
 		this->length = strlen(buff);
 		this->data = new char[this->length+1];
@@ -220,9 +222,9 @@ void datafield::operator=(int i)
 	}
 	this->type = type_int;
 	if (this->which == MASTER)
-		master.setdirty(true);
+		masterRecord.setdirty(true);
 	else
-		workfile.setdirty(true);
+		workRecord.setdirty(true);
 }
 
 //
@@ -231,12 +233,13 @@ void datafield::operator=(int i)
 void datafield::operator=(float f)
 {
 	char buff[64];
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	sprintf(buff, "%f", f);
 	if (this->data) {
 		memset(this->data, ' ', this->length);
-		::strncpy(this->data, buff, min(this->length, strlen(buff)));
+		::strncpy(this->data, buff, MIN(this->length, strlen(buff)));
 	} else {
 		this->length = strlen(buff);
 		this->data = new char[this->length+1];
@@ -244,9 +247,9 @@ void datafield::operator=(float f)
 	}
 	this->type = type_flt;
 	if (this->which == MASTER)
-		master.setdirty(true);
+		masterRecord.setdirty(true);
 	else
-		workfile.setdirty(true);
+		workRecord.setdirty(true);
 }
 
 //
@@ -286,9 +289,9 @@ int datafield::put_blob(const void *ptr, int len)
 	this->data = new char[len];
 	::memcpy(this->data, ptr, len);
 	if (this->which == MASTER)
-		master.setdirty(true);
+		masterRecord.setdirty(true);
 	else
-		workfile.setdirty(true);
+		workRecord.setdirty(true);
 	this->type = type_blob;
 	return(1);
 }
@@ -304,8 +307,9 @@ datafield datafield::operator+(const datafield& d)
 {
 	datafield ret;
 
-	if (this->type == type_blob || d.type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob || d.type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	int sw = ((this->type & TYPE_MASK) << 3) | d.type;
 
 	switch(sw) {
@@ -315,7 +319,7 @@ datafield datafield::operator+(const datafield& d)
 
 		case 000:
 			i = trmlen(this->data);
-			j = min(i, trmlen(d.data));
+			j = MIN(i, trmlen(d.data));
 			ret.type = type_chr;
 			ret.length = i+j;
 			ret.data = new char[i+j+1];
@@ -396,8 +400,9 @@ datafield datafield::operator+(const char *s)
 	if (!s)
 		return(*this);
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 
 	switch(this->type) {
 		int i, j;
@@ -438,8 +443,9 @@ datafield datafield::operator+(int v)
 {
 	datafield ret;
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	switch(this->type) {
 		int i;
 		float f;
@@ -471,8 +477,9 @@ datafield datafield::operator+(float v)
 {
 	datafield ret;
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	switch(this->type) {
 		int i;
 		float f;
@@ -504,8 +511,9 @@ datafield datafield::operator*(const datafield& f)
 {
 	datafield ret;
 	
-	if (this->type == type_blob || f.type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob || f.type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	if (strchr(this->data, '.') || strchr(f.data, '.')) {
 		float result =  atof(this->data) * atof(f.data);
 		ret = result;
@@ -523,8 +531,9 @@ datafield datafield::operator*(const char * s)
 	if (!s)
 		return(*this);
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 
 	if (strchr(this->data, '.') || strchr(s, '.')) {
 		float result =  atof(this->data) * atof(s);
@@ -540,8 +549,9 @@ datafield datafield::operator*(int i)
 {
 	datafield ret;
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	if (strchr(this->data, '.')) {
 		float result = atof(this->data) * (float)i;
 		ret = result;
@@ -555,8 +565,9 @@ datafield datafield::operator*(int i)
 datafield datafield::operator*(float f)
 {
 	datafield ret;
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	ret = (const float)(atof(this->data) * f);
 	return(ret);
 }
@@ -568,8 +579,10 @@ datafield datafield::operator/(const datafield& f)
 {
 	datafield ret;
 	
-	if (this->type == type_blob || f.type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob || f.type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+		exit(EBLOBTYP);
+	}
 	if (atof(f.data) == 0.0) {
 		fprintf(stderr, "attempt to divide by zero!\n");
 		exit(0);
@@ -591,8 +604,9 @@ datafield datafield::operator/(const char * s)
 	if (!s)
 		return(*this);
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 
 	if (atof(s) == 0.0) {
 		fprintf(stderr, "attempt to divide by zero!\n");
@@ -612,8 +626,9 @@ datafield datafield::operator/(int i)
 {
 	datafield ret;
 
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	if (i == 0) {
 		fprintf(stderr, "attempt to divide by zero!\n");
 		exit(0);
@@ -630,8 +645,9 @@ datafield datafield::operator/(int i)
 
 datafield datafield::operator/(float f)
 {
-	if (this->type == type_blob)
-		db_err(EBLOBTYP, "", NULL);
+	if (this->type == type_blob) {
+		throw makeError(EBLOBTYP, "");
+	}
 	if (f == 0.0) {
 		fprintf(stderr, "attempt to divide by zero!\n");
 		exit(0);
@@ -728,9 +744,9 @@ const char *Dataman::strncpy(datafield& d, const char *s, int i)
 			i = strlen(s);
 		::strncpy(d.data, s, i);
 		if (d.get_which() == MASTER)
-			master.setdirty(true);
+			masterRecord.setdirty(true);
 		else
-			workfile.setdirty(true);
+			workRecord.setdirty(true);
 	}
 	return(d.getptr());
 }
@@ -757,9 +773,9 @@ const void *Dataman::memcpy (datafield& d, const char *s, int i)
 			i = d.datalen();
 		::memcpy(d.data, s, i);
 		if (d.get_which() == MASTER)
-			master.setdirty(true);
+			masterRecord.setdirty(true);
 		else
-			workfile.setdirty(true);
+			workRecord.setdirty(true);
 	}
 	return((const void *)d.getptr());
 }

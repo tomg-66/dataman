@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	datarecord.hh
+ * PROCEDURE:	datarecord.hpp
  *
  * PROJECT:		dataman client side c++ header
  * 
@@ -47,10 +47,10 @@
 #if !defined _DATAMAN_DATARECORD_INCLUDED_
 #define  _DATAMAN_DATARECORD_INCLUDED_
 
-#include "datafield.hh"
-#include "index.hh"
+#include "datafield.hpp"
+#include "index.hpp"
 
-extern void init_dataman(int, char **);
+extern int init_dataman(int, char **);
 extern int commit(void); 
 
 namespace Dataman {
@@ -72,7 +72,7 @@ class datarecord {
 		bool		_dirty;		// is this record dirty?
 		int			which;		// master or work rec
 		FILEDESC 	*_filedesc;	// a parsed out file description
-		datafield 	*field;		// an array of datafields
+		datafield 	*_fields;	// an array of datafields
 
 	public:
 		datarecord(int t) {
@@ -83,6 +83,7 @@ class datarecord {
 			_dirty = false;
 			which = t;
 			_filedesc = (FILEDESC *)NULL;
+			_fields = NULL;
 		}
 		void init(void) {
 			head = longest = 0;
@@ -91,18 +92,22 @@ class datarecord {
 			fmt = _file = 0;
 			_dirty = false;
 			_filedesc = (FILEDESC *)NULL;
+			if (_fields) {
+				delete[] _fields;
+				_fields = NULL;
+			}
 		}
 
-		~datarecord() { if (this->field) delete[] field; }
+		~datarecord() { if (this->_fields) delete[] _fields; }
 
 		datafield& operator[](int i);
 
 		friend class index;			// this will mess with my privates!
-		friend void ::init_dataman(int, char **);
+		friend int ::init_dataman(int, char **);
 		friend int commit(void); 
 
 		void out_rec();
-		void in_rec(char *);
+		int in_rec(char *);
 
 		int getwhich() { return(this->which); }
 //		int gethead() { return(this->head); }

@@ -50,12 +50,14 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
+#include <memory>
 
 #define TRUE    1
 #define FALSE   0
@@ -71,7 +73,6 @@ int index::forward()
 	int64_t curr; 
 
 	char cmd[128];
-	char *buff;
 	char *cptr;
 
 	db_comm comm;
@@ -79,46 +80,41 @@ int index::forward()
 	if (in_xact && this->_rptr < 0)
 		return(FALSE);
 	if (cur_index && cur_index->get_wrmode())
-		master.out_rec();
-	if (this->_curkey.get_len() == 0)
-		comm.db_err(ENOGET, "%s: error in forward", _progname);
+		masterRecord.out_rec();
+	if (this->_curkey.get_len() == 0) {
+		db_err(ENOGET, "%s: error in forward", _progname);
+		return FALSE;
+	}
 
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0)
-		comm.db_err(0, "%s: memory corruption detected in forward", _progname);
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0) {
+		db_err(0, "%s: memory corruption detected in forward", _progname);
+		return FALSE;
+	}
 
 	sprintf(cmd, "%d|%d|%d|%" PRId64 "|", FORWARD, this->_idxno, this->_fno, this->_rptr);
 
-	try {
-		buff = comm.db_send(cmd, strlen(cmd));
-	}
-	catch(int comm_err) {
-		comm.db_err(0, "%s: socket read error in forward", _progname);
-	}
+	std::unique_ptr<char []> buff(comm.db_send(cmd, strlen(cmd)));
 
-	i = atoi(buff);
-	if (i < 0)
-		comm.db_err(i, "%s: error in forward", _progname);
-	else if (i == 0) {
-		delete[] buff;
+	i = atoi(buff.get());
+		throw makeError(i, "%s: error in forward", _progname);
+	if (i == 0)
 		return(FALSE);					/* no next record in this file */
-	}
 
-	cptr = strchr(buff, '|') + 1;
+	cptr = strchr(buff.get(), '|') + 1;
 	curr = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') + 1;
 	fmt = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
 
 	this->_rptr = curr;
-	master.cur = curr;
+	masterRecord.cur = curr;
 	cur_index = this;
-	master._filedesc = this->_files[this->_fno].get_desc();
-	master.head = this->_files[this->_fno].get_hlen();
-	master.len = i;
-	master.fmt = fmt;
-	master.in_rec(cptr);
+	masterRecord._filedesc = this->_files[this->_fno].get_desc();
+	masterRecord.head = this->_files[this->_fno].get_hlen();
+	masterRecord.len = i;
+	masterRecord.fmt = fmt;
+	masterRecord.in_rec(cptr);
 
-	delete[] buff;
 	return(TRUE);						/* give the ok signal */
 }
 

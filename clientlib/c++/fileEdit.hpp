@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	fileEdit.hh
+ * PROCEDURE:	fileEdit.hpp
  *
  * PROJECT:		dataman client side C++
  * 
@@ -39,10 +39,10 @@
 #if !defined _DATAMAN_FILEEDIT_INCLUDED_
 #define _DATAMAN_FILEEDIT_INCLUDED_
 
-#include "endSort.hh"
+#include "endSort.hpp"
 
 namespace Dataman {
-	extern Dataman::datarecord master;
+	extern Dataman::datarecord masterRecord;
 	extern bool in_xact;
 };
 

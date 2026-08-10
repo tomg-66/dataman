@@ -1,24 +1,18 @@
 /* ***************************************************************
  *
- * PROCEDURE:	db_comm.hh
+ * PROCEDURE:	datamanError.hpp
  *
- * PROJECT:		dataman client side c++ header file
+ * PROJECT:		dataman client side c++ header
  * 
- * DATE:		Wed Jul  7 16:46:59 MDT 2004
+ * DATE:		Mon Aug 10 02:25:42 PM MDT 2026
  * 
  * AUTHOR:		Tom Green
  * 
  * FILES:
  *
  * MODIFICATION HISTORY:
- * 				Thu Mar 21 16:02:09 MDT 2013
- * 				tom
- * 				added namespace support
  *
  ************************************************************* */
-/*
- * define how the communication with the server happens.
- */
 /*
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -37,29 +31,31 @@
  *
  * The GNU General Public License is contained in the file COPYING.
  */
-#if !defined _DATAMAN_COMM_DEFINED_
-#define _DATAMAN_COMM_DEFINED_
+
+#pragma once
+
+#include <stdexcept>
+#include <string>
+#include <cstdarg>
+#include <cstring>
 
 namespace Dataman {
 
-class db_comm {
-	private:
-		static int db_sock;					// socket to talk out
-		int db_connect(const char *host);	// connect to server
-		int comm_err;
-	public:
-		db_comm(void);						// construct from nothing
-		db_comm(const char *host);			// construct from name
-		~db_comm();	
-		void db_err(int, const char *, ...);
-		char *db_send(char *msg, int len);	// send a message
-		static int get_sock() { return(db_sock); }
-		void db_discon(void);
+class datamanError : public std::runtime_error
+{
+private:
+	int _code;
+public:
+	datamanError(int code, const std::string& message) : std::runtime_error(message), _code(code)
+	{
+	}
+	int code() const { return _code; }
 };
 
-};
+extern datamanError makeError(int code, const char *format, ...);
+extern void db_err(int code, const char *format, ...);
 
-#endif
+};
 
 /*
  * Local variables:

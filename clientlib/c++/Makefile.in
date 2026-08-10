@@ -71,11 +71,11 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libdataman___la_LIBADD =
 am_libdataman___la_OBJECTS = accept.lo back.lo clear.lo cl_win.lo \
-	datafield_impl.lo db_comm.lo db_err.lo delete.lo flush.lo \
+	datafield_impl.lo db_comm.lo datamanError.lo delete.lo flush.lo \
 	forward.lo get.lo get_current.lo get_first.lo get_last.lo \
 	get_long.lo get_next.lo get_prior.lo grow_win.lo include.lo \
 	index.lo init_dataman.lo init_dwin.lo insert.lo mask.lo \
-	match.lo mkidx.lo new_win.lo parse_get.lo pause.lo pop_win.lo \
+	mkidx.lo new_win.lo parse_get.lo pause.lo pop_win.lo \
 	protect.lo recio.lo release.lo restore.lo save.lo screen.lo \
 	show.lo sort.lo substr.lo window.lo key_impl.lo remove.lo \
 	get_ll.lo put_ll.lo start_xact.lo commit.lo rollback.lo \
@@ -224,19 +224,19 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libdataman++.la
 libdataman___la_SOURCES = accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc \
-		db_comm.cc db_err.cc delete.cc flush.cc forward.cc \
+		db_comm.cc datamanError.cc delete.cc flush.cc forward.cc \
 		get.cc get_current.cc get_first.cc get_last.cc get_long.cc \
 		get_next.cc get_prior.cc grow_win.cc include.cc index.cc \
-		init_dataman.cc init_dwin.cc insert.cc mask.cc match.cc mkidx.cc \
+		init_dataman.cc init_dwin.cc insert.cc mask.cc mkidx.cc \
 		new_win.cc parse_get.cc pause.cc pop_win.cc protect.cc recio.cc \
 		release.cc restore.cc save.cc screen.cc show.cc sort.cc substr.cc \
 		window.cc key_impl.cc remove.cc get_ll.cc put_ll.cc start_xact.cc \
 		commit.cc rollback.cc subscript.cc
 
 libdataman___la_LDFLAGS = -version-info 3:8:0 -lcurses
-noinst_HEADERS = db_comm.hh wind.h window.h
-include_HEADERS = datafield.hh dataman.hh datarecord.hh fileEdit.hh endSort.hh  \
-		index.hh key.hh proto.hh sort.hh
+noinst_HEADERS = db_comm.hpp wind.h window.h 
+include_HEADERS = datafield.hpp dataman.hpp datarecord.hpp fileEdit.hpp endSort.hpp  \
+		index.hpp key.hpp proto.hpp sort.hpp datamanError.hpp
 
 INCLUDES = -I../../server
 all: all-am
@@ -320,7 +320,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/commit.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/datafield_impl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/db_comm.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/db_err.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/datamanError.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/delete.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/flush.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/forward.Plo@am__quote@
@@ -340,7 +340,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/insert.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/key_impl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mask.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/match.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mkidx.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/new_win.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parse_get.Plo@am__quote@

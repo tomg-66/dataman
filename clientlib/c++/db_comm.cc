@@ -64,10 +64,13 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-#include <endSort.hh>
-#include <db_comm.hh>
+#include "endSort.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../server/errors.h"
+
+#include <memory>
 
 #define DBSOCK 8758
 
@@ -122,9 +125,8 @@ db_comm::db_comm(const char *host)
 
 	if (this->db_sock == -1) {
 		if ((ret = db_connect(host)) < 0)
-			throw(ret);
-		else
-			this->db_sock = ret;
+			throw makeError(ret, "%s: Error connecting to remote host %s", _progname, host);
+		this->db_sock = ret;
 	}
 }
 
@@ -137,7 +139,8 @@ db_comm::db_comm(void)
 		if (!(host = getenv("DSERVHOST")))
 			host = "localhost";
 		if ((ret = db_connect(host)) < 0)
-			throw(ret);
+			throw makeError(ret, "%s: Error connecting to remote host %s", _progname, host);
+		this->db_sock = ret;
 	}
 }
 
@@ -215,12 +218,15 @@ int db_comm::db_connect(const char *host)
 				continue;			/* interrupted - reaped child? */
 			} else {
 				db_err(0, "%s, Can't accept new connection: ", _progname);
+				return ENORESP;
 			}
 		}
 		break;
 	}
-	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0)
+	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0 || i > 7) {
 		db_err(0, "%s: ioctl failed, socket gone", _progname);
+		return ENORESP;
+	}
 
 	if (read(sock, resp, i) != i)
 		return(ENORESP);
@@ -237,9 +243,7 @@ int db_comm::db_connect(const char *host)
  */
 char *db_comm::db_send(char *cmd, int len)
 {
-
 	int32_t size;
-
 /*
  * the reason I chose to do two writes is that it would take much less
  * time and effort than to allocate a new buffer len+4 bytes long, copy
@@ -252,36 +256,48 @@ char *db_comm::db_send(char *cmd, int len)
 		fwrite(cmd, 1, len, stderr);
 		fprintf(stderr, "<-\n");
 		fflush(stderr);
-		exit(0);
+		throw makeError(0, "");
 	}
 
-//	size = htonl(s_len);
 	size = htonl(len);
-	if (!write_all(this->db_sock, (char *)&size, sizeof(int32_t)))
-		db_err(0, "%s: Can't write wrapper to socket", _progname);
+	if (!write_all(this->db_sock, (char *)&size, sizeof(int32_t))) {
+		throw makeError(0, "%s: Can't write wrapper to socket", _progname);
+	}
 
-	if (!write_all(this->db_sock, cmd, (size_t)len))
-		db_err(0, "%s: Can't write to socket", _progname);
+	if (!write_all(this->db_sock, cmd, (size_t)len)) {
+		throw makeError(0, "%s: Can't write to socket", _progname);
+	}
 
 /*
  * Read the length wrapper, then exactly that many response bytes.
+ * don't really check the length of the buffer to allocate, because
+ * it might be a blob which can be INT_MAX.  just make sure it's not
+ * negative
  */
-	if (!read_exact(this->db_sock, (char *)&size, sizeof(int32_t)))
-		db_err(0, "%s: Can't read response wrapper", _progname);
+	if (!read_exact(this->db_sock, (char *)&size, sizeof(int32_t))) {
+		throw makeError(0, "%s: Can't read response wrapper", _progname);
+	}
 	size = ntohl(size);
-	if (size < 0)
-		db_err(0, "%s: invalid response length %d", _progname, size);
+	if (size < 0) {
+		throw makeError(EINVMSG, "%s: invalid response length %d", _progname, size);
+	}
 
-	char *ret = new char[size+1];
+	char *ret = new (std::nothrow) char[size+1];
+	if (!ret) {
+		throw makeError(ENOALLOC, "%s: Cannot allocate buffer memory in db_send\n", _progname);
+	}
+
 	memset(ret, '\0', size+1);
 
-	if (!read_exact(this->db_sock, ret, (size_t)size))
-		throw(comm_err);
+	if (!read_exact(this->db_sock, ret, (size_t)size)) {
+		delete [] ret;
+		throw makeError(0, "%s: Error reading data from socket", _progname);
+	}
 	return(ret);
 }
 
 
-#include <index.hh>
+#include <index.hpp>
 #include "../server/dbfunc.h"
 
 void db_comm::db_discon(void)
@@ -292,12 +308,15 @@ void db_comm::db_discon(void)
 	if (this->db_sock < 0)
 		return;
 	if (is_sort) {
-		sprintf(msg, "%d|%d|", ICLOSE, cur_index->get_idxno());
-		s = this->db_send(msg, strlen(msg));
-		delete[] s;
-		sprintf(msg, "%d|%d|", ICLOSE, -(workfile.getchan()));
-		s = this->db_send(msg, strlen(msg));
-		delete[] s;
+		try {
+			sprintf(msg, "%d|%d|", ICLOSE, cur_index->get_idxno());
+			s = this->db_send(msg, strlen(msg));
+			delete[] s;
+			sprintf(msg, "%d|%d|", ICLOSE, -(workRecord.getchan()));
+			s = this->db_send(msg, strlen(msg));
+			delete[] s;
+		} catch (const datamanError &) {
+		}
 	} else {
 /*
  * do something here to clean up any records that are protected
@@ -310,20 +329,26 @@ void db_comm::db_discon(void)
 //			}
 //		}
 		if (!dataman_has_php) {
-			if (workfile.getdirty())
-				workfile.out_rec();
-			sprintf(msg, "%d|%d|", ICLOSE, -(workfile.getchan()));
-			s = this->db_send(msg, strlen(msg));
-			delete[] s;
+			try {
+				if (workRecord.getdirty())
+					workRecord.out_rec();
+				sprintf(msg, "%d|%d|", ICLOSE, -(workRecord.getchan()));
+				s = this->db_send(msg, strlen(msg));
+				delete[] s;
+			} catch (const datamanError &) {
+			}
 		}
 	}
 	sprintf(msg, "%d", DISCON);
-	s = this->db_send(msg, strlen(msg));
-	if (memcmp(s, "ok", 2))
-		fprintf(stderr, "Didn't get proper shutdown reply\n");
+	try {
+		s = this->db_send(msg, strlen(msg));
+		if (memcmp(s, "ok", 2))
+			fprintf(stderr, "Didn't get proper shutdown reply\n");
+		delete[] s;
+	} catch (const datamanError &) {
+	}
 	close(this->db_sock);
 	this->db_sock = -1;
-	delete[] s;
 }
 
 /*

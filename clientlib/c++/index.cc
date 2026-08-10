@@ -17,7 +17,7 @@
  *
  ************************************************************* */
 //
-// this is the implementation of the index constructor.  it calls iopen to
+// this is the implementation of the index constructor.  it calls _iopen to
 // open the index the destructor calls iclose to terminate the connection
 //
 /*
@@ -39,49 +39,51 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
-
-#include <errors.h>
-#include <dbfunc.h>
-
 #include <stdio.h>			// need sprintf
 #include <errno.h>
+
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
+
+#include "../../server/errors.h"
+#include "../../server/dbfunc.h"
+
+#include <memory>
 
 extern void db_err(int, const char *, ...);
 
 using namespace Dataman;
 
-index::index(void) {
-	_idxname = NULL;
-	_idxno = 0;
-	_wrmode = 0;
-	_fno = 0;
-	_nfiles = 0;
-	_keylen = 0;
-	_longest = 0;
-	_curnode = 0;
-	_rptr = 0;
-	_offs = 0;
-//	_curkey = NULL;
-	_files = NULL;
+index::index(void) :
+	_idxname(NULL),
+	_idxno (-1),
+	_wrmode(RDONLY),
+	_fno(-1),
+	_nfiles(0),
+	_keylen(0),
+	_longest(0),
+	_curnode(0),
+	_rptr(0),
+	_generation(0),
+	_offs(0),
+	_files(NULL),
+	_savptr(NULL)
+{
 }
 
-index::index(char *name, int mode)
+index::index(char *name, int mode) : index()
 {
 	if (mode < RDONLY || mode > UPDATE) {
-		errno = EINVAL;
-		db_err(0, "%s: can't init index %s", _progname, name);
+		throw makeError(-EINVAL, "Invalid open mode for index %s", name);
 	}
-	memset(this, '\0', sizeof(class index));
-	this->iopen(name, mode);
+	this->_iopen(name, mode);
 }
 
-void index::iopen(char *name, int mode)
+void index::_iopen(const char *name, int mode)
 {
 	int x = -1;
 	int idx, i;
-	char *buff;
 
 	for (idx = 0; idx < 6; idx++) {
 		if (!this->_onames[idx]) {
@@ -90,36 +92,37 @@ void index::iopen(char *name, int mode)
 			continue;
 		}
 		if (!strcmp(name, this->_onames[idx])) {
-			db_err(EIDXOPN, "%s: can't init index %s", _progname, name);
+			throw makeError(EIDXOPN, "%s: can't init index %s", _progname, name);
 		}
 	}
+
 	if (x == -1) {
 		errno = EMFILE;
-		db_err(0, "%s: can't init index %s", _progname, name);
+		throw makeError(0, "%s: can't init index %s", _progname, name);
 	}
-	idx = x;
-	this->_onames[idx] = new char[strlen(name)+1];
-	strcpy(this->_onames[idx], name);
 
+	idx = x;
 	char comm_buffer[256];
 	db_comm comm;
 	sprintf(comm_buffer, "%d|%s|%s|", IOPEN, name, _root);
-	try {
-		buff = comm.db_send(comm_buffer, strlen(comm_buffer));
-	}
-	catch (int i) {
-		comm.db_err(0, "%s: socket read error in IOPEN", _progname);
-	}
 
-	i = atoi(buff);
+// db_comm will return a buffer only on success.  otherwise it will 
+// throw an error. let the user catch the communication error.  if
+// the iopen fails that's also a throwable error.
+	std::unique_ptr<char[]> buff(comm.db_send(comm_buffer, strlen(comm_buffer)));
+
+	i = atoi(buff.get());
 	if (i < 0)
-		comm.db_err(i, "%s: server error in IOPEN", _progname);
+		throw makeError(i, "%s: server error in IOPEN", _progname);
+
+	this->_onames[idx] = new char[strlen(name)+1];
+	strcpy(this->_onames[idx], name);
 /*
  * parse the message
  */
 	char *cptr;
 	this->_idxname = this->_onames[idx];
-	cptr = strchr(buff, '|') + 1;
+	cptr = strchr(buff.get(), '|') + 1;
 	this->_idxno = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
 	this->_keylen = atoi(cptr);
@@ -134,26 +137,67 @@ void index::iopen(char *name, int mode)
 		cptr += strlen(cptr) + 1;
 	}
 	this->_wrmode = mode;
-	delete[] buff;
 }
 
+void index::iclose()
+{
+	try {
+		_iclose();
+	} catch (const datamanError &) {
+		_unwind();
+		throw;
+	}
+}
+
+/*
+ * this is a destructor... don't throw anything!
+ */
 index::~index()
 {
-	if (this->_idxname)
-		this->iclose();
+	if (this->_idxname) {
+		try {
+			this->_iclose();
+		} catch (const datamanError &) {
+			_unwind();
+		}
+	}
 }
 
-void index::iclose(void)
+void index::_iclose(void)
 {
-
 	int i;
-
+	int ret;
 	char buff[32];
 
-	if (cur_index && cur_index->get_wrmode())
-		master.out_rec();					/* flush the current record */
-	if (cur_index == this)
-		cur_index = NULL;
+	if (!_idxname)
+		return;
+
+// output the record to the database.  if it fails catch
+// the error and propogate it.
+	if (cur_index == this && _wrmode) {
+		try {
+			masterRecord.out_rec();
+		} catch (const datamanError &) {
+			throw;
+		}
+	}
+
+	sprintf(buff, "%d|%d|", ICLOSE, this->_idxno);
+
+// send the iclose command, then do cleanup.  if the iclose failed
+// throw an error
+	db_comm comm;
+	std::unique_ptr<char[]> answer(comm.db_send(buff, strlen(buff)));
+
+	ret = atoi(answer.get());
+	if (ret < 0)
+		throw makeError(ret, "%s: iclose error", _progname);
+	_unwind();
+}
+
+void index::_unwind()
+{
+	int i;
 
 	for(i = 0; i < 6; i++) {
 		if (this->_idxname == this->_onames[i]) {
@@ -163,27 +207,20 @@ void index::iclose(void)
 		}
 	}
 
-//	if(_curkey)
-//		delete _curkey;
-
 	if (_files)
 		delete[] _files;
 
 	if (_savptr)
 		free(_savptr);
 
-	sprintf(buff, "%d|%d|", ICLOSE, this->_idxno);
-	db_comm comm;
-	try {
-		comm.db_send(buff, strlen(buff));
-	}
-	catch (int err) {
-		comm.db_err(0, "%s: socket read error in ICLOSE", _progname);
-	}
+	if (cur_index == this)
+		cur_index = NULL;
 
-	i = atoi(buff);
-	if (i < 0)
-		comm.db_err(i, "%s: iclose error", _progname);
+	_idxname = NULL;
+	_files = NULL;
+	_idxno = -1;
+	_fno = -1;
+	_nfiles = 0;
 
 }
 

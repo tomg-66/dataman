@@ -40,7 +40,7 @@
 
 
 #include <string.h>
-#include <key.hh>
+#include <key.hpp>
 
 #include "../../server/misc.h"
 

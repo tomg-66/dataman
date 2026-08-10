@@ -38,7 +38,7 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#include <endSort.hh>
+#include <endSort.hpp>
 
 #include "../../server/datafile_header.h"
 #include "../../server/errors.h"
@@ -55,7 +55,7 @@ datafield& datarecord::operator[](int i)
 				cur_index->get_files()[cur_index->get_fno()].get_fname(),
 				_filedesc->record_desc[fmt-1].n_fields);
 	}
-	return(*(field+i));
+	return(*(_fields+i));
 }
 
 /*

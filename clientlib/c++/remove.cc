@@ -47,11 +47,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+
+#include <memory>
 
 #define TRUE	1
 #define FALSE	0
@@ -65,42 +68,45 @@ int index::remove(const key& k)
 	int tmp;
 
     char cmd[128];			/* command */
-	char *buff;
 
 	key *ptr = (key *)&k;
 
 	db_comm comm;
-	if (!this->_wrmode)
-		comm.db_err(0, "%s: in remove - index %s not opened for update\n",
+	if (!this->_wrmode) {
+		db_err(0, "%s: in remove - index %s not opened for update\n",
 						_progname, this->_idxname);
-	if (strchr(ptr->get_kstr(), '*'))
-		comm.db_err(0, "%s: can't use wildcard in remove\n", _progname);
+		return FALSE;
+	}
+
+	if (strchr(ptr->get_kstr(), '*')) {
+		db_err(0, "%s: can't use wildcard in remove\n", _progname);
+		return FALSE;
+	}
 
 	if (ptr->get_fno())
 		tmp = this->_keylen + KEY_HEADER_LENGTH;
 	else
 		tmp = strlen(ptr->get_kstr());
 
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in remove", _progname);
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+		db_err(0, "%s: memory corruption detected in remove", _progname);
+		return FALSE;
+	}
 
 	i = sprintf(cmd, "%d|%d|%d|", REMOVE, this->_idxno, in_xact);
 	::memcpy(cmd+i, ptr->get_data(), tmp);
 	i += tmp;
 
-	try {
-		buff = comm.db_send(cmd, i);
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: Can't read socket response in REMOVE", _progname);
+	std::unique_ptr<char []> buff(comm.db_send(cmd, i));
+
+	i = atoi(buff.get());
+
+	if (i < 0) {
+		throw makeError(i, "%s: remove error", _progname);
+	} else if (i == 0) {
+		return(FALSE);
 	}
 
-	i = atoi(buff);
-	delete [] buff;
-	if (i < 0)
-		comm.db_err(i, "%s: remove error", _progname);
-	else if (i == 0)
-		return(FALSE);
 	return(TRUE);
 }
 

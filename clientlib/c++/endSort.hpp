@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	endSort.hh
+ * PROCEDURE:	endSort.hpp
  *
  * PROJECT:		dataman client side C++
  * 
@@ -39,11 +39,11 @@
 #if !defined _DATAMAN_ENDSORT_INCLUDED_
 #define _DATAMAN_ENDSORT_INCLUDED_
 
-#include "index.hh"
-#include "datarecord.hh"
+#include "index.hpp"
+#include "datarecord.hpp"
 
 namespace Dataman {
-	extern Dataman::datarecord workfile;
+	extern Dataman::datarecord workRecord;
 
 	extern char _file;				// the when_file flag
 

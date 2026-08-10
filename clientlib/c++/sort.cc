@@ -47,10 +47,13 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <endSort.hh>
-#include <db_comm.hh>
+#include "endSort.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
+
+#include <memory>
 
 using namespace Dataman;
 
@@ -60,22 +63,16 @@ void sort(const char *pkey)
 	int i;
 
 	char cmd[128];
-	char *buf;
 
 	sprintf(cmd, "%d|%d|%d|%" PRId64 "|%s|", SORT, cur_index->get_idxno(),
-					_fileno, workfile.getcur(), pkey);
+					_fileno, workRecord.getcur(), pkey);
 	db_comm comm;
 
-	try {
-		buf = comm.db_send(cmd, strlen(cmd));
+	std::unique_ptr<char[]> buf(comm.db_send(cmd, strlen(cmd)));
+	i = atoi(buf.get());
+	if (i < 0) {
+		throw makeError(i, "%s: error during sort", _progname);
 	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: communication error during sort", _progname);
-	}
-	i = atoi(buf);
-	if (i < 0)
-		comm.db_err(i, "%s: error during sort", _progname);
-	delete[] buf;
 }
 
 void sort(datafield& k)

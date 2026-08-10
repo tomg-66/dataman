@@ -44,11 +44,14 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+
+#include <memory>
 
 #define TRUE    1
 #define FALSE   0
@@ -60,17 +63,19 @@ int index::get(const key &info)
     int i;								/* temporary */
 
 	char cmd[128];
-	char *buff;
 	key *ptr = (key *)&info;
 
 	const char *kpt = ptr->get_data();
 
-	if (cur_index && cur_index->get_wrmode())
-		master.out_rec();					/* flush the current record */
+	if (cur_index && cur_index->get_wrmode()) {
+		masterRecord.out_rec();				/* flush the current record */
+	}
 
 	db_comm comm;
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in get", _progname);
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+		db_err(0, "%s: memory corruption detected in get", _progname);
+		return FALSE;
+	}
 
 /*
  * if this byte isn't a null (we should be getting a proper key)
@@ -86,29 +91,27 @@ int index::get(const key &info)
 		i = sprintf(cmd, "%d|%d|%s|", GET, this->_idxno, kpt);
     }
 /*
- * send the command and deal with the return.
+ * send the command and deal with the return. Let callers deal
+ * with exceptions.
  */
-	try {
-		buff = comm.db_send(cmd, i);
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: Can't read socket response in GET", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, i));
+
 /*
  * the first field of the return is an error code if necessary,
- * zero of the key wasn't found, or the length of the data record
+ * zero if the key wasn't found, or the length of the data record
  */
-	i = atoi(buff);
+	i = atoi(buff.get());
+
 	if (i < 0)
-		comm.db_err(i, "%s: Error during GET", _progname);
-	else if (i == 0) {
-		delete[] buff;
+		throw makeError(i, "%s: Error during GET", _progname);
+	if (i == 0)
 		return(FALSE);
-	}
 /*
  * parse the return and update the globals
  */
-	this->parse_get(i, buff);
+	i = this->parse_get(i, buff.get());
+	if (!i)
+		return FALSE;
 	return(TRUE);
 }
 

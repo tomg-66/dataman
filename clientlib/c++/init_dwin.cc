@@ -42,7 +42,7 @@
 #include <ctype.h>
 #include <libgen.h>
 
-#include <endSort.hh>
+#include <endSort.hpp>
 
 WINDOW *stdscr;
 

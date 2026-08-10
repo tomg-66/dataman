@@ -41,10 +41,10 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include <fileEdit.hpp>
+#include <db_comm.hpp>
 
-#include <datarecord.hh>
+#include <datarecord.hpp>
 
 using namespace Dataman;
 
@@ -60,11 +60,11 @@ void flush()
 /*
  * workfile records are -not- part of a transaction
  */
-	if (!in_xact && workfile.getdirty())
-		workfile.out_rec();
+	if (!in_xact && workRecord.getdirty())
+		workRecord.out_rec();
 
-	if (cur_index && cur_index->get_wrmode() && master.getdirty())
-		master.out_rec();
+	if (cur_index && cur_index->get_wrmode() && masterRecord.getdirty())
+		masterRecord.out_rec();
 }
 
 /*

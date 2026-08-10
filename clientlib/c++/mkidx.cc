@@ -55,22 +55,30 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <index.hh>
-#include <datarecord.hh>
-#include <db_comm.hh>
+#include "index.hpp"
+#include "datarecord.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
+
+#include <memory>
 
 #include "../../server/dbfunc.h"
 #include "../../config.h"
+#include "../../server/errors.h"
+
+#define FALSE 0
+#define TRUE 1
 
 /* -------- these are globals declared here -------- */
 short _maxfil;					/* number of files in index */
 
 extern void data_globs(void);
-extern void db_err(int, const char *, ...);
 
 #ifdef DWINDOW
 extern void init_dwin(void);
 #endif
+
+using namespace Dataman;
 
 static void useage(char *name)
 {
@@ -86,7 +94,7 @@ extern void dataman_disconnect(void);
 
 namespace Dataman {
 
-	Dataman::datarecord workfile(WORK);
+	Dataman::datarecord workRecord(WORK);
 
 	char _file;					// the when_file flag
 
@@ -107,20 +115,22 @@ namespace Dataman {
 
 using namespace Dataman;
 
-void mkidx(int argc, char *argv[])		/* the command line args from main */
+int mkidx(int argc, char *argv[])		/* the command line args from main */
 
 {
 
 	_progname = argv[0];		/* save the program name */
-    if (argc < 3)               /* got to get at least the right # of args */
+    if (argc < 3) {               /* got to get at least the right # of args */
         useage(argv[0]);
+		return FALSE;
+	}
 
 	cur_index = new class index;
-	cur_index->_mkidx(argc, argv);
+	return cur_index->_mkidx(argc, argv);
 
 }
 
-void index::_mkidx(int argc, char *argv[])
+int index::_mkidx(int argc, char *argv[])
 {
     int i, j;					/* general usage */
 	int h_len;					/* header length */
@@ -137,50 +147,65 @@ void index::_mkidx(int argc, char *argv[])
 		for(j = 1; j < strlen(argv[i]); j++) {
 			switch(argv[i][j]) {
 				case 'D':					/* turn on debugging */
-					if (dbgsw)
+					if (dbgsw) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					dbgsw = true;
 					break;
 				case 'h':					/* run in daemon mode */
-					if (strlen(host))
+					if (strlen(host)) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					strcpy(host, argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				case 'r':
-					if (_root)
+					if (_root) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					_root = strdup(argv[++i]);
 					j = strlen(argv[i]) + 1;
 					break;
 				case '0': case '1': case '2': case '3': case '4':
 				case '5': case '6': case '7': case '8': case '9':
-					if (cur_index->_keylen)
+					if (cur_index->_keylen) {
 						useage(argv[0]);
+						return FALSE;
+					}
 					cur_index->_keylen = atoi(argv[i]+j);
         			if (cur_index->_keylen > MAX_KEY_SIZE ||
-								cur_index->_keylen < MIN_KEY_SIZE)
+								cur_index->_keylen < MIN_KEY_SIZE) {
 						db_err(0, " %s: keysize %d invalid - min %d, "
 								"max %d\n", argv[0], cur_index->_keylen,
 								MIN_KEY_SIZE, MAX_KEY_SIZE);
+						return FALSE;
+					}
 					j = strlen(argv[i]) + 1;
 					break;
 				default:
 					db_err(0, "unknown switch %c\n", argv[i][j]);
 					useage(argv[0]);
+					return FALSE;
 			}
 		}
 	}
-	if (i == argc)
+	if (i == argc) {
 		useage(argv[0]);
+		return FALSE;
+	}
 	cur_index->_onames[0] = strdup(argv[i++]);
 	cur_index->_idxname = cur_index->_onames[0];
 	_maxfil = argc - i;
 	_fnames = new char *[_maxfil];
 	h_len = 0;
 	for(j = 0; i < argc; i++,j++) {
-		if (*argv[i] == '-')
+		if (*argv[i] == '-') {
 			useage(argv[0]);
+			return FALSE;
+		}
 		_fnames[j] = new char[strlen(argv[i])+1];
 		strcpy(_fnames[j], argv[i]);
 		h_len += strlen(argv[i]) + 1;
@@ -190,8 +215,10 @@ void index::_mkidx(int argc, char *argv[])
  */
 	if (!_root) {
 		ptr = getenv("ROOT");				/* get root env var */
-		if (ptr == NULL)					/* is it set? */
+		if (ptr == NULL) {					/* is it set? */
 			db_err(0, "%s: no database ROOT set\n", argv[0]);
+			return FALSE;
+		}
 
 		_root = strdup(ptr);
 	}
@@ -210,7 +237,11 @@ void index::_mkidx(int argc, char *argv[])
  */
 	j = sprintf(string, "%d|%d|%s|%s|%d|", MKIDX, cur_index->_keylen,
 					cur_index->_idxname, _root, _maxfil);
-	cptr = new char[j+h_len+1];
+	cptr = new (std::nothrow) char[j+h_len+1];
+	if (!cptr) {
+		db_err(ENOALLOC, "%s: in mkidx: %s", strerror(errno));
+		return FALSE;
+	}
 	strcpy(cptr, string);
 	for (i = 0; i < _maxfil; i++) {
 		j += sprintf(cptr+j, "%s|", _fnames[i]);
@@ -222,8 +253,8 @@ void index::_mkidx(int argc, char *argv[])
 	try {
 		db_comm comm(host);
 	}
-	catch (int i) {
-		db_err(i, "%s: Can't connect to database server: ", _progname);
+	catch (const datamanError &) {
+		return FALSE;
 	}
 	db_comm comm;
 	atexit(dataman_disconnect);
@@ -232,39 +263,36 @@ void index::_mkidx(int argc, char *argv[])
  * send the message and wait for response.  the returned string is
  * the response from the server
  */
-	try {
-		ptr = comm.db_send(cptr, j);
-	}
-	catch (int i) {
-		comm.db_err(0, "%s: Can't read MKIDX response from socket", _progname);
-	}
+	std::unique_ptr<char[]> resp(comm.db_send(cptr, j));
 	delete[] cptr;
+
+	i = atoi(resp.get());
+	if (i < 0)
+		throw makeError(i, "%s: error in mkidx");
+	if (i == 0)
+		return FALSE;
+	cptr = resp.get();
+
 /*
  * now parse the return for all of the pertinant information.
  */
-	cptr = ptr;
-	workfile.len = atoi(cptr);		/* length of record being retrieved */
-/*
- * if the first field returned is negative, there was an error
- */
-	if (workfile.len < 0)
-		comm.db_err(workfile.len, "%s: mkidx failed with", _progname);
+	workRecord.len = i;
 
 	cptr = strchr(cptr, '|') + 1;
 	cur_index->_idxno = atoi(cptr);			/* idxno- offset in server */
 	cptr = strchr(cptr, '|') + 1;
 	cur_index->_curnode = strtoll(cptr, NULL, 0);	/* current node */
 	cptr = strchr(cptr, '|') + 1;
-	workfile.chan = atoi(cptr);			/* work file offset in server */
+	workRecord.chan = atoi(cptr);			/* work file offset in server */
 	cptr = strchr(cptr, '|') + 1;
 	cptr = strchr(cptr, '|') + 1;
-	workfile.head = atoi(cptr);			/* length of work file header */
+	workRecord.head = atoi(cptr);			/* length of work file header */
 	cptr = strchr(cptr, '|') + 1;
-	workfile.cur = strtoll(cptr, NULL, 0);	/* current record offset */
+	workRecord.cur = strtoll(cptr, NULL, 0);	/* current record offset */
 	cptr = strchr(cptr, '|') + 1;
-	workfile.fmt = atoi(cptr);			/* format number of record */
+	workRecord.fmt = atoi(cptr);			/* format number of record */
 	cptr = strchr(cptr, '|') + 1;
-	workfile.next = strtoll(cptr, NULL, 0);/* pointer to next rec in file */
+	workRecord.next = strtoll(cptr, NULL, 0);/* pointer to next rec in file */
 	cptr = strchr(cptr, '|') + 1;
 
 	if (dbgsw) {
@@ -272,16 +300,19 @@ void index::_mkidx(int argc, char *argv[])
 		fflush(stderr);
 	}
 
-	workfile.in_rec(cptr);
-	workfile._file = 1;
-	delete[] ptr;
+	try {
+		workRecord.in_rec(cptr);
+	} catch (const datamanError &) {
+		return FALSE;
+	}
+
+	workRecord._file = 1;
 	is_sort = true;
 
 #ifdef DWINDOW
 	init_dwin();
 #endif
-
-	return;
+	return TRUE;
 }
 
 /*

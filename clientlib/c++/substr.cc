@@ -50,7 +50,7 @@
 
 #include <stddef.h>
 #include <string.h>
-#include <key.hh>
+#include <key.hpp>
 
 char *substr(const char *src, int beg, int end)
 {

@@ -49,13 +49,14 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 
-extern void db_err(int, const char *, ...);
+#include <memory>
 
 #define TRUE	1
 #define FALSE	0
@@ -67,15 +68,16 @@ int index::restore()
 	int i;							/* misc usage */
 
 	char cmd[128];
-	char *buff;
 	char *ptr;
 
 	if (cur_index && cur_index->get_wrmode() == UPDATE)
-		master.out_rec();				/* write out cur record */
+		masterRecord.out_rec();				/* write out cur record */
 
-    if (this->_savptr == NULL)
+    if (this->_savptr == NULL) {
 		db_err(0, "%s: in restore, index %s has not been saved\n",
 					_progname, this->_idxname);
+		return FALSE;
+	}
 
 	sprintf(cmd, "%d|%d|%" PRId64 "|%d|%" PRId64 "|", RESTORE, this->_idxno,
 					this->_savptr->_savnode, this->_savptr->_savoffs,
@@ -85,30 +87,22 @@ int index::restore()
 	i += this->_keylen+KEY_HEADER_LENGTH;
 
 	db_comm comm;
-	try {
-		buff = comm.db_send(cmd, i);
-	}
-	catch (int i) {
-		comm.db_err(0, "%s: Can't read socket in RESTORE", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, i));
 
-	i = atoi(buff);
+	i = atoi(buff.get());
 	if (i < 0)
-		comm.db_err(i, "%s: restore error", _progname);
-
+		throw makeError(i, "%s: restore error", _progname);
 	if (i == 0) {
-//		delete[] this->_savptr->_savkey;
 		free(this->_savptr);
 		this->_savptr = NULL;
-		delete[] buff;
 		return(FALSE);
 	}
 /*
  * parse the return and update the globals
  */
-	master.len = i;
-	ptr = strchr(buff, '|') + 1;
-	master.fmt = atoi(ptr);
+	masterRecord.len = i;
+	ptr = strchr(buff.get(), '|') + 1;
+	masterRecord.fmt = atoi(ptr);
 	ptr = strchr(ptr, '|') + 1;
 	this->_generation = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;
@@ -121,18 +115,17 @@ int index::restore()
 	this->_curkey = tmp_key;
 	ptr += this->_keylen + KEY_HEADER_LENGTH;
 
-	master.chan = this->_curkey.get_fno() - 1;
+	masterRecord.chan = this->_curkey.get_fno() - 1;
 	this->_rptr = this->_savptr->_savrec;
-	master.cur = this->_rptr;
-	master._filedesc = this->_files[master.chan].get_desc();
-	master.head = this->_files[master.chan].get_hlen();
+	masterRecord.cur = this->_rptr;
+	masterRecord._filedesc = this->_files[masterRecord.chan].get_desc();
+	masterRecord.head = this->_files[masterRecord.chan].get_hlen();
 
 	free(this->_savptr);
 	this->_savptr = NULL;
 
 	cur_index = this;
-	master.in_rec(ptr);
-	delete[] buff;
+	masterRecord.in_rec(ptr);
 
 	return(TRUE);
 }

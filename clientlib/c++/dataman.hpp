@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	dataman.hh
+ * PROCEDURE:	dataman.hpp
  *
  * PROJECT:		dataman client side
  * 
@@ -42,17 +42,17 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#ifndef _DATAMAN_INC_
-#define _DATAMAN_INC_
+#pragma once
 
 #include "wind.h"				// windowing definitions
 
-#include "fileEdit.hh"
-#include "proto.hh"
+#include "fileEdit.hpp"
+#include "proto.hpp"
+#include "datamanError.hpp"
 
 using Dataman::cur_index;
-using Dataman::workfile;
-using Dataman::master;
+using Dataman::workRecord;
+using Dataman::masterRecord;
 
 #define BEFORE		0			// insert before switch
 #define AFTER		1			// insert after switch
@@ -70,16 +70,14 @@ using Dataman::master;
 #define itoa(val,buf)					sprintf(buf, "%d", val)
 
 #define KEY				cur_index->get_key()		// last accesed key
-#define MFMT			master.getfmt()			// master file format number
-#define WFMT			workfile.getfmt()		// work file format number
+#define MFMT			masterRecord.getfmt()			// master file format number
+#define WFMT			workRecord.getfmt()		// work file format number
 #define FILE			cur_index->_fname		// last accessed file name
 #define INDEX			cur_index->get_ixname()		// name of last accessed index
 
-#define when_mfmt(x)	if (master.getfmt() == x)	// master file format test
-#define when_wfmt(x)	if (workfile.getfmt() == x)	// work file format test
-#define when_file		if (workfile.getfile())		// new file test
-
-#endif
+#define when_masterFormat(x)	if (masterRecord.getfmt() == x)	// master file format test
+#define when_workFormat(x)		if (workRecord.getfmt() == x)	// work file format test
+#define when_workFile			if (workRecord.getfile())		// new file test
 
 /*
  * Local variables:

@@ -48,11 +48,14 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
+
+#include <memory>
 
 #define TRUE	1
 #define FALSE	0
@@ -66,7 +69,6 @@ int index::protect()
 	int fmt;
 
 	char cmd[128];
-	char *buff;
 	char *ptr;
 
 /*
@@ -77,8 +79,10 @@ int index::protect()
 	if (in_xact && this->_rptr < 0)
 		return(TRUE);
 	db_comm comm;
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0)
-		comm.db_err(0, "%s: memory corruption detected in protect", _progname);
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0) {
+		db_err(0, "%s: memory corruption detected in protect", _progname);
+		return FALSE;
+	}
 /*
  * you don't flush the current record when you call protect
  * because part of the idea is to read in the -most current-
@@ -86,40 +90,29 @@ int index::protect()
  */
 	sprintf(cmd, "%d|%d|%d|%" PRId64 "|", PROTECT, this->_idxno, this->_fno, this->_rptr);
 
-	try {
-		buff = comm.db_send(cmd, strlen(cmd));
-	}
-	catch(int comm_err) {
-		comm.db_err(0, "%s: socket read error in protect", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, strlen(cmd)));
 
-	tmp = atoi(buff);
+	tmp = atoi(buff.get());
 	if (tmp < 0)
-		comm.db_err(tmp, "%s: error in protect", _progname);
-	else if (tmp == 0) {
-		delete[] buff;
+		throw makeError(tmp, "%s: error in protect", _progname);
+	if (tmp == 0)
 		return(FALSE);
-	}
 
-	ptr = buff;
+	ptr = buff.get();
 	for(i = 0; i < 5; i++) {
 		ptr = strchr(ptr, '|') + 1;
 		if (i == 0)
 			fmt = atoi(ptr);
 	}
-//	i = ptr - buff;
-//	memcpy(buff, ptr, tmp);
-//	memset(buff+tmp, '\0', i);
 
-	master._filedesc = this->_files[this->_fno].get_desc();
-	master.head = this->_files[this->_fno].get_hlen();
-	master.cur = this->_rptr;
-	master.chan = this->_fno;
-	master.len = tmp;
-	master.fmt = fmt;
-	master.in_rec(ptr);
-	//add_protect(this->_idxno, this->_fno, this->_rptr);
-	delete[] buff;
+	masterRecord._filedesc = this->_files[this->_fno].get_desc();
+	masterRecord.head = this->_files[this->_fno].get_hlen();
+	masterRecord.cur = this->_rptr;
+	masterRecord.chan = this->_fno;
+	masterRecord.len = tmp;
+	masterRecord.fmt = fmt;
+	masterRecord.in_rec(ptr);
+
 	return(TRUE);
 }
 

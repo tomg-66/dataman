@@ -50,62 +50,72 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
+#include <memory>
+
 using namespace Dataman;
 
-void index::delrec()
+#define FALSE 0
+#define TRUE  1
+
+int index::delrec()
 {
 
 	int tmp;					/* misc usage */
 
 	char cmd[128];				/* command to send */
-    char *buff;					/* output buffer */
 	char *ptr;
 
 	db_comm comm;
 
 	if (cur_index && cur_index->get_wrmode())
-    	master.out_rec();			/* write out the current record */
+		masterRecord.out_rec();			/* write out the current record */
 
-    if (this->_rptr == 0)			/* can't del if we don't have it */
-		comm.db_err(ENOGET, "%s: delete error", _progname);
+    if (this->_rptr == 0) {			/* can't del if we don't have it */
+		db_err(ENOGET, "%s: delete error", _progname);
+		return FALSE;
+	}
 
-	if (!in_xact && this->_rptr < 0)
-		comm.db_err(0, "%s: memory corruption detected in delete", _progname);
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in delete", _progname);
+	if (!in_xact && this->_rptr < 0) {
+		db_err(0, "%s: memory corruption detected in delete", _progname);
+		return FALSE;
+	}
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+		db_err(0, "%s: memory corruption detected in delete", _progname);
+		return FALSE;
+	}
 
 	sprintf(cmd, "%d|%d|%d|%" PRId64 "|%d|", DELETE, this->_idxno,
 					this->_fno, this->_rptr, in_xact);
-	try {
-		buff = comm.db_send(cmd, strlen(cmd));
-	}
-	catch (int com_err) {
-		comm.db_err(0, "%s: socket read error in delete", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, strlen(cmd)));
 
-	tmp = atoi(buff);
+	tmp = atoi(buff.get());
 	if (tmp < 0)
-		comm.db_err(tmp, "%s: delete error", _progname);
-	master.len = tmp;
+		throw makeError(tmp, "%s: communication error", _progname);
+	if (tmp == 0)
+		return FALSE;
 
-	ptr = strchr(buff, '|') + 1;
+	masterRecord.len = tmp;
+
+	ptr = strchr(buff.get(), '|') + 1;
 	this->_rptr = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;
-	master.fmt = atoi(ptr);
+	masterRecord.fmt = atoi(ptr);
 	ptr = strchr(ptr, '|') + 1;
-	master.cur = this->_rptr;
-	master.chan = this->_fno;
-	master._filedesc = this->_files[master.chan].get_desc();
-	master.head = this->_files[master.chan].get_hlen();
+	masterRecord.cur = this->_rptr;
+	masterRecord.chan = this->_fno;
+	masterRecord._filedesc = this->_files[masterRecord.chan].get_desc();
+	masterRecord.head = this->_files[masterRecord.chan].get_hlen();
 	cur_index = this;
-	master.in_rec(ptr);
-	delete[] buff ;
+	if (!masterRecord.in_rec(ptr))
+		return FALSE;
+	return TRUE;
 }
 
 /*

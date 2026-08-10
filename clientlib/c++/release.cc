@@ -53,12 +53,15 @@
 #include <malloc.h>
 #include <inttypes.h>
 
-#include <endSort.hh>
-#include <db_comm.hh>
+#include "endSort.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/datafile_header.h"
+
+#include <memory>
 
 #define FALSE   0
 #define TRUE    1
@@ -81,8 +84,10 @@ int datarecord::release(void)
 	FILEDESC *fdesc;		// the parsed file description
 	RFDESC *rfdesc;
 
-	if (this->getwhich() != WORK)
-		comm.db_err(ENOTWORK, "%s: Error in release", _progname);
+	if (this->getwhich() != WORK) {
+		db_err(ENOTWORK, "%s: Error in release", _progname);
+		return FALSE;
+	}
 
     this->_file = 0;
     this->out_rec();
@@ -109,23 +114,21 @@ int datarecord::release(void)
 	} else
 		sprintf(cmd, "%d|%d|%" PRId64 "|", RELEASE, this->chan, this->next);
 /*
- * send the command and wait for the response.  then allocate space for it
- * then readit.
+ * send the command and wait for the response. space for the response is
+ * allocated in db_send.  (and it throws an error on failure)
  */
-	try {
-		ptr = comm.db_send(cmd, strlen(cmd));
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: Can't read socket response in RELEASE", _progname);
-	}
+	std::unique_ptr<char[]> response(comm.db_send(cmd, strlen(cmd)));
 
-	cptr = ptr;
-	this->len = atoi(cptr);
-	if (this->len < 0)
-		comm.db_err(this->len, "%s: error in release", _progname);
+	cptr = response.get();
+	tmp = atoi(cptr);
+	if (tmp < 0)
+		throw makeError(tmp, "%s: error in release", _progname);
+	if (tmp == 0)
+		return FALSE;
 /*
  * parse the response and save the appropriate stuff
  */
+	this->len = tmp;
 	cptr = strchr(cptr, '|') + 1;
 	this->longest = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
@@ -137,15 +140,13 @@ int datarecord::release(void)
 	cptr = strchr(cptr, '|') + 1;
 	this->next = strtoll(cptr, NULL, 0);
 	cptr = strchr(cptr, '|') +1 ;
-//	tmp = cptr - ptr;
-//	memmove(ptr, cptr, this->len);
-//	memset(ptr+this->len, '\0', tmp);
 /*
  * ok, done!
  */
-    this->in_rec(cptr);					/* read record into memory */
-	delete[] ptr;
-    return (TRUE);
+    tmp = this->in_rec(cptr);					/* read record into memory */
+	if (!tmp)
+		return FALSE;
+    return TRUE;
 }
 
 /*

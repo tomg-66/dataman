@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	sort.hh
+ * PROCEDURE:	sort.hpp
  *
  * PROJECT:		dataman client side
  * 
@@ -48,12 +48,12 @@
 
 #include "wind.h"			/* the window definitions */
 
-#include "endSort.hh"
-#include "proto.hh"
+#include "endSort.hpp"
+#include "proto.hpp"
 
 using Dataman::_fnames;
 using Dataman::_fileno;
-using Dataman::workfile;
+using Dataman::workRecord;
 
 #define FILE 		_fnames[_fileno]	/* current file name */
 #define WFMT		workfile.getfmt()	/* format number */

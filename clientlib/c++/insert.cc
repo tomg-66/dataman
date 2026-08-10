@@ -44,74 +44,90 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
+#include <memory>
+
+#define FALSE 0
+#define TRUE  1
+
 using namespace Dataman;
 
-void index::insert(int fmt, int mode)
+int index::insert(int fmt, int mode)
 {
 
 	int tmp;
 
 	char cmd[128];
-	char *buff;
 	char *ptr;
 
 	db_comm comm;
 
 	if (cur_index && cur_index->_wrmode)
-    	master.out_rec();			/* write out the current record */
-	if (!this->_wrmode)
-		comm.db_err(0, "%s: index %s not opened for update\n",
+    	masterRecord.out_rec();			/* write out the current record */
+	if (!this->_wrmode) {
+		db_err(0, "%s: index %s not opened for update\n",
 						_progname, this->_idxname);
+		return FALSE;
+	}
 
-	if (fmt < 1 || fmt > this->_files[this->_fno].get_desc()->n_rformats)
-		comm.db_err(EBADFMT, "%s: insert error: fmt=%d, file=%s\n",
+	if (fmt < 1 || fmt > this->_files[this->_fno].get_desc()->n_rformats) {
+		db_err(EBADFMT, "%s: insert error: fmt=%d, file=%s\n",
 						_progname,fmt, this->_files[this->_fno].get_fname());
+		return FALSE;
+	}
 
-	if (!this->_curkey.get_len())					/* can't insert around nothing */
-		comm.db_err(ENOGET, "%s: insert error", _progname);
+	if (!this->_curkey.get_len()) {					/* can't insert around nothing */
+		db_err(ENOGET, "%s: insert error", _progname);
+		return FALSE;
+	}
 
-	if (!in_xact && this->_rptr < 0)
-		comm.db_err(0, "%s: memory corruption detected in insert", _progname);
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in insert", _progname);
+	if (!in_xact && this->_rptr < 0) {
+		db_err(0, "%s: memory corruption detected in insert", _progname);
+		return FALSE;
+	}
+	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+		db_err(0, "%s: memory corruption detected in insert", _progname);
+		return FALSE;
+	}
 
 	sprintf(cmd, "%d|%d|%d|%d|%d|%" PRId64 "|", INSERT, fmt, mode,
 					this->_idxno, this->_fno, this->_rptr);
-	try {
-		buff = comm.db_send(cmd, strlen(cmd));
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: socket read error in insert", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, strlen(cmd)));
 
-	tmp = atoi(buff);
+	tmp = atoi(buff.get());
 	if (tmp < 0)
-		comm.db_err(tmp, "%s: insert error", _progname);
+		throw makeError(tmp, "%s: insert error", _progname);
+	if (tmp == 0)
+		return FALSE;
 
-	master.fmt = fmt;
+	masterRecord.fmt = fmt;
  
-	master.chan = this->_files[this->_fno].get_fno();
-	master._filedesc = this->_files[this->_fno].get_desc();
+	masterRecord.chan = this->_files[this->_fno].get_fno();
+	masterRecord._filedesc = this->_files[this->_fno].get_desc();
 	tmp = this->_files[this->_fno].get_desc()->record_desc[fmt-1].rf_len;
 
-	master.len = tmp;
-	ptr = strchr(buff, '|') + 1;
+	masterRecord.len = tmp;
+	ptr = strchr(buff.get(), '|') + 1;
 	this->_rptr = strtoll(ptr, NULL, 0);
-	master.cur = this->_rptr;
+	masterRecord.cur = this->_rptr;
 
-	ptr = new char[master.len+1];
-	memset(ptr, ' ', master.len);
-	*(ptr+master.len) = '\0';
+	ptr = new char[masterRecord.len+1];
+	memset(ptr, ' ', masterRecord.len);
+	*(ptr+masterRecord.len) = '\0';
     cur_index = this;				/* save the new current index */
-    master.in_rec(ptr);				/* read in the empty record */
+
+    if (!masterRecord.in_rec(ptr)) {				/* read in the empty record */
+		return FALSE;
+	}
+
 	delete[] ptr;
-	delete[] buff ;
+	return TRUE;
 }
 
 /*

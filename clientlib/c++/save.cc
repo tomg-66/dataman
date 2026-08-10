@@ -45,8 +45,9 @@
 #include <malloc.h>
 #include <stdio.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/errors.h"
 
@@ -59,9 +60,10 @@ void index::save()
 	db_comm comm;
 
 	if (this->_curkey.get_len() == 0)
-		comm.db_err(ENOGET, "%s: error in save", _progname);
+		throw makeError(ENOGET, "%s: error in save", _progname);
+
 	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
-		comm.db_err(0, "%s: memory corruption detected in save", _progname);
+		throw makeError(0, "%s: memory corruption detected in save", _progname);
 
 
 	if (!this->_savptr)
@@ -71,7 +73,7 @@ void index::save()
 	this->_savptr->_savrec = this->_rptr;
 	this->_savptr->_savkey = this->_curkey;
 	this->_savptr->_savfile = this->_fno;
-	this->_savptr->_savfmt = master.getfmt();
+	this->_savptr->_savfmt = masterRecord.getfmt();
 	this->_savptr->_savoffs = this->_offs;
 }
 

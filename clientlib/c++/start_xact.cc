@@ -42,11 +42,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <fileEdit.hh>
-#include <db_comm.hh>
+#include "fileEdit.hpp"
+#include "db_comm.hpp"
+#include "datamanError.hpp"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+
+#include <memory>
 
 #define TRUE    1
 #define FALSE   0
@@ -54,32 +57,29 @@
 using Dataman::in_xact;
 using Dataman::_progname;
 
+using namespace Dataman;
+
 void start_transaction(void)
 {
     int i;								/* temporary */
 
 	char cmd[128];
-	char *buff;
 
 	i = sprintf(cmd, "%d|", START_XACT);
 /*
  * send the command and deal with the return.
  */
 	Dataman::db_comm comm;
-	try {
-		buff = comm.db_send(cmd, i);
-	}
-	catch (int comm_err) {
-		comm.db_err(0, "%s: Can't read socket response in START_TRANSACTION", _progname);
-	}
+	std::unique_ptr<char[]> buff(comm.db_send(cmd, i));
 /*
  * the first field of the return is an error code if necessary,
  * otherwise the command worked.
  */
-	i = atoi(buff);
-	if (i < 0)
-		comm.db_err(i, "%s: Error during START_TRANSACTION", _progname);
-	delete [] buff;
+	i = atoi(buff.get());
+
+	if (i < 0) {
+		throw makeError(i, "%s: Error during START_TRANSACTION", _progname);
+	}
 	in_xact = TRUE;
 }
 

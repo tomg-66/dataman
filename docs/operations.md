@@ -9,10 +9,10 @@ Consult the installed header or generated PHP arginfo for exact signatures.
 | Operation | Purpose |
 | --- | --- |
 | `init_dataman` / `connect` | Establish client state and a server connection. |
-| `release` | Release client connection and record resources. |
 | `iopen` | Open a named index read-only or for update. |
 | `iclose` | Close an open index. |
 | `mkidx` | Create a new index definition/build context. |
+| `release` | Move the work record to the next in the work file. |
 | `sort` | Submit a key while building an index. |
 
 ## Navigation

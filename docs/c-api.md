@@ -11,7 +11,7 @@ plus the current index and record state.
 3. Navigate with `get`, `get_first`, `get_next`, and related verbs.
 4. Read or modify the master/work fields appropriate to the current format.
 5. Use `protect`/`clear` around coordinated updates where required.
-6. Close indexes and release the connection on every exit path.
+6. Close indexes and terminate the connection on every exit path.
 
 `BEFORE` and `AFTER` select insertion placement. `MFMT`, `WFMT`, `KEY`, and
 `FILE` expose current operation state. The `when_mfmt`, `when_wfmt`, and

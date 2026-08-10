@@ -44,6 +44,7 @@ public class DatamanIndex{
 	private int _keylen;
 	private int _longest;
 	private long _curnode;
+	private long _generation;
 	private long _rptr;
 	private short _offs;
 	private DatamanKey _curkey;
@@ -76,13 +77,7 @@ public class DatamanIndex{
 //
 // these are used for internal purposes for offsets...
 //
-// these needed to be changed for the move to 64 bit.
-// they went from 2 * sizeof(long) to 2 * sizeof(long long)
-//
-//	private static final int ptr_len = 8;
-//	private static final int k_header_len = 9;
-	private static final int ptr_len = 16;
-	private static final int k_header_len = 17;
+	private static final int k_header_len = 9;
 //
 // this internal function is used by the get* routines.
 // it is what is used to parse the return from the server.
@@ -111,12 +106,13 @@ public class DatamanIndex{
 		String[] val = new String(cmd).split("[|]");
 		if ((size = Integer.parseInt(val[0])) < 1)
 			return(size);
-		i = val[0].length() + val[1].length() + val[2].length() + val[3].length() + 4;
+		i = val[0].length() + val[1].length() + val[2].length() + val[3].length() + val[4].length() + 5;
 		buff.position(i);
 		Dataman.master.setlen(size);
 		Dataman.master.setfmt(Short.parseShort(val[1]));
-		_curnode = Long.parseLong(val[2]);
-		_offs = Short.parseShort(val[3]);
+		_generation = Long.parseLong(val[2]);
+		_curnode = Long.parseLong(val[3]);
+		_offs = Short.parseShort(val[4]);
 		tmp = buff.slice();
 		_curkey = new DatamanKey(tmp, _keylen);
 		tmp = tmp.slice();
@@ -144,6 +140,7 @@ public class DatamanIndex{
 		_keylen = 0;
 		_longest = 0;
 		_curnode = 0;
+		_generation = 0;
 		_rptr = 0;
 		_offs = 0;
 		_curkey = null;
@@ -317,7 +314,7 @@ public class DatamanIndex{
 
          Charset cs = Charset.forName("UTF-8");
          if (key.get_fno() > -1) {
-			cmd = DatamanFunc.GET_CURRENT + "|" + _idxno + "|" + _curnode + "|" + _offs + "|";
+			cmd = DatamanFunc.GET_CURRENT + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 			i = cmd.length() + _keylen + k_header_len;
 			buff = ByteBuffer.allocate(i);
 			buff.put(cs.encode(cmd));
@@ -391,7 +388,7 @@ public class DatamanIndex{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(DatamanErrVal.ENOGET));
 		}
-		cmd = DatamanFunc.GET_NEXT + "|" + _idxno + "|" + _curnode + "|" + _offs + "|";
+		cmd = DatamanFunc.GET_NEXT + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 		i = cmd.length() + _keylen + k_header_len;
 		Charset cs = Charset.forName("UTF-8");
 		buff = ByteBuffer.allocate(i);
@@ -438,7 +435,7 @@ public class DatamanIndex{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(DatamanErrVal.ENOGET));
 		}
-		cmd = DatamanFunc.GET_PRIOR + "|" + _idxno + "|" + _curnode + "|" + _offs + "|";
+		cmd = DatamanFunc.GET_PRIOR + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 		i = cmd.length() + _keylen + k_header_len;
 		Charset cs = Charset.forName("UTF-8");
 		buff = ByteBuffer.allocate(i);
@@ -557,7 +554,7 @@ public class DatamanIndex{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(DatamanErrVal.ENOGET));
 		}
-		cmd = DatamanFunc.GET_CURRENT + "|" + _idxno + "|" + _curnode + "|" + _offs + "|";
+		cmd = DatamanFunc.GET_CURRENT + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 		i = cmd.length() + _keylen + k_header_len;
 		buff = ByteBuffer.allocate(i);
 		Charset cs = Charset.forName("UTF-8");
@@ -1155,30 +1152,36 @@ public class DatamanIndex{
 				"|" + _idxno + "|" + _fno + "|" + idx.get_rptr() + "|" + key + "|";
 		try {
 			Charset cs = Charset.forName("UTF-8");
-			buff = comm.db_send(cs.encode(cmd) , cmd.length());
-			cmd = new String(cs.decode(buff).array());
-			String [] result = cmd.split("[|]" , 3);
-			i = Integer.parseInt(result[0]);
-			if (i < 0) {
+				buff = comm.db_send(cs.encode(cmd) , cmd.length());
+				byte[] response = new byte[buff.remaining()];
+				buff.get(response);
+				int[] separator = new int[4];
+				int count = 0;
+				for (int pos = 0; pos < response.length && count < separator.length; pos++) {
+					if (response[pos] == (byte)'|')
+						separator[count++] = pos;
+				}
+				if (count != separator.length)
+					throw new DatamanRuntimeException("Malformed INCLUDE response");
+				i = Integer.parseInt(new String(response, 0, separator[0], cs));
+				if (i < 0) {
 				System.out.println(Dataman._progname + ": error during INCLUDE");
 				DatamanErrVal e = new DatamanErrVal();
-				throw new DatamanRuntimeException(e.getDBErr(i));
-			}
-			_offs = (short)i;
-			_curnode = Long.parseLong(result[1]);
-/*
-	if (in_xact) {
-		memset(buff, '\0', sizeof(buff));
-		strcpy(buff, key);
-		*(buff+idx_2->_keylen) = idx_2->_fno+1;
-		put_ll(buff+idx_2->_keylen+1, idx_1->_rptr);
-		cptr = buff;
-	} else
-*/
-			if (Dataman.in_xact)
-				_curkey = new DatamanKey(key, _fno, idx.get_rptr(), _keylen);
-			else
-				_curkey = new DatamanKey(cs.encode(result[2]), _keylen);
+					throw new DatamanRuntimeException(e.getDBErr(i));
+				}
+				if (i == 0)
+					return;
+				_generation = Long.parseLong(new String(response,
+						separator[0] + 1, separator[1] - separator[0] - 1, cs));
+				_curnode = Long.parseLong(new String(response,
+						separator[1] + 1, separator[2] - separator[1] - 1, cs));
+				_offs = Short.parseShort(new String(response,
+						separator[2] + 1, separator[3] - separator[2] - 1, cs));
+				if (Dataman.in_xact)
+					_curkey = new DatamanKey(key, _fno + 1, idx.get_rptr(), _keylen);
+				else
+					_curkey = new DatamanKey(ByteBuffer.wrap(response,
+							separator[3] + 1, response.length - separator[3] - 1).slice(), _keylen);
 			_fno = _curkey.get_fno() - 1;
 		} catch (IOException e) {
 			System.out.println("Caught IO exception in INCLUDE" + e);

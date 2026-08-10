@@ -97,15 +97,17 @@
 #define EBLOBWRT		-52		/* can't write blob to file */
 #define EOUTREC			-53		/* error in outrec */
 #define EINREC			-54		/* error in inrec */
+#define MAXERROR		EINREC
 
 
 #ifdef DBERROR
 
-#if defined __cplusplus
-const
-#endif
-
+#ifdef __cplusplus
+extern "C" {
+const char *db_err_strings[] = {
+#else
 char *db_err_strings[] = {
+#endif
 	"no error",
 	"can't start new thread",
 	"couldn't attach to message queue",
@@ -163,6 +165,9 @@ char *db_err_strings[] = {
 	"Error reading record from database",
 	NULL
 };
+#ifdef __cplusplus
+}
+#endif
 #endif					/* ifdef DBERROR */
 
 #endif

@@ -131,7 +131,7 @@ int db_g_key(char *idx, key key_val)
 	}
 /*
  * parse the return and update the globals
-   "%d|%d|%"PRIu64"|%"PRIu64"|%u|", len, ret, cursor->generation, cursor->node_offset, (unsigned)cursor->entry_index);
+   "%d|%d|%"PRIu64"|%"PRIu64"|%u|", len, ret, generation, node_offset, entry_index);
  */
 	cptr = strchr(buff, '|') + 1;
 	m_fmt = atoi(cptr);

@@ -8,30 +8,24 @@ It is gratifying to see people download it.  I would ask that you send me
 an e-mail through my sourceforge account letting me know who you are, what
 you are intending to use this for, and any questions you have.  I know
 the documentation for this project so far blows chunks, but I'm trying to
-fix that at least a little.  In the docs directory you will find -very- old
-documentation regarding the version I wrote for DOS 20 years ago.  You will
-also find a somewhat updated version of the documentation for the 3.2.0
-release.  It doesn't include the API for C++, Java or PHP.  That should be
-forthcoming....
-
-There is now a website that is getting some more updated web-based
-documentation.  The address is http://www.super-user.biz/dataman.  So far
-there is general documentation, and the C and PHP function references.  Be
-sure to look at that, as it is, at present, the most current information.
+fix that at least a little.  In the old_docs directory you will find -very-
+old documentation regarding the version I wrote for DOS 20 years ago and
+also for version 3.x.x.  In the docs directory you will find somewhat terse
+documentation regarding the version 4.
 
 The Dataman database system was completely re-written beginning with version
 3.  This version replaced the old system where the API library directly
 modified the database.  In it the system was redesigned as a database server
-with client API libraries.
+with client API libraries.  Version 4 added much needed updating to more
+modern compilers, changed the indexes to copy-on-write, and much improved
+error handling.
 
 The server was designed to be fully multi-threaded, have shared and mutually
 exclusive locks, and tries to maintain concurrency.  The 'C' API library
 maintained full backward computability with previous versions; application
-code required only a re-compile to function in the new system.  Also added
-were API libraries for C++ and eventually Java, and a PHP module.  The reason
-for this project was 1) to bring those original installations using the prior
-system out of the stone age, and 2) to be a very small and fast server,
-adequate for running on small hosts.
+code required only a re-compile to function in the new system.  The main 
+purpose of this project is to provide a -very- small fast system suitable
+for small installations.
 
 The system is typically distributed as a source.tar.gz package.  To build and
 install it, the system owner should put the source package in a temporary
@@ -59,19 +53,8 @@ you run configure to comment out the line at the top that defines DWINDOW.
 You can still use the windowing routines, but you will have to manually
 initialize and terminate the routines.
 
-Currently, the system is hard coded to build the Java classlibs, so if you
-don't have the Sun Java development kit installed and in your path (javac),
-the build will fail.  If you don't want the Java classlibs built, then you
-can tweak the Makefile.am file.  Change the line
-
-SUBDIRS=c++ c java
-
-to read
-
-SUBDIRS=c++ c
-
-then from the base directory run automake (or autoreconf), configure, make,
-make install.
+The default build builds the c/c++/java client libraries.  If you don't want
+Java run the configure script with --disable-java
 
 After you have run the 'make install' command, the system will be installed
 in the place your configure command specified.  The default location is
@@ -118,17 +101,6 @@ dataman: usage: dataman [-D|n num|q|s|t|v]
 Starting the dataman process with debugging on produces copious amounts of
 data in the /tmp directory.
 
-The -m switch is new in version 3.3.0.  Each connection has it's own shared
-memory segment that is used to communicate with the database server.  This
-lets you specify the size in Kilobytes of the segment.  The size is, at
-present, capped at 4K.  You may specify an integer value of 1, 2, 3, or 4.
-
-The -n num switch is new with version 3.3.0.  Originally, a new thread was
-started for each request and terminated at the end of the request.  Now a
-number of worker threads are started at system startup.  With this argument
-you may specify the number of threads in the pool.  If not specified, the
-number of threads defaults to 10.
-
 To shut down the dataman process, issue the dataman command with either the
 -s or -t switch.  The -s switch will signal the dataman process to accept no
 new connections, and when the last connection is terminated by the client, to
@@ -137,7 +109,7 @@ prejudice' all of the server processes.
 
 The system is not an SQL database, though an SQL layer could easily be built
 on top of it.  The closest description for it is as an ISAM style database.
-Data relationships can be flat, or hierarchical, but of course the latter
+Data relationships can be flat or hierarchical, but of course the latter
 requires a good database design.  Records can 'belong' to other records.
 This is by virtue of data record placement.  Records may be grouped together
 by virtue of how they are inserted into the database.  Unlike SQL databases,

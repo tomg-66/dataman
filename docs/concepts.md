@@ -43,7 +43,7 @@ Their exact names differ by language. In PHP they are always the module-created
 
 ## Common write verbs
 
-- `insert` creates a data record in a database file.
+- `insert` creates an empty data record in a database file.
 - `include` adds another index entry for an existing record.
 - `remove` removes an index entry without deleting the record.
 - `delete` deletes the current record and removes its associated index entry.

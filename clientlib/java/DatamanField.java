@@ -22,6 +22,7 @@
 package Dataman;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * References to, and operations for an individual data field.  Datafields
@@ -200,15 +201,17 @@ public class DatamanField {
 		if (type == type_blob) {
 // this is an error
 		}
-		int i;
+		byte[] encoded = s.getBytes(StandardCharsets.ISO_8859_1);
 		if (data == null) {
-			data = ByteBuffer.allocate(s.length());
-			data.put(s.getBytes());
-			len = s.length();
-		} else if (s.length() >= len) {
-			data.put(s.getBytes(), 0, len);
+			data = ByteBuffer.allocate(encoded.length);
+			data.put(encoded);
+			len = encoded.length;
+		} else if (encoded.length >= len) {
+			data.clear();
+			data.put(encoded, 0, len);
 		} else {
-			data.put(s.getBytes(), 0, s.length());
+			data.clear();
+			data.put(encoded, 0, encoded.length);
 			while(data.remaining() != 0)
 				data.put((byte)' ');
 		}
@@ -376,7 +379,7 @@ public class DatamanField {
  */
 	public int getInt() {
 		try {
-			return (Integer.parseInt(new String(data.array())));
+			return (Integer.parseInt(getString().trim()));
 		} catch (NumberFormatException e) {
 			return (0);
 		}
@@ -389,7 +392,7 @@ public class DatamanField {
  */
 	public long getLong() {
 		try {
-			return (Long.parseLong(new String(data.array())));
+			return (Long.parseLong(getString().trim()));
 		}
 		catch (NumberFormatException e) {
 			return (0);
@@ -403,7 +406,7 @@ public class DatamanField {
  */
 	public short getShort() {
 		try {
-			return (Short.parseShort(new String(data.array())));
+			return (Short.parseShort(getString().trim()));
 		}
 		catch (NumberFormatException e) {
 			return (0);
@@ -417,7 +420,7 @@ public class DatamanField {
  */
 	public float getFloat() {
 		try {
-			 return (Float.parseFloat(new String(data.array())));
+			 return (Float.parseFloat(getString().trim()));
 		}
 		catch (NumberFormatException e) {
 			return ((float)0.0);
@@ -433,7 +436,7 @@ public class DatamanField {
  * @return String
  */
 	public String getString() {
-		 return (new String(data.array()));
+		 return (new String(data.array(), StandardCharsets.ISO_8859_1));
 	}
 /**
  * Return a substring of the data in the field.  A string
@@ -443,7 +446,7 @@ public class DatamanField {
  * @return String
  */
 	public String substring(int off) {
-		return (new String(data.array()).substring(off));
+		return (getString().substring(off));
 	}
 
 /**
@@ -455,7 +458,8 @@ public class DatamanField {
  * @return String
  */
 	public String substring(int off, int length) {
-		return (new String(data.array()).substring(off, length));
+		return (getString().substring(off,
+			Math.min(getString().length(), off + length)));
 	}
 /*
  * and finally, the method to get a blob.

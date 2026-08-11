@@ -79,6 +79,8 @@ class DatamanErrVal{
 		"Java error reading socket",
 		"Multiple errors, your database may be corrupt",
 		"Can't write blob to file",
+		"Error writing record to database",
+		"Error reading record from database",
 	};
 	public static final int ENOTHR = -1;
 	public static final int ENOMSGQ = -2;
@@ -132,6 +134,8 @@ class DatamanErrVal{
 	public static final int EJAVAREAD = -50;
 	public static final int EMULTIPLE = -51;
 	public static final int EBLOBWRT = -52;
+	public static final int EOUTREC = -53;
+	public static final int EINREC = -54;
 
 
 	DatamanErrVal() {}
@@ -139,7 +143,10 @@ class DatamanErrVal{
 // return the string used for DatamanRuntimeException()
 //
 	protected String getDBErr(int i) {
-		return (DatamanErrVal.dbErrStrings[-i]);
+		int index = -i;
+		if (index < 0 || index >= DatamanErrVal.dbErrStrings.length)
+			return "Unknown Dataman error " + i;
+		return (DatamanErrVal.dbErrStrings[index]);
 	}
 }
 

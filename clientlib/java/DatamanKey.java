@@ -19,9 +19,9 @@
 //
 package Dataman;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * The index key datatype.  This class is used to retrieve or
@@ -51,9 +51,14 @@ public class DatamanKey{
  * @param string - the string to initialize the key to.
  */
 	public DatamanKey(String string) {
+		if (string == null)
+			throw new IllegalArgumentException("key must not be null");
 		data = new byte[64];
 		key_str = string;
-		_len = string.length();
+		byte[] encoded = string.getBytes(StandardCharsets.UTF_8);
+		_len = encoded.length;
+		System.arraycopy(encoded, 0, data, 0,
+			Math.min(encoded.length, data.length));
 		_fno = -1;
 		_rec = 0;
 	}
@@ -62,7 +67,7 @@ public class DatamanKey{
  * @param k - the key to copy.
  */
 	public DatamanKey(DatamanKey k) {
-		data = k.data;
+		data = Arrays.copyOf(k.data, k.data.length);
 		_len = k._len;
 		_fno = k._fno;
 		_rec = k._rec;
@@ -73,16 +78,18 @@ public class DatamanKey{
 // let the user use this!
 //
 	DatamanKey(ByteBuffer buff, int len) {
+		if (len < MIN_KEY_SIZE || len > MAX_KEY_SIZE ||
+			buff.remaining() < len + HEADER_LEN)
+			throw new IllegalArgumentException("invalid encoded Dataman key");
 		data = new byte[64];
-		buff.rewind();
 		buff.get(data, 0, len + HEADER_LEN);
-		buff.rewind();
+		ByteBuffer encoded = ByteBuffer.wrap(data);
 		byte[] tmp = new byte[len];
-		buff.get(tmp, 0, len);
-		_fno = (short)buff.get();
-		_rec = buff.getLong();
+		encoded.get(tmp, 0, len);
+		_fno = (short)encoded.get();
+		_rec = encoded.getLong();
 		_len = len;
-		key_str = new String(tmp);
+		key_str = new String(tmp, StandardCharsets.UTF_8);
 	}
 //
 // this constructor is only used in include if we are in a
@@ -91,7 +98,8 @@ public class DatamanKey{
 	DatamanKey(String k, int f, long r, int l) {
 		data = new byte[64];
 		ByteBuffer b = ByteBuffer.wrap(data);
-		b.put(k.getBytes());
+		b.put(k.getBytes(StandardCharsets.UTF_8), 0,
+			Math.min(k.getBytes(StandardCharsets.UTF_8).length, l));
 		b.put(l, (byte)f);
 		b.position(l+1);
 		b.putLong(r);
@@ -110,8 +118,7 @@ public class DatamanKey{
  * Simple Key pattern matching.  The argument is the template to
  * match against.  Any single character may be wildcarded with an
  * '*' character.  The match is true if the key matches the template
- * up to the length of the template.  If the keyStr is longer than
- * the template it is not a match.
+ * up to the length of the template. Trailing key characters are ignored.
  * @param tem - the template to match against.
  * @return true if the key matched the template, else false
  */

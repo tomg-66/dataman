@@ -21,10 +21,9 @@
 package Dataman;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * This implements most of verbs of the Dataman Package.
@@ -83,48 +82,56 @@ public class DatamanIndex{
 // it is what is used to parse the return from the server.
 //
     private int parse_get(ByteBuffer buff) {
+		ByteBuffer response = buff.slice();
+		String[] value = new String[5];
+		final int size;
+		final short format;
+		final long generation;
+		final long node;
+		final short offset;
+		try {
+			value[0] = readAsciiField(response, "GET");
+			size = Integer.parseInt(value[0]);
+			if (size < 1)
+				return size;
+			for (int field = 1; field < value.length; field++)
+				value[field] = readAsciiField(response, "GET");
+			format = Short.parseShort(value[1]);
+			generation = Long.parseLong(value[2]);
+			node = Long.parseLong(value[3]);
+			offset = Short.parseShort(value[4]);
+		} catch (NumberFormatException error) {
+			throw new DatamanRuntimeException("Malformed GET response", error);
+		}
 
-		ByteBuffer tmp;
-		byte [] cmd;
-		int size;
-		int i;
+		if (response.remaining() < _keylen + k_header_len + size)
+			throw new DatamanRuntimeException("Truncated GET response");
+		ByteBuffer keyBytes = response.slice();
+		keyBytes.limit(_keylen + k_header_len);
+		DatamanKey newKey = new DatamanKey(keyBytes, _keylen);
+		int newFile = newKey.get_fno() - 1;
+		if (newFile < 0 || newFile >= _files.length)
+			throw new DatamanRuntimeException("Invalid file number in GET response");
+		response.position(response.position() + _keylen + k_header_len);
 
-         Charset cs = Charset.forName("UTF-8");
-		
-		buff.rewind();
-//
-// it became obvious when blobs were implemented that using
-// cs.decode and split on the entire bytebuffer was a -bad-
-// idea.  so we did it this way.  The 'command buffer' is
-// the first part of the return packet.  it is what we use
-// to get the information needed to parse the record.  it
-// will never be > 256 bytes.
-//
-		i = (256 < buff.capacity() ? 256 : buff.capacity());
-		cmd = new byte[i];
-		buff.get(cmd, 0, i);
-		String[] val = new String(cmd).split("[|]");
-		if ((size = Integer.parseInt(val[0])) < 1)
-			return(size);
-		i = val[0].length() + val[1].length() + val[2].length() + val[3].length() + val[4].length() + 5;
-		buff.position(i);
 		Dataman.master.setlen(size);
-		Dataman.master.setfmt(Short.parseShort(val[1]));
-		_generation = Long.parseLong(val[2]);
-		_curnode = Long.parseLong(val[3]);
-		_offs = Short.parseShort(val[4]);
-		tmp = buff.slice();
-		_curkey = new DatamanKey(tmp, _keylen);
-		tmp = tmp.slice();
-		_fno = _curkey.get_fno() - 1;
+		Dataman.master.setfmt(format);
+		Dataman.master.setchan(newFile);
+		Dataman.master.setcur(newKey.get_rec());
+		Dataman.master.set_filedesc(_files[newFile].get_desc());
+		Dataman.master.sethead((short)_files[newFile].get_hlen());
+		Dataman.master.setlongest(_files[newFile].get_longest());
+		Dataman.master.in_rec(response.slice());
+
+		_generation = generation;
+		_curnode = node;
+		_offs = offset;
+		_curkey = newKey;
+		_fno = newFile;
 		Dataman.master.setchan(_fno);
-		_rptr = _curkey.get_rec();
+		_rptr = newKey.get_rec();
 		Dataman.master.setcur(_rptr);
-		Dataman.master.set_filedesc(_files[_fno].get_desc());
-		Dataman.master.sethead((short)_files[_fno].get_hlen());
-		Dataman.master.setlongest((short)_files[_fno].get_longest());
 		Dataman.cur_index = this;
-		Dataman.master.in_rec(tmp);
 		return(size);
 	}
 
@@ -166,8 +173,6 @@ public class DatamanIndex{
 
 		DatamanComms comm = new DatamanComms();
 
-		DatamanErrVal datamanerrval;
-
 		String cmd;
 		ByteBuffer buff;
 //
@@ -195,15 +200,14 @@ public class DatamanIndex{
 		}
 		offs = j;
 
-		DatamanIndex._onames[offs] = name;
 		cmd = DatamanFunc.IOPEN + "|" + name + "|" + Dataman._root+ "|";
 //
 // send the command, get the return, parse the result, and we're happy!
 //
 		try {
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd), cmd.length());
-			cmd = new String(cs.decode(buff).array());
+			cmd = cs.decode(buff).toString();
 			String [] result = cmd.split("[|]" , 5);
 			n = Integer.parseInt(result[0]);
 			if (n < 0) {
@@ -211,7 +215,7 @@ public class DatamanIndex{
 				DatamanErrVal e = new DatamanErrVal();
 				throw new DatamanRuntimeException(e.getDBErr(n));
 			}
-			_idxname = DatamanIndex._onames[offs];
+			_idxname = name;
 			_idxno = Integer.parseInt(result[1]);
 			_keylen = Integer.parseInt(result[2]);
 			_nfiles = Integer.parseInt(result[3]);
@@ -221,12 +225,14 @@ public class DatamanIndex{
 				_files[n] = new DatamanIndexFile();
 				_files[n].set_name(fnames[n]);
 				_files[n].set_fno(n);
-				n++;
 			}
 			_wrmode = mode;
+			DatamanIndex._onames[offs] = name;
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in IOPEN" + e);
-			e.printStackTrace();
+			throw transportError("IOPEN", e);
+		} catch (RuntimeException e) {
+			DatamanIndex._onames[offs] = null;
+			throw e;
 		}
 		_curkey = null;
 		_savptr = null;
@@ -252,21 +258,6 @@ public class DatamanIndex{
 
 		ByteBuffer buff;
 
-		for (i = 0;i < 6;i++) {
-			if (DatamanIndex._onames[i].equals(_idxname)) {
-				DatamanIndex._onames[i] = "";
-				break;
-			}
-		}
-		if (_curkey != null) 
-			_curkey = null;
-         
-		if (_files != null) 
-			_files = null;
-         
-		if (_savptr != null) 
-			_savptr = null;
-         
 		cmd = DatamanFunc.ICLOSE + "|" + _idxno + "|";
 		try {
 			Charset cs = Charset.forName("UTF-8");
@@ -281,9 +272,75 @@ public class DatamanIndex{
 			}
 		}
 		catch (IOException e) {
-			System.out.println("Caught IO exception in ICLOSE" + e);
-			e.printStackTrace();
+			throw transportError("ICLOSE", e);
 		}
+		for (i = 0;i < 6;i++) {
+			if (_idxname != null && _idxname.equals(DatamanIndex._onames[i])) {
+				DatamanIndex._onames[i] = null;
+				break;
+			}
+		}
+		_curkey = null;
+		_files = null;
+		_savptr = null;
+		_idxname = null;
+	}
+
+	private DatamanRuntimeException transportError(String operation,
+		IOException cause) {
+		return new DatamanRuntimeException(
+			Dataman._progname + ": transport error during " + operation, cause);
+	}
+
+	private int parse_record(ByteBuffer buffer, String operation) {
+		ByteBuffer response = buffer.slice();
+		String[] value = new String[3];
+		final int size;
+		final long record;
+		final short format;
+		try {
+			value[0] = readAsciiField(response, operation);
+			size = Integer.parseInt(value[0]);
+			if (size < 1)
+				return size;
+			value[1] = readAsciiField(response, operation);
+			value[2] = readAsciiField(response, operation);
+			record = Long.parseLong(value[1]);
+			format = Short.parseShort(value[2]);
+		} catch (NumberFormatException error) {
+			throw new DatamanRuntimeException(
+				"Malformed " + operation + " response", error);
+		}
+		if (response.remaining() < size)
+			throw new DatamanRuntimeException(
+				"Truncated " + operation + " response");
+
+		Dataman.master.setlen(size);
+		Dataman.master.setfmt(format);
+		Dataman.master.setcur(record);
+		Dataman.master.setchan(_fno);
+		Dataman.master.set_filedesc(_files[_fno].get_desc());
+		Dataman.master.sethead((short)_files[_fno].get_hlen());
+		Dataman.master.in_rec(response.slice());
+		_rptr = record;
+		Dataman.cur_index = this;
+		return size;
+	}
+
+	private String readAsciiField(ByteBuffer response, String operation) {
+		int start = response.position();
+		while (response.hasRemaining() && response.get() != (byte)'|')
+			;
+		if (response.position() == start ||
+			response.get(response.position() - 1) != (byte)'|')
+			throw new DatamanRuntimeException(
+				"Malformed " + operation + " response");
+		int end = response.position() - 1;
+		byte[] text = new byte[end - start];
+		ByteBuffer copy = response.duplicate();
+		copy.position(start);
+		copy.get(text);
+		return new String(text, StandardCharsets.US_ASCII);
 	}
 
 //
@@ -337,8 +394,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in GET" + e);
-			e.printStackTrace();
+			throw transportError("GET", e);
 		}
 		return (true);
 	}
@@ -378,8 +434,6 @@ public class DatamanIndex{
 
 		int i;
 
-		if (Dataman.in_xact && this._curkey.get_rec() < 0)
-			return(false);
 		if (Dataman.cur_index != null && Dataman.cur_index.get_wrmode() == DatamanIndex.UPDATE)
 			Dataman.master.out_rec();
 
@@ -388,6 +442,13 @@ public class DatamanIndex{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(DatamanErrVal.ENOGET));
 		}
+		if (_curkey == null || _curkey.get_len() == 0) {
+			DatamanErrVal error = new DatamanErrVal();
+			throw new DatamanRuntimeException(
+				error.getDBErr(DatamanErrVal.ENOGET));
+		}
+		if (Dataman.in_xact && this._curkey.get_rec() < 0)
+			return(false);
 		cmd = DatamanFunc.GET_NEXT + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 		i = cmd.length() + _keylen + k_header_len;
 		Charset cs = Charset.forName("UTF-8");
@@ -406,8 +467,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in GET_NEXT" + e);
-			e.printStackTrace();
+			throw transportError("GET_NEXT", e);
 		}
 		return (true);
 	}
@@ -425,8 +485,6 @@ public class DatamanIndex{
 
 		int i;
 
-		if (Dataman.in_xact && this._curkey.get_rec() < 0)
-			return(false);
 		if (Dataman.cur_index != null && Dataman.cur_index.get_wrmode() == DatamanIndex.UPDATE)
 			Dataman.master.out_rec();
 
@@ -435,6 +493,8 @@ public class DatamanIndex{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(DatamanErrVal.ENOGET));
 		}
+		if (Dataman.in_xact && this._curkey.get_rec() < 0)
+			return(false);
 		cmd = DatamanFunc.GET_PRIOR + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 		i = cmd.length() + _keylen + k_header_len;
 		Charset cs = Charset.forName("UTF-8");
@@ -453,8 +513,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in GET_PRIOR" + e);
-			e.printStackTrace();
+			throw transportError("GET_PRIOR", e);
 		}
 		return (true);
 	}
@@ -488,8 +547,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-              System.out.println("Caught IO exception in GET_FIRST" + e);
-              e.printStackTrace();
+			throw transportError("GET_FIRST", e);
 		}
 		return (true);
 	}
@@ -523,8 +581,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in GET_LAST" + e);
-			e.printStackTrace();
+			throw transportError("GET_LAST", e);
 		}
 		return (true);
 	}
@@ -544,8 +601,6 @@ public class DatamanIndex{
 
 		int i;
 
-		if (Dataman.in_xact && this._curkey.get_rec() < 0)
-			return(false);
 		if (Dataman.cur_index != null && Dataman.cur_index.get_wrmode() == DatamanIndex.UPDATE)
 			Dataman.master.out_rec();
 
@@ -554,6 +609,8 @@ public class DatamanIndex{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(DatamanErrVal.ENOGET));
 		}
+		if (Dataman.in_xact && this._curkey.get_rec() < 0)
+			return(false);
 		cmd = DatamanFunc.GET_CURRENT + "|" + _idxno + "|" + _generation + "|" + _curnode + "|" + _offs + "|";
 		i = cmd.length() + _keylen + k_header_len;
 		buff = ByteBuffer.allocate(i);
@@ -572,8 +629,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in GET_CURRENT" + e);
-			e.printStackTrace();
+			throw transportError("GET_CURRENT", e);
 		}
 		return (true);
 	}
@@ -603,13 +659,9 @@ public class DatamanIndex{
 		}
 		cmd = DatamanFunc.FORWARD + "|" + _idxno + "|" + _fno + "|" + _rptr + "|";
 		try {
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd), cmd.length());
-			i = (256 < buff.capacity()? 256 : buff.capacity());
-			byte [] stuff = new byte[i];
-			buff.get(stuff, 0, i);
-			String [] result = new String(stuff).split("[|]");
-			i = Integer.parseInt(result[0]);
+			i = parse_record(buff, "FORWARD");
 			if (i < 0) {
 				System.out.println(Dataman._progname + ": error during FORWARD");
 				DatamanErrVal e = new DatamanErrVal();
@@ -617,20 +669,8 @@ public class DatamanIndex{
 			}
 			if (i == 0) 
 				return (false);
-			i = result[0].length() + result[1].length() + result[2].length() + 3;
-			buff.position(i);
-			ByteBuffer data = buff.slice();
-			_rptr = Long.parseLong(result[1]);
-			Dataman.master.setcur(_rptr);
-			Dataman.cur_index = this;
-			Dataman.master.set_filedesc(_files[_fno].get_desc());
-			Dataman.master.sethead((short)_files[_fno].get_hlen());
-			Dataman.master.setlen(i);
-			Dataman.master.setfmt(Short.parseShort(result[2]));
-			Dataman.master.in_rec(data);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in FORWARD" + e);
-			e.printStackTrace();
+			throw transportError("FORWARD", e);
 		}
 		return (true);
 	}
@@ -660,13 +700,9 @@ public class DatamanIndex{
 		}
 		cmd = DatamanFunc.BACK + "|" + _idxno + "|" + _fno + "|" + Dataman.master.getcur() + "|";
 		try {
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd), cmd.length());
-			i = (256 < buff.capacity() ? 256 : buff.capacity());
-			byte [] stuff = new byte[i];
-			buff.get(stuff, 0, i);
-			String [] result = new String(stuff).split("[|]");
-			i = Integer.parseInt(result[0]);
+			i = parse_record(buff, "BACK");
 			if (i < 0) {
 				System.out.println(Dataman._progname + ": error during BACK");
 				DatamanErrVal e = new DatamanErrVal();
@@ -674,21 +710,8 @@ public class DatamanIndex{
 			}
 			if (i == 0) 
 				return (false);
-
-			i = result[0].length() + result[1].length() + result[2].length() + 3;
-			buff.position(i);
-			ByteBuffer rec = buff.slice();
-			_rptr = Long.parseLong(result[1]);
-			Dataman.master.setcur(_rptr);
-			Dataman.cur_index = this;
-			Dataman.master.set_filedesc(_files[_fno].get_desc());
-			Dataman.master.sethead((short)_files[_fno].get_hlen());
-			Dataman.master.setlen(i);
-			Dataman.master.setfmt(Short.parseShort(result[2]));
-			Dataman.master.in_rec(rec);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in BACK" + e);
-			e.printStackTrace();
+			throw transportError("BACK", e);
 		}
 		return (true);
     }
@@ -709,17 +732,19 @@ public class DatamanIndex{
 		int i;
 		short j;
 
+		if (_curkey == null || _curkey.get_len() == 0) {
+			DatamanErrVal error = new DatamanErrVal();
+			throw new DatamanRuntimeException(
+				error.getDBErr(DatamanErrVal.ENOGET));
+		}
 		if (Dataman.in_xact && this._curkey.get_rec() < 0)
 			return(false);
 		cmd = DatamanFunc.PROTECT + "|" + _idxno + "|" + _fno + "|" + _rptr + "|";
 		try {
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd), cmd.length());
-			i = (256 < buff.capacity() ? 256 : buff.capacity());
-			byte [] rec = new byte[i];
-			buff.get(rec, 0, i);
-			String [] result = new String(cmd).split("[|]");
-			i = Integer.parseInt(result[0]);
+			String sizeField = readAsciiField(buff, "PROTECT");
+			i = Integer.parseInt(sizeField);
 			if (i < 0) {
 				System.out.println(Dataman._progname + ": error during PROTECT");
 				DatamanErrVal e = new DatamanErrVal();
@@ -727,22 +752,27 @@ public class DatamanIndex{
 			}
 			if (i == 0) 
 				return (false);
-
-			i = result[0].length() + result[1].length() + result[2].length() + result[3].length() + result[4].length() + 5;
-			buff.position(i);
-			ByteBuffer data = buff.slice();
-			j = Short.parseShort(result[1]);
+			int recordLength = i;
+			j = Short.parseShort(readAsciiField(buff, "PROTECT"));
+			int responseIndex = Integer.parseInt(readAsciiField(buff, "PROTECT"));
+			int responseFile = Integer.parseInt(readAsciiField(buff, "PROTECT"));
+			long responseRecord = Long.parseLong(readAsciiField(buff, "PROTECT"));
+			if (responseIndex != _idxno || responseFile < 0 ||
+				responseFile >= _files.length || buff.remaining() < recordLength)
+				throw new DatamanRuntimeException("Malformed PROTECT response");
+			_fno = responseFile;
+			_rptr = responseRecord;
 			Dataman.master.set_filedesc(_files[_fno].get_desc());
 			Dataman.master.sethead((short)_files[_fno].get_hlen());
 			Dataman.master.setcur(_rptr);
 			Dataman.master.setchan(_fno);
-			Dataman.master.setlen(i);
+			Dataman.master.setlen(recordLength);
 			Dataman.master.setfmt(j);
-			Dataman.master.in_rec(data);
+			Dataman.master.in_rec(buff.slice());
+			Dataman.cur_index = this;
 		}
 		catch (IOException e) {
-              System.out.println("Caught IO exception in PROTECT" + e);
-              e.printStackTrace();
+			throw transportError("PROTECT", e);
 		}
 		return (true);
 	}
@@ -761,6 +791,11 @@ public class DatamanIndex{
 
 		int i;
 
+		if (_curkey == null || _curkey.get_len() == 0) {
+			DatamanErrVal error = new DatamanErrVal();
+			throw new DatamanRuntimeException(
+				error.getDBErr(DatamanErrVal.ENOGET));
+		}
 		if (Dataman.in_xact && this._curkey.get_rec() < 0)
 			return;
 		if (Dataman.cur_index != null && Dataman.cur_index.get_wrmode() == DatamanIndex.UPDATE)
@@ -779,8 +814,7 @@ public class DatamanIndex{
 			}
 		}
 		catch (IOException e) {
-			System.out.println("Caught IO exception in CLEAR" + e);
-			e.printStackTrace();
+			throw transportError("CLEAR", e);
 		}
 	}
 /**
@@ -811,33 +845,16 @@ public class DatamanIndex{
 		cmd = DatamanFunc.DELETE + "|" + _idxno + "|" + _fno + "|" + _rptr + "|"
 				+ Dataman.in_xact + "|";
 		try {
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd), cmd.length());
-			i = (256 < buff.capacity() ? 256 : buff.capacity());
-			byte [] stuff = new byte[i];
-			buff.get(stuff, 0, i);
-			String [] result = new String(stuff).split("[|]");
-			i = Integer.parseInt(result[0]);
+			i = parse_record(buff, "DELETE");
 			if (i < 0) {
 				System.out.println(Dataman._progname + ": error during DELETE");
 				DatamanErrVal e = new DatamanErrVal();
 				throw new DatamanRuntimeException(e.getDBErr(i));
 			}
-			i = result[0].length() + result[1].length() + result[2].length() + 3;
-			buff.position(i);
-			ByteBuffer data = buff.slice();
-			Dataman.master.setlen(i);
-			_rptr = Long.parseLong(result[1]);
-			Dataman.master.setfmt(Short.parseShort(result[2]));
-			Dataman.master.setcur(_rptr);
-			Dataman.master.setchan(_fno);
-			Dataman.master.set_filedesc(_files[_fno].get_desc());
-			Dataman.master.sethead((short)_files[_fno].get_hlen());
-			Dataman.cur_index = this;
-			Dataman.master.in_rec(data);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in DELETE" + e);
-			e.printStackTrace();
+			throw transportError("DELETE", e);
    		}
 	}
 /**
@@ -876,6 +893,7 @@ public class DatamanIndex{
 			buff = ByteBuffer.allocate(i);
 			buff.put(cs.encode(cmd));
 			buff.put(key.get_data(), 0, _keylen + k_header_len);
+			buff.rewind();
 		} else {
 			cmd += key.keyStr();
 			i = cmd.length();
@@ -894,8 +912,7 @@ public class DatamanIndex{
 			if (i == 0) 
 				return (false);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in REMOVE" + e);
-			e.printStackTrace();
+			throw transportError("REMOVE", e);
 		}
 		return (true);
 	}
@@ -978,8 +995,7 @@ public class DatamanIndex{
 				return (false);
 			}
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in RESTORE" + e);
-			e.printStackTrace();
+			throw transportError("RESTORE", e);
 		}
 		_savptr = null;
 		return (true);
@@ -1019,8 +1035,7 @@ public class DatamanIndex{
 				throw new DatamanRuntimeException(e.getDBErr(i));
 			}
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in SORT" + e);
-			e.printStackTrace();
+			throw transportError("SORT", e);
 		}
 	}
 /**
@@ -1104,8 +1119,7 @@ public class DatamanIndex{
 
 			Dataman.master.in_rec(buff);
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in INSERT" + e);
-			e.printStackTrace();
+			throw transportError("INSERT", e);
 		}
 	}
 /**
@@ -1184,8 +1198,7 @@ public class DatamanIndex{
 							separator[3] + 1, response.length - separator[3] - 1).slice(), _keylen);
 			_fno = _curkey.get_fno() - 1;
 		} catch (IOException e) {
-			System.out.println("Caught IO exception in INCLUDE" + e);
-			e.printStackTrace();
+			throw transportError("INCLUDE", e);
 		}
 	}
 /**

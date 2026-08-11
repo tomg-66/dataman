@@ -29,6 +29,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Definitions for the master and workfile records.  When any
@@ -174,8 +175,7 @@ public class DatamanRecord{
 				fdesc.DatamanSetupDesc((short)i , data);
 				_filedesc = fdesc;
 			} catch (IOException e) {
-                   System.out.println("Caught IO exception in in_rec" + e);
-                   e.printStackTrace();
+				throw transportError("GET_DESC", e);
 			}
 		}
 //
@@ -280,8 +280,7 @@ public class DatamanRecord{
 				throw new DatamanRuntimeException(e.getDBErr(i));
 			}
 		} catch (IOException e) {
-              System.out.println("Caught IO exception in out_rec" + e);
-              e.printStackTrace();
+			throw transportError("FLUSH", e);
 		}
 		setdirty(false);
 	}
@@ -322,35 +321,60 @@ public class DatamanRecord{
 			cmd = DatamanFunc.RELEASE + "|" + chan + "|" + next + "|";
          
 		try {
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd) , cmd.length());
-			cmd = new String(cs.decode(buff).array());
-			String [] result = cmd.split("[|]" , 7);
+			String[] result = readFields(buff, 1, "RELEASE");
 			len = Integer.parseInt(result[0]);
 			if (len < 0) {
 				System.out.println(Dataman._progname + ":  error in release");
 				DatamanErrVal e = new DatamanErrVal();
 				throw new DatamanRuntimeException(e.getDBErr(len));
 			}
-			longest = Short.parseShort(result[1]);
-			fmt = Short.parseShort(result[2]);
-			cur = Long.parseLong(result[3]);
-			prev = Long.parseLong(result[4]);
-			next = Long.parseLong(result[5]);
-			in_rec(cs.encode(result[6]));
+			result = readFields(buff, 5, "RELEASE");
+			longest = Short.parseShort(result[0]);
+			fmt = Short.parseShort(result[1]);
+			cur = Long.parseLong(result[2]);
+			prev = Long.parseLong(result[3]);
+			next = Long.parseLong(result[4]);
+			in_rec(buff.slice());
 			if (Dataman.cur_index.get_file(0).get_fname() == null) {
 				Dataman.cur_index.get_file(0).set_name(Dataman._fnames[Dataman._fileno]);
 				Dataman.cur_index.get_file(0).set_desc(_filedesc);
 				Dataman.cur_index.get_file(0).set_longest(_filedesc.get_longest());
 			}
 		} catch (IOException e) {
-			System.out.println(Dataman._progname + ":  Can't read socket response in RELEASE" + e);
-			e.printStackTrace();
+			throw transportError("RELEASE", e);
 		} catch (NumberFormatException e) {
-			System.out.println(Dataman._progname + ": bad number format in response from RELEASE" + e);
-			e.printStackTrace();
+			throw new DatamanRuntimeException("Malformed RELEASE response", e);
 		}
 		return (true);
+	}
+
+	private DatamanRuntimeException transportError(String operation,
+		IOException cause) {
+		return new DatamanRuntimeException(
+			Dataman._progname + ": transport error during " + operation, cause);
+	}
+
+	private String[] readFields(ByteBuffer buffer, int count,
+		String operation) {
+		String[] values = new String[count];
+		for (int field = 0; field < count; field++) {
+			int start = buffer.position();
+			while (buffer.hasRemaining() && buffer.get() != (byte)'|')
+				;
+			if (buffer.position() == start ||
+				buffer.get(buffer.position() - 1) != (byte)'|')
+				throw new DatamanRuntimeException(
+					"Malformed " + operation + " response");
+			int end = buffer.position() - 1;
+			byte[] text = new byte[end - start];
+			ByteBuffer copy = buffer.duplicate();
+			copy.position(start);
+			copy.get(text);
+			values[field] = new String(text, StandardCharsets.US_ASCII);
+		}
+		return values;
 	}
 }
 

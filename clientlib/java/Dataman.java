@@ -34,6 +34,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Global entries for Dataman programs.  The master and workfile records and the
@@ -123,7 +124,7 @@ public class Dataman{
 						j = argv[i].length() + 1;
 						break;
 					case 'n':
-						if (!traditional)
+						if (traditional)
 							useage();
 						traditional = true;
 						break;
@@ -135,7 +136,7 @@ public class Dataman{
 						j = argv[i].length() + 1;
 						break;
 					default:
-						System.out.println("unknown switch '" + argv[i].substring(j, 1) + "'");
+						System.out.println("unknown switch '" + argv[i].charAt(j) + "'");
 						useage();
 				}
 			}
@@ -148,38 +149,34 @@ public class Dataman{
 			DatamanErrVal e = new DatamanErrVal();
 			throw new DatamanRuntimeException(e.getDBErr(0));
 		}
-		if (_root.length() == 0) 
-			_root = "localhost";
+		if (host.length() == 0)
+			host = "localhost";
 
 		try {
    			comm = new DatamanComms(host);
 			if (!traditional) {
 				cmd = DatamanFunc.INIT_DAT + "|" + _root + "/files/" + argv[i] + "|";
-				Charset cs = Charset.forName("UTF-8");
+				Charset cs = StandardCharsets.UTF_8;
 				buff = comm.db_send(cs.encode(cmd), cmd.length());
-				cmd = new String(cs.decode(buff).array());
-				String [] result = cmd.split("[|]" , 8);
+				String[] result = readFields(buff, 1, "INIT_DATAMAN");
 				i = Integer.parseInt(result[0]);
 				if (i < 0) {
 					System.out.println(_progname + ": Error during INIT_DATAMAN");
 					DatamanErrVal e = new DatamanErrVal();
 					throw new DatamanRuntimeException(e.getDBErr(i));
 				}
+				result = readFields(buff, 6, "INIT_DATAMAN");
 				workfile.setlen(i);
-				workfile.setchan(Integer.parseInt(result[1]));
-				workfile.setlongest(Short.parseShort(result[2]));
-				workfile.setfmt(Short.parseShort(result[3]));
-				workfile.setcur(Long.parseLong(result[4]));
-				workfile.setprev(Long.parseLong(result[5]));
-				workfile.setnext(Long.parseLong(result[6]));
-				workfile.in_rec(cs.encode(result[7]));
+				workfile.setchan(Integer.parseInt(result[0]));
+				workfile.setlongest(Short.parseShort(result[1]));
+				workfile.setfmt(Short.parseShort(result[2]));
+				workfile.setcur(Long.parseLong(result[3]));
+				workfile.setprev(Long.parseLong(result[4]));
+				workfile.setnext(Long.parseLong(result[5]));
+				workfile.in_rec(buff.slice());
 			}
-		} catch (UnknownHostException e) {
-			System.out.println(_progname + ": unknown host name " + host);
-			e.printStackTrace();
 		} catch (IOException e) {
-			System.out.println(_progname + ": Can't read INIT_DATAMAN response from socket" + e);
-			e.printStackTrace();
+			throw transportError("INIT_DATAMAN", e);
 		}
 	};
 /**
@@ -251,7 +248,7 @@ public class Dataman{
 						break;
                                                 
 					default: 
-						System.out.println("unknown switch '" + argv[i].substring(j, 1) + "'");
+						System.out.println("unknown switch '" + argv[i].charAt(j) + "'");
 						useage(_progname);
 				}
 			}
@@ -264,7 +261,7 @@ public class Dataman{
 		_maxfil = argc - i;
 		_fnames = new String[_maxfil];
 		for (j = 0;i < argc; i++, j++) {
-			if (argv[i].substring(0, 1) == "-")
+			if (argv[i].startsWith("-"))
 				useage(_progname);
 			_fnames[j] = argv[i];
 		}
@@ -281,40 +278,36 @@ public class Dataman{
 			cmd += _fnames[i] + "|";
 		try {
 			comm = new DatamanComms(host);
-			Charset cs = Charset.forName("UTF-8");
+			Charset cs = StandardCharsets.UTF_8;
 			buff = comm.db_send(cs.encode(cmd), cmd.length());
-			cmd = new String(cs.decode(buff).array());
-			String [] result = cmd.split("[|]" , 10);
+			String[] result = readFields(buff, 1, "MKIDX");
 			i = Integer.parseInt(result[0]);
 			if (i < 0) {
      			System.out.println(_progname + ": Error during MKIDX");
 				DatamanErrVal e = new DatamanErrVal();
 				throw new DatamanRuntimeException(e.getDBErr(i));
 			}
+			result = readFields(buff, 8, "MKIDX");
 			workfile.setlen(i);
-			cur_index.set_idxno(Integer.parseInt(result[1]));
-			cur_index.set_curnode(Long.parseLong(result[2]));
+			cur_index.set_idxno(Integer.parseInt(result[0]));
+			cur_index.set_curnode(Long.parseLong(result[1]));
 			DatamanIndexFile f = cur_index.get_file(0);
 			f.set_fno(0);
 			f.set_name(_fnames[0]);
-			f.set_hlen(Short.parseShort(result[5]));
+			f.set_hlen(Short.parseShort(result[4]));
 
-			workfile.setchan(Integer.parseInt(result[3]));
-			workfile.sethead(Short.parseShort(result[5]));
-			workfile.setcur(Long.parseLong(result[6]));
-			workfile.setfmt(Short.parseShort(result[7]));
-			workfile.setnext(Long.parseLong(result[8]));
-			workfile.in_rec(cs.encode(result[9]));
+			workfile.setchan(Integer.parseInt(result[2]));
+			workfile.sethead(Short.parseShort(result[4]));
+			workfile.setcur(Long.parseLong(result[5]));
+			workfile.setfmt(Short.parseShort(result[6]));
+			workfile.setnext(Long.parseLong(result[7]));
+			workfile.in_rec(buff.slice());
 
 			f.set_desc(workfile.get_desc());
 			workfile.setfile(true);
 			is_sort = true;
-		} catch (UnknownHostException e) {
-			System.out.println(_progname + ": unknown host name " + host);
-			e.printStackTrace();
 		} catch (IOException e) {
-			System.out.println(_progname + ": Can't read MKIDX response from socket: " + e);
-			e.printStackTrace();
+			throw transportError("MKIDX", e);
 		}
 		return (cur_index);
 	}
@@ -367,8 +360,7 @@ public class Dataman{
 				throw new DatamanRuntimeException(e.getDBErr(i));
 			}
 		} catch (IOException e) {
-			System.out.println(_progname + ": Can't read STARTXACT response from socket: " + e);
-			e.printStackTrace();
+			throw transportError("START_XACT", e);
 		}
 		in_xact = true;
 	}
@@ -398,8 +390,7 @@ public class Dataman{
 				throw new DatamanRuntimeException(e.getDBErr(i));
 			}
 		} catch (IOException e) {
-			System.out.println(_progname + ": Can't read ROLLBACK response from socket: " + e);
-			e.printStackTrace();
+			throw transportError("ROLLBACK", e);
 		}
 		in_xact = false;
 	}
@@ -440,13 +431,35 @@ public class Dataman{
 				return(false);
 			return(true);
 		} catch (IOException e) {
-			System.out.println(_progname + ": Can't read COMMIT response from socket: " + e);
-			e.printStackTrace();
+			throw transportError("COMMIT", e);
 		}
-//
-// it can't make it to here, can it?
-//
-		return(false);
+	}
+
+	private static DatamanRuntimeException transportError(String operation,
+		IOException cause) {
+		return new DatamanRuntimeException(
+			_progname + ": transport error during " + operation, cause);
+	}
+
+	private static String[] readFields(ByteBuffer buffer, int count,
+		String operation) {
+		String[] values = new String[count];
+		for (int field = 0; field < count; field++) {
+			int start = buffer.position();
+			while (buffer.hasRemaining() && buffer.get() != (byte)'|')
+				;
+			if (buffer.position() == start ||
+				buffer.get(buffer.position() - 1) != (byte)'|')
+				throw new DatamanRuntimeException(
+					"Malformed " + operation + " response");
+			int end = buffer.position() - 1;
+			byte[] text = new byte[end - start];
+			ByteBuffer copy = buffer.duplicate();
+			copy.position(start);
+			copy.get(text);
+			values[field] = new String(text, StandardCharsets.US_ASCII);
+		}
+		return values;
 	}
 }
 

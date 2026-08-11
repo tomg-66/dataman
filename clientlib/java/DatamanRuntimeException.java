@@ -19,10 +19,15 @@
 //
 package Dataman;
 
-class DatamanRuntimeException extends RuntimeException   {
-    DatamanRuntimeException(String string)
-    {
-         super(string);
+public class DatamanRuntimeException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    public DatamanRuntimeException(String message) {
+        super(message);
+    }
+
+    public DatamanRuntimeException(String message, Throwable cause) {
+        super(message, cause);
     }
 }
 

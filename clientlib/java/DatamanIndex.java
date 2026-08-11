@@ -121,17 +121,14 @@ public class DatamanIndex{
 		Dataman.master.set_filedesc(_files[newFile].get_desc());
 		Dataman.master.sethead((short)_files[newFile].get_hlen());
 		Dataman.master.setlongest(_files[newFile].get_longest());
-		Dataman.master.in_rec(response.slice());
+		loadMasterRecord(response.slice(), newFile, newKey.get_rec());
 
 		_generation = generation;
 		_curnode = node;
 		_offs = offset;
 		_curkey = newKey;
-		_fno = newFile;
 		Dataman.master.setchan(_fno);
-		_rptr = newKey.get_rec();
 		Dataman.master.setcur(_rptr);
-		Dataman.cur_index = this;
 		return(size);
 	}
 
@@ -292,6 +289,25 @@ public class DatamanIndex{
 			Dataman._progname + ": transport error during " + operation, cause);
 	}
 
+	private void loadMasterRecord(ByteBuffer record, int fileNumber,
+		long recordNumber) {
+		DatamanIndex previousIndex = Dataman.cur_index;
+		int previousFile = _fno;
+		long previousRecord = _rptr;
+
+		_fno = fileNumber;
+		_rptr = recordNumber;
+		Dataman.cur_index = this;
+		try {
+			Dataman.master.in_rec(record);
+		} catch (RuntimeException error) {
+			_fno = previousFile;
+			_rptr = previousRecord;
+			Dataman.cur_index = previousIndex;
+			throw error;
+		}
+	}
+
 	private int parse_record(ByteBuffer buffer, String operation) {
 		ByteBuffer response = buffer.slice();
 		String[] value = new String[3];
@@ -321,9 +337,7 @@ public class DatamanIndex{
 		Dataman.master.setchan(_fno);
 		Dataman.master.set_filedesc(_files[_fno].get_desc());
 		Dataman.master.sethead((short)_files[_fno].get_hlen());
-		Dataman.master.in_rec(response.slice());
-		_rptr = record;
-		Dataman.cur_index = this;
+		loadMasterRecord(response.slice(), _fno, record);
 		return size;
 	}
 
@@ -760,16 +774,13 @@ public class DatamanIndex{
 			if (responseIndex != _idxno || responseFile < 0 ||
 				responseFile >= _files.length || buff.remaining() < recordLength)
 				throw new DatamanRuntimeException("Malformed PROTECT response");
-			_fno = responseFile;
-			_rptr = responseRecord;
-			Dataman.master.set_filedesc(_files[_fno].get_desc());
-			Dataman.master.sethead((short)_files[_fno].get_hlen());
-			Dataman.master.setcur(_rptr);
-			Dataman.master.setchan(_fno);
+			Dataman.master.set_filedesc(_files[responseFile].get_desc());
+			Dataman.master.sethead((short)_files[responseFile].get_hlen());
+			Dataman.master.setcur(responseRecord);
+			Dataman.master.setchan(responseFile);
 			Dataman.master.setlen(recordLength);
 			Dataman.master.setfmt(j);
-			Dataman.master.in_rec(buff.slice());
-			Dataman.cur_index = this;
+			loadMasterRecord(buff.slice(), responseFile, responseRecord);
 		}
 		catch (IOException e) {
 			throw transportError("PROTECT", e);

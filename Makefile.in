@@ -405,12 +405,6 @@ TEST_DIST = \
 	tests/fixtures/one_rec.t \
 	tests/java/BuildOneRecordIndex.java \
 	tests/java/OneRecordIntegrationTest.java \
-	tests/java/blobs \
-	tests/java/files/one_rec \
-	tests/java/index/one_rec_idx \
-	tests/php/blobs \
-	tests/php/files/one_rec \
-	tests/php/index/one_rec_idx \
 	tests/run_java_tests.sh \
 	tests/setup_test.sh
 

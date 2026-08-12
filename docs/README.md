@@ -22,6 +22,7 @@ match the current protocol or V2 index format.
 - [Operation reference](operations.md) — the shared database verbs at a glance.
 - [Transactions and locking](transactions.md) — guarantees and limitations.
 - [Development](development.md) — repository layout, builds, and tests.
+- [Building with CMake](cmake.md) — the optional out-of-tree build path.
 
 ## Current compatibility boundary
 

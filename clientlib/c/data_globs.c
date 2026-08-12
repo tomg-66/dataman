@@ -41,7 +41,11 @@
 
 #include <stddef.h>
 #include <malloc.h>
+#ifdef DATAMAN_CMAKE_BUILD
+#include "config.h"
+#else
 #include "../../config.h"
+#endif
 #include "index.h"
 
 

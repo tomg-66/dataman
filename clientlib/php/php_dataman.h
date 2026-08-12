@@ -24,7 +24,7 @@
 extern zend_module_entry dataman_module_entry;
 # define phpext_dataman_ptr &dataman_module_entry
 
-# define PHP_DATAMAN_VERSION "0.3.0"
+# define PHP_DATAMAN_VERSION "4.0.0"
 
 # if defined(ZTS) && defined(COMPILE_DL_DATAMAN)
 ZEND_TSRMLS_CACHE_EXTERN()

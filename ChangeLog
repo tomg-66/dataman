@@ -1,3 +1,21 @@
+Tue Aug 11 03:21:16 PM MDT 2026
+Dataman 4.0.0
+server -
+    - changed the entire indexing system to use copy on write.  Tightened
+	up compiler issues due to more modern compilers.  Various timing
+	and locking bugs.
+client -
+    - lots of changes to handle new indexing, improve error handling,
+	other things that have been bugging me for years. Not a re-
+	write of the libs, but all of them were affected.
+overall -
+    - this  has been a -long- time since I've worked on this.  it seemed
+	to me it was time to re-visit it and see if there was any value
+	to keeping it updated.  Hardware has gotten cheaper and faster.
+	but this should still be ideal for smaller systems.
+      - released as 4.0.0
+
+
 Mon Mar 25 10:06:09 MDT 2013
 Dataman 3.3.8
 server -

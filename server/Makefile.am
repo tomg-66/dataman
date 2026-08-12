@@ -46,6 +46,6 @@ dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 				 put_ll.c
 
 noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
-				 file_desc.h misc.h xact.h
+				 file_desc.h index_v2.h misc.h xact.h
 
 include_HEADERS = datafile_header.h

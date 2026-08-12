@@ -53,7 +53,11 @@
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "../../server/errors.h"
+#ifdef DATAMAN_CMAKE_BUILD
+#include "config.h"
+#else
 #include "../../config.h"
+#endif
 
 /* -------- these are globals declared here -------- */
 short _maxfil;				/* number of files in index */

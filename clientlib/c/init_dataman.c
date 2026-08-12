@@ -64,7 +64,11 @@
 #include "globs.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
+#ifdef DATAMAN_CMAKE_BUILD
+#include "config.h"
+#else
 #include "../../config.h"
+#endif
 
 INDEX _indices[6];
 int dataman_has_php;

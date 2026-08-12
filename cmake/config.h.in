@@ -1,0 +1,10 @@
+#ifndef DATAMAN_CONFIG_H
+#define DATAMAN_CONFIG_H
+
+/* Build the legacy terminal-window support into the client libraries. */
+#define DWINDOW 1
+
+#define PACKAGE_NAME "@PROJECT_NAME@"
+#define PACKAGE_VERSION "@PROJECT_VERSION@"
+
+#endif

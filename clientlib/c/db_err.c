@@ -38,7 +38,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <errno.h>
+#ifdef DATAMAN_CMAKE_BUILD
+#include "config.h"
+#else
 #include "../../config.h"
+#endif
 
 #include <curses.h>
 extern int dwin_inited;

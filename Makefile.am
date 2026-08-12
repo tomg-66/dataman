@@ -1,3 +1,71 @@
 SUBDIRS=clientlib/c clientlib/c++ server
+if BUILD_JAVA
+SUBDIRS += clientlib/java
+endif
+
 remake: clean all
-EXTRA_DIST=Cleanfile sample_rc_script
+
+PHP_EXTENSION_DIST = \
+	clientlib/php/CREDITS \
+	clientlib/php/EXPERIMENTAL \
+	clientlib/php/README \
+	clientlib/php/config.m4 \
+	clientlib/php/config.w32 \
+	clientlib/php/dataman.c \
+	clientlib/php/dataman.stub.php \
+	clientlib/php/dataman_arginfo.h \
+	clientlib/php/php_dataman.h \
+	clientlib/php/tests/001.phpt \
+	clientlib/php/tests/002.phpt \
+	clientlib/php/tests/003.phpt \
+	clientlib/php/tests/004.phpt \
+	clientlib/php/tests/005.phpt \
+	clientlib/php/tests/006.phpt \
+	clientlib/php/tests/007.phpt \
+	clientlib/php/tests/008.phpt \
+	clientlib/php/tests/009.phpt \
+	clientlib/php/tests/010.phpt \
+	clientlib/php/tests/011.phpt \
+	clientlib/php/tests/012.phpt
+
+CMAKE_DIST = \
+	CMakeLists.txt \
+	cmake/config.h.in \
+	clientlib/c/CMakeLists.txt \
+	clientlib/c++/CMakeLists.txt \
+	clientlib/java/CMakeLists.txt \
+	server/CMakeLists.txt
+
+DOCUMENTATION_DIST = \
+	docs/README.md \
+	docs/c-api.md \
+	docs/cmake.md \
+	docs/concepts.md \
+	docs/cpp-api.md \
+	docs/development.md \
+	docs/getting-started.md \
+	docs/indexes.md \
+	docs/java-api.md \
+	docs/operations.md \
+	docs/php-extension.md \
+	docs/server.md \
+	docs/transactions.md \
+	docs/utilities.md
+
+TEST_DIST = \
+	tests/README.md \
+	tests/fixtures/one_rec.i \
+	tests/fixtures/one_rec.t \
+	tests/java/BuildOneRecordIndex.java \
+	tests/java/OneRecordIntegrationTest.java \
+	tests/java/blobs \
+	tests/java/files/one_rec \
+	tests/java/index/one_rec_idx \
+	tests/php/blobs \
+	tests/php/files/one_rec \
+	tests/php/index/one_rec_idx \
+	tests/run_java_tests.sh \
+	tests/setup_test.sh
+
+EXTRA_DIST = Cleanfile sample_rc_script $(PHP_EXTENSION_DIST) \
+	$(CMAKE_DIST) $(DOCUMENTATION_DIST) $(TEST_DIST)

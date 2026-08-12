@@ -63,7 +63,11 @@
 #include <memory>
 
 #include "../../server/dbfunc.h"
+#ifdef DATAMAN_CMAKE_BUILD
+#include "config.h"
+#else
 #include "../../config.h"
+#endif
 #include "../../server/errors.h"
 
 #define FALSE 0

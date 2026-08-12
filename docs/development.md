@@ -16,8 +16,8 @@ docs/             current Markdown documentation
 
 The core project remains on Autoconf/Automake. This is appropriate while the
 existing install rules, optional Java build, and downstream packaging depend on
-it. A CMake migration would be a separate compatibility project, not a required
-step for current development.
+it. CMake is also supported as an optional, out-of-tree build path; see
+[Building with CMake](cmake.md).
 
 ```sh
 autoreconf -fi

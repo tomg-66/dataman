@@ -10,6 +10,7 @@ config.status
 configure.lineno
 libtool
 stamp-h1
+autom4te.cache/
 
 # Compiler and libtool outputs
 .deps/
@@ -40,3 +41,7 @@ server/mkdf
 server/mkidx
 server/rebuild
 server/term_dbserve
+
+#testing artifacts
+tests/php/files/one_rec
+tests/php/index/one_rec_idx

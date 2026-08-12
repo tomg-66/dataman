@@ -379,7 +379,25 @@ DOCUMENTATION_DIST = \
 	docs/php-extension.md \
 	docs/server.md \
 	docs/transactions.md \
-	docs/utilities.md
+	docs/utilities.md \
+	old_docs/c \
+	old_docs/c++ \
+	old_docs/c++_reference.html \
+	old_docs/c_reference.html \
+	old_docs/example.html \
+	old_docs/faq.html \
+	old_docs/index.html \
+	old_docs/installing.html \
+	old_docs/java \
+	old_docs/license.html \
+	old_docs/long.html \
+	old_docs/long.sxw \
+	old_docs/long.txt \
+	old_docs/manual.html \
+	old_docs/php_reference.html \
+	old_docs/running.html \
+	old_docs/theory.html \
+	old_docs/utilities.html
 
 TEST_DIST = \
 	tests/README.md \

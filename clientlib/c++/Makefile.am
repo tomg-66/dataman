@@ -18,7 +18,7 @@ noinst_HEADERS = db_comm.hpp wind.h window.h
 include_HEADERS = datafield.hpp dataman.hpp datarecord.hpp fileEdit.hpp endSort.hpp  \
 		index.hpp key.hpp proto.hpp sort.hpp datamanError.hpp
 
-INCLUDES = -I../../server
+AM_CPPFLAGS = -I../../server
 
 # have to add this because according to inttypes.h you muse explicitly 
 # declare that you want the defines in C++

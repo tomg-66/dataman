@@ -25,6 +25,6 @@ libdataman_la_LDFLAGS = -version-info 4:0:0 -lcurses
 include_HEADERS = dataman.h globs.h index.h m_params.h proto.h \
 		sort.h wind.h window.h w_params.h
 
-INCLUDES = -I../../server
+AM_CPPFLAGS = -I../../server
 
 ##AM_CFLAGS = -DDWINDOW

@@ -25,6 +25,7 @@ autom4te.cache/
 # Java build outputs
 *.class
 *.jar
+classjava.stamp
 
 # Dataman server utility binaries
 server/check_it

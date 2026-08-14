@@ -174,7 +174,7 @@ int datarecord::in_rec(char *buff)
 		} else {
 			b_len = get_long(buff+offs);
 			offs += sizeof(long);
-			fields[i+1].make_field(buff+offs, -((int)b_len), this->which);
+			fields[i+1].make_blob_field(buff+offs, (int)b_len, this->which);
 			offs += b_len;
 		}
 		j += rfdesc->field_sizes[i];

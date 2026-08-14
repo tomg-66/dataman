@@ -58,6 +58,11 @@ namespace Dataman {
 
 	extern char **_fnames;			// the names of the files in index
 	extern char _fileno;			// the offset to the current file
+
+	inline const char *current_file()
+	{
+		return _fnames[_fileno];
+	}
 };
 
 #endif

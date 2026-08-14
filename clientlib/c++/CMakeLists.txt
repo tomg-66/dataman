@@ -37,3 +37,12 @@ install(TARGETS dataman_cpp
 	RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(FILES ${DATAMAN_CXX_HEADERS}
 	DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/dataman")
+
+if(BUILD_TESTING)
+	add_executable(datafield_test
+		"${PROJECT_SOURCE_DIR}/tests/cpp/datafield_test.cc")
+	target_include_directories(datafield_test PRIVATE
+		"${PROJECT_SOURCE_DIR}/server")
+	target_link_libraries(datafield_test PRIVATE Dataman::CXX)
+	add_test(NAME cpp-datafield COMMAND datafield_test)
+endif()

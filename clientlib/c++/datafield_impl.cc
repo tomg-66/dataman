@@ -1,783 +1,552 @@
-/* ***************************************************************
- *
- * PROCEDURE:	datafield_impl.cc
- *
- * PROJECT:		dataman client side c++ routine
- * 
- * DATE:		Wed Jul  7 16:41:40 MDT 2004
- * 
- * AUTHOR:		Tom Green
- * 
- * FILES:
- *
- * MODIFICATION HISTORY:
- * 				Wed Jul 28 18:39:13 MDT 2004
- * 				added new functions to do strcpy, and so forth
- * 				tomg
- *
- * 				Sat Mar 26 15:31:52 MST 2005
- * 				added support for blobs.  added the put_blob
- * 				function, and made checks for blobs in the other
- * 				operators to make sure you can't do stuff you
- * 				ought not.
- * 				tomg
- *
- * 				Thu Mar 21 15:49:21 MDT 2013
- * 				Tom Green
- * 				added name space
- *
- ************************************************************* */
 /*
- * this implements the interface routines to the datafield type
- * it includes +,*,/,=, and [].  There, of course should be some
- * new ones coming any time soon.
- */
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
+ * Dataman C++ datafield implementation.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA.
- *
- * The GNU General Public License is contained in the file COPYING.
+ * Record fields are fixed-width values owned by masterRecord or workRecord.
+ * Standalone fields, including arithmetic results, resize as needed and do
+ * not mark either record dirty.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <cerrno>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
 
 #include "datafield.hpp"
 #include "datarecord.hpp"
 #include "fileEdit.hpp"
 #include "datamanError.hpp"
 
-using namespace Dataman;
-
 #include "../../server/errors.h"
 
-#if !defined MIN
-#define MIN(x,y)	((x)<(y)?(x):(y))
-#endif
+using namespace Dataman;
 
-static int trmlen(const char *s)
+namespace {
+
+struct number {
+	double value;
+	bool integral;
+};
+
+static int trimmed_length(const char *text)
 {
-	if (s) {
-		const char *p = s+strlen(s)-1;
-		while(*p == ' ' && p >= s)
-			p--;
-		p++;
-		return(p-s);
-	}
-	return(0);
+	if (!text)
+		return 0;
+
+	int length = (int)std::strlen(text);
+	while (length > 0 && text[length - 1] == ' ')
+		--length;
+	return length;
 }
 
-datafield::datafield(void) {
-	length = 0;
-	type = type_non;
-	data = NULL;
-}
-//
-//construct from string, offset, length
-//
-datafield::datafield(const char *p, int offset = 0, int len = 0) {
-	if (p) {
-		if (len == 0 && offset ==0)
-			len = strlen(p);
-		if (len > strlen(p+offset))
-			len = strlen(p+offset);
-				
-		length = len;
-		data = new char[len+1];
-		::memcpy(data, p+offset, len);
-		*(data+len) = '\0';
-		type = type_chr;
-	} else {
-		length = 0;
-		data = NULL;
-		type = type_non;
-	}
-}
-//
-//standard copy constructor
-//
-datafield::datafield(const datafield&d) {
-	this->length = d.length;
-	data = new char[this->length+1];
-	::memcpy(this->data, d.data, this->length);
-	*(this->data+this->length) = '\0';
-	this->type = d.type;
-}
-//
-//destructor
-//
-datafield::~datafield() {
-	if (data)
-		delete[] data;
-}
-/*
- * is this datafield a work record or master record, and what
- * field number is it? < 0 it's in the workRecord, == not a
- * field.  > 0 is in the master record.
- */
-/*
-int datafield::locate(void)
+static bool parse_number(const char *text, number& result)
 {
-	int i;
-	FILEDESC *fptr;
-	i = (char *)this - (char *)(master.field);
-	i /= sizeof(class datafield);
-	fptr = master.get_desc();
-	if (this - i == master.field) {
-		if (fptr && (i < 1 || i > fptr->record_desc[master.getfmt()-1].n_fields))
-			return(0);
-		return(i);
-	} else {
-		fptr = workfile.get_desc();
-		i = (char *)this - (char *)workfile.field;
-		i /= sizeof(class datafield);
-		if (this -i == workfile.field) {
-			if (fptr && (i < 1 || i > fptr->record_desc[workfile.getfmt()-1].n_fields))
-				return(0);
-			return(-i);
-		} else {
-			return(0);
+	if (!text)
+		return false;
+
+	char *end;
+	errno = 0;
+	double value = std::strtod(text, &end);
+	if (end == text || errno == ERANGE || !std::isfinite(value))
+		return false;
+
+	while (*end == ' ' || *end == '\t' || *end == '\n' ||
+			*end == '\r' || *end == '\f' || *end == '\v')
+		++end;
+	if (*end != '\0')
+		return false;
+
+	result.value = value;
+	result.integral = std::strpbrk(text, ".eE") == NULL &&
+			value >= INT_MIN && value <= INT_MAX;
+	return true;
+}
+
+static number require_number(const datafield& field)
+{
+	if (field.get_type() == type_blob)
+		throw makeError(EBLOBTYP, "datafield arithmetic");
+
+	number value;
+	if (!parse_number(field.getptr(), value))
+		throw datamanError(0, "datafield value is not numeric");
+	return value;
+}
+
+static number require_number(const char *text)
+{
+	number value;
+	if (!parse_number(text, value))
+		throw datamanError(0, "datafield value is not numeric");
+	return value;
+}
+
+static datafield make_number(double value, bool integral)
+{
+	datafield result;
+	if (integral && value >= INT_MIN && value <= INT_MAX)
+		result = (int)value;
+	else
+		result = (float)value;
+	return result;
+}
+
+static std::string field_text(const datafield& field)
+{
+	return std::string(field.getptr(), (size_t)trimmed_length(field.getptr()));
+}
+
+static datafield concatenate(const datafield& left, const char *right,
+		int right_length)
+{
+	std::string value = field_text(left);
+	if (right && right_length > 0)
+		value.append(right, (size_t)right_length);
+	return datafield(value.c_str());
+}
+
+static datafield concatenate(const datafield& left, const datafield& right)
+{
+	return concatenate(left, right.getptr(), trimmed_length(right.getptr()));
+}
+
+static void reject_blob(const datafield& field)
+{
+	if (field.get_type() == type_blob)
+		throw makeError(EBLOBTYP, "datafield operation");
+}
+
+} // namespace
+
+bool datafield::is_bound() const
+{
+	return which == MASTER || which == WORK;
+}
+
+void datafield::mark_dirty()
+{
+	if (which == MASTER)
+		masterRecord.setdirty(true);
+	else if (which == WORK)
+		workRecord.setdirty(true);
+}
+
+void datafield::assign(const char *source, int source_length,
+		fieldTypes source_type)
+{
+	if (source_length < 0)
+		source_length = 0;
+
+	if (is_bound()) {
+		if (type == type_blob)
+			throw makeError(EBLOBTYP, "assignment to blob field");
+		if (!data) {
+			data = new char[(size_t)length + 1];
 		}
+		std::memset(data, ' ', (size_t)length);
+		if (source && source_length > 0) {
+			int copy_length = source_length < length ? source_length : length;
+			std::memcpy(data, source, (size_t)copy_length);
+		}
+		data[length] = '\0';
+		type = type_chr;
+		mark_dirty();
+		return;
 	}
-}
-*/
-//
-//assignment from another datafield
-//
-void datafield::operator=(const datafield& d)
-{
-	if (this->type == type_blob || d.type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	if (this->data) {
-		memset(this->data, ' ', this->length);
-		::strncpy(this->data, d.data, MIN(this->length, d.length));
-	} else {
-		this->length = d.length;
-		this->data = new char[d.length+1];
-		strcpy(this->data, d.data);
-	}
-	this->type = d.type;
-	if (this->which == MASTER)
-		masterRecord.setdirty(true);
-	else
-		workRecord.setdirty(true);
+
+	delete[] data;
+	length = source ? source_length : 0;
+	data = new char[(size_t)length + 1];
+	if (source && length > 0)
+		std::memcpy(data, source, (size_t)length);
+	data[length] = '\0';
+	type = source_type;
 }
 
-//
-//assign a datafield from a character string
-//
-void datafield::operator=(const char *s)
+datafield::datafield(void)
+	: length(0), type(type_non), data(NULL), which(standalone)
 {
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	if (this->data) {
-		memset(this->data, ' ', this->length);
-		if (s)
-			::strncpy(this->data, s, MIN(this->length, strlen(s)));
-	} else if (s) {
-		this->length = strlen(s);
-		this->data = new char[this->length+1];
-		strcpy(this->data, s);
-	}
-	this->type = type_chr;
-	if (this->which == MASTER)
-		masterRecord.setdirty(true);
-	else
-		workRecord.setdirty(true);
-
 }
 
-//
-//assign a datafield from an int
-//
-void datafield::operator=(int i)
+datafield::datafield(const char *text, int offset, int requested_length)
+	: length(0), type(type_non), data(NULL), which(standalone)
 {
-	char buff[32];
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	sprintf(buff, "%d", i);
-	if (this->data) {
-		memset(this->data, ' ', this->length);
-		::strncpy(this->data, buff, MIN(this->length, strlen(buff)));
-	} else {
-		this->length = strlen(buff);
-		this->data = new char[this->length+1];
-		strcpy(this->data, buff);
-	}
-	this->type = type_int;
-	if (this->which == MASTER)
-		masterRecord.setdirty(true);
-	else
-		workRecord.setdirty(true);
-}
-
-//
-//assign a datafield from a float
-//
-void datafield::operator=(float f)
-{
-	char buff[64];
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	sprintf(buff, "%f", f);
-	if (this->data) {
-		memset(this->data, ' ', this->length);
-		::strncpy(this->data, buff, MIN(this->length, strlen(buff)));
-	} else {
-		this->length = strlen(buff);
-		this->data = new char[this->length+1];
-		strcpy(this->data, buff);
-	}
-	this->type = type_flt;
-	if (this->which == MASTER)
-		masterRecord.setdirty(true);
-	else
-		workRecord.setdirty(true);
-}
-
-//
-// make a new field in in_rec.  this is only used there.
-//
-void datafield::make_field(const char *ptr, int len, int w)
-{
-	if (len == 0)
+	if (!text)
 		return;
 
-	if (len < 0) {
-		this->length = -len;
-		this->data = new char[this->length];
-		::memcpy(this->data, (char *)ptr, this->length);
-		this->type = type_blob;
-	} else {
-		this->data = new char[len+1];
-		::memcpy(this->data, (char *)ptr, len);
-		*(this->data+len) = '\0';
-		this->length = len;
-		this->type = type_chr;
-	}
-	this->which = w;
+	int text_length = (int)std::strlen(text);
+	if (offset < 0 || offset > text_length)
+		throw datamanError(0, "datafield string offset is out of range");
+
+	int available = text_length - offset;
+	int copy_length = requested_length == 0 ? available : requested_length;
+	if (copy_length < 0)
+		throw datamanError(0, "datafield string length is invalid");
+	if (copy_length > available)
+		copy_length = available;
+	assign(text + offset, copy_length, type_chr);
 }
 
-/*
- * put a blob to the field.  we can't just assign it via = because
- * we need to know what the length of the blob is.
- */
-int datafield::put_blob(const void *ptr, int len)
+datafield::datafield(const datafield& source)
+	: length(source.length), type(source.type), data(NULL), which(standalone)
 {
-	if (this->type != type_blob && this->type != type_non)
-		return(0);
-	if (this->data != NULL)
-		delete[] (this->data);
-	this->length = len;
-	this->data = new char[len];
-	::memcpy(this->data, ptr, len);
-	if (this->which == MASTER)
-		masterRecord.setdirty(true);
-	else
-		workRecord.setdirty(true);
-	this->type = type_blob;
-	return(1);
+	if (source.type == type_blob) {
+		if (length > 0) {
+			data = new char[(size_t)length];
+			std::memcpy(data, source.data, (size_t)length);
+		}
+	} else if (source.data) {
+		data = new char[(size_t)length + 1];
+		std::memcpy(data, source.data, (size_t)length);
+		data[length] = '\0';
+	}
 }
 
-//
-//start the 'addition' operators here.  a string + string is a 
-//concatanation.  adding an int or float to a string converts the 
-//string to an int or float and performs the op.  if the first op
-//is either an int or float, then convert the second op to the
-//appropriate op before performing the operation.
-//
-datafield datafield::operator+(const datafield& d)
+datafield::~datafield()
 {
-	datafield ret;
-
-	if (this->type == type_blob || d.type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	int sw = ((this->type & TYPE_MASK) << 3) | d.type;
-
-	switch(sw) {
-		int i, j;
-		float f;
-		char buff[64];
-
-		case 000:
-			i = trmlen(this->data);
-			j = MIN(i, trmlen(d.data));
-			ret.type = type_chr;
-			ret.length = i+j;
-			ret.data = new char[i+j+1];
-			::memcpy(ret.data, this->data, i);
-			::strncpy(ret.data+i, d.data, j);
-			break;
-		case 001:
-		case 011:
-			i = atoi(this->data) + atoi(d.data);
-			sprintf(buff, "%d", i);
-			ret.type = type_int;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case 002:
-		case 022:
-			f = (float)atof(this->data) + (float)atof(d.data);
-			sprintf(buff, "%f", f);
-			ret.type = type_flt;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case 010:
-			if ((i = atoi(d.data)) == 0) {
-				ret = *this;
-				break;
-			}
-			i += atoi(this->data);
-			sprintf(buff, "%d", i);
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case 020:
-			if ((f = atof(d.data)) == 0.0) {
-				ret = *this;
-				break;
-			}
-			f += (float)atof(this->data);
-			sprintf(buff, "%f", f);
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case 012:
-			i = atoi(this->data) + (int)((float)atof(d.data));
-			sprintf(buff, "%d", i);
-			ret.type = type_int;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case 021:
-			f = (float)atof(ret.data) + atoi(d.data);
-			sprintf(buff, "%f", f);
-			ret.type = type_flt;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-	}
-	return(ret);
+	delete[] data;
 }
 
-
-datafield datafield::operator+(const char *s)
+datafield& datafield::operator=(const datafield& source)
 {
-	datafield ret;
+	if (this == &source)
+		return *this;
 
-	if (!s)
-		return(*this);
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
+	if (source.type == type_blob) {
+		if (is_bound() && type != type_blob)
+			throw makeError(EBLOBTYP, "blob assignment to text field");
+		if (!is_bound())
+			which = standalone;
+		delete[] data;
+		length = source.length;
+		data = length > 0 ? new char[(size_t)length] : NULL;
+		if (length > 0)
+			std::memcpy(data, source.data, (size_t)length);
+		type = type_blob;
+		mark_dirty();
+		return *this;
 	}
 
-	switch(this->type) {
-		int i, j;
-		float f;
-		char buff[64];
-		case type_chr:
-			i = trmlen(this->data);
-			j = strlen(s);
-			ret.type = type_chr;
-			ret.length = i+j;
-			ret.data = new char[i+j+1];
-			::memcpy(ret.data, this->data, i);
-			::strncpy(ret.data+i, s, j);
-			break;
-		case type_int:
-			i = atoi(this->data) + atoi(s);
-			sprintf(buff, "%d", i);
-			ret.type = type_int;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case type_flt:
-			f = (float)atof(this->data) + (float)atof(s);
-			sprintf(buff, "%f", f);
-			ret.type = type_flt;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
+	if (is_bound() && type == type_blob)
+		throw makeError(EBLOBTYP, "text assignment to blob field");
+	assign(source.getptr(), source.length, source.type);
+	return *this;
+}
+
+datafield& datafield::operator=(const char *text)
+{
+	assign(text, text ? (int)std::strlen(text) : 0, type_chr);
+	return *this;
+}
+
+datafield& datafield::operator=(int value)
+{
+	char buffer[32];
+	int size = std::snprintf(buffer, sizeof(buffer), "%d", value);
+	assign(buffer, size, type_int);
+	return *this;
+}
+
+datafield& datafield::operator=(float value)
+{
+	char buffer[64];
+	int size = std::snprintf(buffer, sizeof(buffer), "%f", value);
+	assign(buffer, size, type_flt);
+	return *this;
+}
+
+void datafield::make_field(const char *source, int field_length, int owner)
+{
+	if (field_length < 0)
+		throw datamanError(0, "text field length is invalid");
+
+	delete[] data;
+	which = owner;
+	length = field_length;
+	type = type_chr;
+	data = new char[(size_t)length + 1];
+	if (source && length > 0)
+		std::memcpy(data, source, (size_t)length);
+	else if (length > 0)
+		std::memset(data, ' ', (size_t)length);
+	data[length] = '\0';
+}
+
+void datafield::make_blob_field(const void *source, int blob_length, int owner)
+{
+	if (blob_length < 0 || (!source && blob_length > 0))
+		throw datamanError(0, "blob field length or data is invalid");
+
+	delete[] data;
+	which = owner;
+	length = blob_length;
+	type = type_blob;
+	data = length > 0 ? new char[(size_t)length] : NULL;
+	if (length > 0)
+		std::memcpy(data, source, (size_t)length);
+}
+
+int datafield::put_blob(const void *source, int blob_length)
+{
+	if ((type != type_blob && type != type_non) || blob_length < 0 ||
+			(!source && blob_length > 0))
+		return 0;
+
+	delete[] data;
+	length = blob_length;
+	data = length > 0 ? new char[(size_t)length] : NULL;
+	if (length > 0)
+		std::memcpy(data, source, (size_t)length);
+	type = type_blob;
+	mark_dirty();
+	return 1;
+}
+
+datafield datafield::operator+(const datafield& right) const
+{
+	reject_blob(*this);
+	reject_blob(right);
+
+	bool left_numeric_type = type == type_int || type == type_flt;
+	bool right_numeric_type = right.type == type_int || right.type == type_flt;
+	if (!left_numeric_type && !right_numeric_type)
+		return concatenate(*this, right);
+
+	number left;
+	number rhs;
+	if (!parse_number(getptr(), left) || !parse_number(right.getptr(), rhs))
+		return concatenate(*this, right);
+	return make_number(left.value + rhs.value,
+			left.integral && rhs.integral && type != type_flt &&
+			right.type != type_flt);
+}
+
+datafield datafield::operator+(const char *right) const
+{
+	reject_blob(*this);
+	if (!right)
+		return *this;
+	if (type != type_int && type != type_flt)
+		return concatenate(*this, right, (int)std::strlen(right));
+
+	number left;
+	number rhs;
+	if (!parse_number(getptr(), left) || !parse_number(right, rhs))
+		return concatenate(*this, right, (int)std::strlen(right));
+	return make_number(left.value + rhs.value,
+			left.integral && rhs.integral && type != type_flt);
+}
+
+datafield datafield::operator+(int right) const
+{
+	reject_blob(*this);
+	number left;
+	if (!parse_number(getptr(), left)) {
+		char buffer[32];
+		int size = std::snprintf(buffer, sizeof(buffer), "%d", right);
+		return concatenate(*this, buffer, size);
 	}
-	return(ret);
+	return make_number(left.value + right, left.integral && type != type_flt);
 }
 
-datafield datafield::operator+(int v)
+datafield datafield::operator+(float right) const
 {
-	datafield ret;
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
+	reject_blob(*this);
+	number left;
+	if (!parse_number(getptr(), left)) {
+		char buffer[64];
+		int size = std::snprintf(buffer, sizeof(buffer), "%f", right);
+		return concatenate(*this, buffer, size);
 	}
-	switch(this->type) {
-		int i;
-		float f;
-		char buff[64];
-		case type_chr:
-		case type_int:
-			i = atoi(this->data) + v;
-			sprintf(buff, "%d", i);
-			ret.type = type_int;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case type_flt:
-			f = (float)atof(this->data) + v;
-			sprintf(buff, "%f", f);
-			ret.type = type_flt;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-	}
-	return(ret);
+	return make_number(left.value + right, false);
 }
 
-datafield datafield::operator+(float v)
+datafield datafield::operator*(const datafield& right) const
 {
-	datafield ret;
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	switch(this->type) {
-		int i;
-		float f;
-		char buff[64];
-		case type_int:
-			i = (int)((float)atof(this->data) + v);
-			sprintf(buff, "%d", i);
-			ret.type = type_int;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-		case type_chr:
-		case type_flt:
-			f = (float)atof(this->data) + v;
-			sprintf(buff, "%f", f);
-			ret.type = type_flt;
-			i = strlen(buff);
-			ret.data = new char[i+1];
-			strcpy(ret.data, buff);
-			ret.length = i;
-			break;
-	}
-	return(ret);
+	number left = require_number(*this);
+	number rhs = require_number(right);
+	return make_number(left.value * rhs.value,
+			left.integral && rhs.integral && type != type_flt &&
+			right.type != type_flt);
 }
 
-datafield datafield::operator*(const datafield& f)
+datafield datafield::operator*(const char *right) const
 {
-	datafield ret;
-	
-	if (this->type == type_blob || f.type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	if (strchr(this->data, '.') || strchr(f.data, '.')) {
-		float result =  atof(this->data) * atof(f.data);
-		ret = result;
-	} else {
-		int result = atoi(this->data) * atoi(f.data);
-		ret = result;
-	}
-	return(ret);
+	number left = require_number(*this);
+	number rhs = require_number(right);
+	return make_number(left.value * rhs.value,
+			left.integral && rhs.integral && type != type_flt);
 }
 
-datafield datafield::operator*(const char * s)
+datafield datafield::operator*(int right) const
 {
-	datafield ret;
-	
-	if (!s)
-		return(*this);
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-
-	if (strchr(this->data, '.') || strchr(s, '.')) {
-		float result =  atof(this->data) * atof(s);
-		ret = result;
-	} else {
-		int result = atoi(this->data) * atoi(s);
-		ret = result;
-	}
-	return(ret);
+	number left = require_number(*this);
+	return make_number(left.value * right, left.integral && type != type_flt);
 }
 
-datafield datafield::operator*(int i)
+datafield datafield::operator*(float right) const
 {
-	datafield ret;
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	if (strchr(this->data, '.')) {
-		float result = atof(this->data) * (float)i;
-		ret = result;
-	} else {
-		int result = atoi(this->data) * i;
-		ret = result;
-	}
-	return(ret);
+	number left = require_number(*this);
+	return make_number(left.value * right, false);
 }
 
-datafield datafield::operator*(float f)
+datafield datafield::operator/(const datafield& right) const
 {
-	datafield ret;
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	ret = (const float)(atof(this->data) * f);
-	return(ret);
+	number left = require_number(*this);
+	number rhs = require_number(right);
+	if (rhs.value == 0.0)
+		throw datamanError(0, "attempt to divide datafield by zero");
+	if (left.integral && rhs.integral && type != type_flt &&
+			right.type != type_flt)
+		return make_number((int)left.value / (int)rhs.value, true);
+	return make_number(left.value / rhs.value, false);
 }
 
-//
-//division operators
-//
-datafield datafield::operator/(const datafield& f)
+datafield datafield::operator/(const char *right) const
 {
-	datafield ret;
-	
-	if (this->type == type_blob || f.type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-		exit(EBLOBTYP);
-	}
-	if (atof(f.data) == 0.0) {
-		fprintf(stderr, "attempt to divide by zero!\n");
-		exit(0);
-	}
-	if (strchr(this->data, '.') || strchr(f.data, '.')) {
-		float result =  atof(this->data) / atof(f.data);
-		ret = result;
-	} else {
-		int result = atoi(this->data) / atoi(f.data);
-		ret = result;
-	}
-	return(ret);
+	number left = require_number(*this);
+	number rhs = require_number(right);
+	if (rhs.value == 0.0)
+		throw datamanError(0, "attempt to divide datafield by zero");
+	if (left.integral && rhs.integral && type != type_flt)
+		return make_number((int)left.value / (int)rhs.value, true);
+	return make_number(left.value / rhs.value, false);
 }
 
-datafield datafield::operator/(const char * s)
+datafield datafield::operator/(int right) const
 {
-	datafield ret;
-	
-	if (!s)
-		return(*this);
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-
-	if (atof(s) == 0.0) {
-		fprintf(stderr, "attempt to divide by zero!\n");
-		exit(0);
-	}
-	if (strchr(this->data, '.') || strchr(s, '.')) {
-		float result =  atof(this->data) / atof(s);
-		ret = result;
-	} else {
-		int result = atoi(this->data) / atoi(s);
-		ret = result;
-	}
-	return(ret);
+	if (right == 0)
+		throw datamanError(0, "attempt to divide datafield by zero");
+	number left = require_number(*this);
+	if (left.integral && type != type_flt)
+		return make_number((int)left.value / right, true);
+	return make_number(left.value / right, false);
 }
 
-datafield datafield::operator/(int i)
+datafield datafield::operator/(float right) const
 {
-	datafield ret;
-
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	if (i == 0) {
-		fprintf(stderr, "attempt to divide by zero!\n");
-		exit(0);
-	}
-	if (strchr(this->data, '.')) {
-		float result = atof(this->data) / (float)i;
-		ret = result;
-	} else {
-		int result = atoi(this->data) / i;
-		ret = result;
-	}
-	return(ret);
+	if (right == 0.0f)
+		throw datamanError(0, "attempt to divide datafield by zero");
+	number left = require_number(*this);
+	return make_number(left.value / right, false);
 }
 
-datafield datafield::operator/(float f)
+bool datafield::operator==(const datafield& right) const
 {
-	if (this->type == type_blob) {
-		throw makeError(EBLOBTYP, "");
-	}
-	if (f == 0.0) {
-		fprintf(stderr, "attempt to divide by zero!\n");
-		exit(0);
-	}
-	datafield ret;
-	ret = (const float)(atof(this->data) / f);
-	return(ret);
+	reject_blob(*this);
+	reject_blob(right);
+	return std::strcmp(getptr(), right.getptr()) == 0;
 }
 
-// relational operators
-bool datafield::operator==(const datafield &d)
+bool datafield::operator==(const char *right) const
 {
-	return(strcmp(this->data, d.data) == 0);
+	reject_blob(*this);
+	if (!right)
+		return false;
+	if (std::strcmp(right, " ") == 0)
+		return trimmed_length(getptr()) == 0;
+	return std::strcmp(getptr(), right) == 0;
 }
 
-/*
- * let a single space be equilivent to all spaces
- */
-bool datafield::operator==(const char *s)
+bool datafield::operator==(int right) const
 {
-	if (!s)
-		return(false);
-	if (strcmp(s, " "))
-		return(strcmp(this->data, s) == 0);
-	char tmp[this->length+1];
-	memset(tmp, ' ', this->length);
-	*(tmp+this->length) = '\0';
-	return(strcmp(s, tmp) == 0);
+	reject_blob(*this);
+	number left;
+	return parse_number(getptr(), left) && left.value == right;
 }
 
-bool datafield::operator==(int i)
+bool datafield::operator==(float right) const
 {
-	return(atoi(this->data) == i);
+	reject_blob(*this);
+	number left;
+	return parse_number(getptr(), left) && left.value == right;
 }
 
-bool datafield::operator==(float f)
+bool datafield::operator!=(const datafield& right) const
 {
-	return(atof(this->data) == f);
+	return !(*this == right);
 }
 
-bool datafield::operator!=(const datafield &d)
+bool datafield::operator!=(const char *right) const
 {
-	return(strcmp(this->data, d.data) != 0);
+	return !(*this == right);
 }
 
-/*
- * let a single space be equilivent to all spaces
- */
-bool datafield::operator!=(const char *s)
+bool datafield::operator!=(int right) const
 {
-	if (!s)
-		return(true);
-	if (strcmp(s, " "))
-		return(strcmp(this->data, s) != 0);
-	char tmp[this->length+1];
-	memset(tmp, ' ', this->length);
-	*(tmp+this->length) = '\0';
-	return(strcmp(s, tmp) != 0);
+	return !(*this == right);
 }
 
-bool datafield::operator!=(int i)
+bool datafield::operator!=(float right) const
 {
-	return(atoi(this->data) != i);
+	return !(*this == right);
 }
 
-bool datafield::operator!=(float f)
+const char *strcpy(datafield& destination, const char *source)
 {
-	return(atof(this->data) != f);
+	destination = source;
+	return destination.getptr();
 }
 
-
-const char *strcpy(datafield& d, const char *s)
+char *strcpy(char *destination, datafield& source)
 {
-	d = s;
-	return(d.getptr());
+	return ::strcpy(destination, source.getptr());
 }
 
-char *strcpy(char *s, datafield& d)
+char *strncpy(char *destination, datafield& source, int length)
 {
-	return(strcpy(s, d.getptr()));
+	return ::strncpy(destination, source.getptr(), (size_t)length);
 }
 
-char *strncpy(char *s, datafield& d, int i)
+const char *Dataman::strncpy(datafield& destination, const char *source,
+		int length)
 {
-	return(strncpy(s, d.getptr(), i));
+	if (!source || length <= 0)
+		return destination.getptr();
+	if (destination.type == type_blob)
+		throw makeError(EBLOBTYP, "strncpy to blob field");
+
+	int copy_length = length < destination.length ? length : destination.length;
+	int source_length = (int)std::strlen(source);
+	if (copy_length > source_length)
+		copy_length = source_length;
+	if (copy_length > 0)
+		std::memcpy(destination.data, source, (size_t)copy_length);
+	if (destination.data)
+		destination.data[destination.length] = '\0';
+	destination.mark_dirty();
+	return destination.getptr();
 }
 
-const char *Dataman::strncpy(datafield& d, const char *s, int i)
+char *strcat(char *destination, datafield& source)
 {
-	if (s) {
-		if (i > d.datalen())
-			i = d.datalen();
-		if (strlen(s) < i)
-			i = strlen(s);
-		::strncpy(d.data, s, i);
-		if (d.get_which() == MASTER)
-			masterRecord.setdirty(true);
-		else
-			workRecord.setdirty(true);
-	}
-	return(d.getptr());
+	return ::strcat(destination, source.getptr());
 }
 
-char *strcat(char *s, datafield& d)
+char *strncat(char *destination, datafield& source, int length)
 {
-	return(strcat(s, d.getptr()));
+	return ::strncat(destination, source.getptr(), (size_t)length);
 }
 
-char *strncat(char *s, datafield&d, int i)
+int atoi(datafield& source)
 {
-	return(strncat(s, d.getptr(), i));
+	return std::atoi(source.getptr());
 }
 
-int atoi(datafield& d)
+const void *Dataman::memcpy(datafield& destination, const char *source,
+		int length)
 {
-	return(atoi(d.getptr()));
-}
-
-const void *Dataman::memcpy (datafield& d, const char *s, int i)
-{
-	if (s) {
-		if (i > d.datalen())
-			i = d.datalen();
-		::memcpy(d.data, s, i);
-		if (d.get_which() == MASTER)
-			masterRecord.setdirty(true);
-		else
-			workRecord.setdirty(true);
-	}
-	return((const void *)d.getptr());
+	if (!source || length <= 0)
+		return destination.getptr();
+	int copy_length = length < destination.length ? length : destination.length;
+	if (copy_length > 0)
+		std::memcpy(destination.data, source, (size_t)copy_length);
+	if (destination.type != type_blob && destination.data)
+		destination.data[destination.length] = '\0';
+	destination.mark_dirty();
+	return destination.getptr();
 }
 
 /*

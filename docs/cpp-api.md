@@ -36,6 +36,40 @@ The binding preserves the previous current key until a new server reply has
 been completely validated and constructed. Communication failure is expressed
 as an exception; callers should not expect a usable response buffer on failure.
 
+## Data fields
+
+`Dataman::datafield` represents either a fixed-width field belonging to a
+database record or a standalone value produced by an expression. Assignment to
+a record field preserves its defined width: short values are padded with spaces
+and long values are truncated. Assignment to a standalone field resizes it to
+hold the new value. Only assignment to a record-owned field marks that record
+dirty; copies and arithmetic results are standalone values.
+
+Non-blob record fields remain character fields even when assigned a numeric
+value. This makes the behavior of `+` depend on the operands rather than the
+assignment history:
+
+```cpp
+datafield ten("10");
+datafield twenty("20");
+
+datafield text = ten + twenty; // "1020": string plus string
+datafield sum = ten + 20;      // 30: numeric string plus integer
+datafield mixed = datafield("part") + 20; // "part20"
+```
+
+Two string fields always concatenate. When one operand is explicitly numeric,
+a numeric string participates in addition; a nonnumeric string concatenates
+with the formatted numeric value. Multiplication and division are always
+numeric operations. They accept complete numeric strings with surrounding
+whitespace, but reject partially numeric or nonnumeric strings by throwing
+`datamanError`. Division by zero also throws `datamanError`.
+
+Blob fields support binary data, including embedded null bytes and zero-length
+values. Text and arithmetic operations on blobs are rejected. Use `put_blob()`
+when the source is a pointer and explicit byte count; copying one blob
+`datafield` to another preserves its length and bytes.
+
 See [`clientlib/c++/index.hpp`](../clientlib/c++/index.hpp) and
 [`clientlib/c++/datamanError.hpp`](../clientlib/c++/datamanError.hpp) for the
 current declarations.

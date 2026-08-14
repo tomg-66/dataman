@@ -39,11 +39,10 @@
  */
 
 #include <endSort.hpp>
+#include "datamanError.hpp"
 
 #include "../../server/datafile_header.h"
 #include "../../server/errors.h"
-
-extern void db_err(int, const char *, ...);
 
 using namespace Dataman;
 

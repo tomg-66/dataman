@@ -72,8 +72,11 @@ using Dataman::masterRecord;
 #define KEY				cur_index->get_key()		// last accesed key
 #define MFMT			masterRecord.getfmt()			// master file format number
 #define WFMT			workRecord.getfmt()		// work file format number
-#define FILE			cur_index->_fname		// last accessed file name
 #define INDEX			cur_index->get_ixname()		// name of last accessed index
+#define CURRENT_FILE	Dataman::current_file()
+#if defined DATAMAN_ENABLE_LEGACY_FILE_MACRO
+#define FILE			CURRENT_FILE		// last accessed file name
+#endif
 
 #define when_masterFormat(x)	if (masterRecord.getfmt() == x)	// master file format test
 #define when_workFormat(x)		if (workRecord.getfmt() == x)	// work file format test

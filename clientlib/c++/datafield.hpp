@@ -109,7 +109,7 @@ class datafield {
 //the data pointer
 //
 		inline operator const char *() const {
-			return(data);
+			return getptr();
 		};
 
 //

@@ -116,6 +116,7 @@ int index::restore()
 	ptr += this->_keylen + KEY_HEADER_LENGTH;
 
 	masterRecord.chan = this->_curkey.get_fno() - 1;
+	this->_fno = masterRecord.chan;
 	this->_rptr = this->_savptr->_savrec;
 	masterRecord.cur = this->_rptr;
 	masterRecord._filedesc = this->_files[masterRecord.chan].get_desc();
@@ -124,8 +125,8 @@ int index::restore()
 	free(this->_savptr);
 	this->_savptr = NULL;
 
+	masterRecord.in_rec(ptr, this);
 	cur_index = this;
-	masterRecord.in_rec(ptr);
 
 	return(TRUE);
 }

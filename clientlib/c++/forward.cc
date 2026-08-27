@@ -86,7 +86,7 @@ int index::forward()
 		return FALSE;
 	}
 
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0) {
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles || this->_rptr < 0) {
 		db_err(0, "%s: memory corruption detected in forward", _progname);
 		return FALSE;
 	}
@@ -96,6 +96,7 @@ int index::forward()
 	std::unique_ptr<char []> buff(comm.db_send(cmd, strlen(cmd)));
 
 	i = atoi(buff.get());
+	if (i < 0)
 		throw makeError(i, "%s: error in forward", _progname);
 	if (i == 0)
 		return(FALSE);					/* no next record in this file */
@@ -106,14 +107,37 @@ int index::forward()
 	fmt = atoi(cptr);
 	cptr = strchr(cptr, '|') + 1;
 
+	datarecord tmpRec(MASTER);
+
+	tmpRec._filedesc = this->_files[this->_fno].get_desc();
+	tmpRec.chan = this->_fno;
+	tmpRec.cur = curr;
+	tmpRec.head = this->_files[this->_fno].get_hlen();
+	tmpRec.len = i;
+	tmpRec.fmt = fmt;
+
+	if (!tmpRec.in_rec(cptr, this)) {
+		return FALSE;
+	}
+
+/*
+ * we do this inside this block so that the oldFields destructor
+ * cleans up for us when it goes out of scope
+ */
+	{
+		datafield *oldFields = masterRecord._fields;
+		masterRecord.cur = curr;
+		masterRecord.chan = this->_fno;
+		masterRecord._filedesc = this->_files[this->_fno].get_desc();
+		masterRecord.head = this->_files[this->_fno].get_hlen();
+		masterRecord.len = i;
+		masterRecord.fmt = fmt;
+		masterRecord._fields = tmpRec._fields;
+		tmpRec._fields = oldFields;
+	}
+
 	this->_rptr = curr;
-	masterRecord.cur = curr;
 	cur_index = this;
-	masterRecord._filedesc = this->_files[this->_fno].get_desc();
-	masterRecord.head = this->_files[this->_fno].get_hlen();
-	masterRecord.len = i;
-	masterRecord.fmt = fmt;
-	masterRecord.in_rec(cptr);
 
 	return(TRUE);						/* give the ok signal */
 }

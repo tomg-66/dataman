@@ -67,6 +67,9 @@ using Dataman::workRecord;
 #define NUMERIC		3		/* accept numeric only input */
 #define NOECHO		04		/* bit mask to suppress echo on accept */
 #define ENDLIST		-1		/* end of argument list flag */
+
+#define WFMT				workRecord.getfmt()		// work file format number
+
 #define release				if (workRecord.release()) ;			/* def for release */
 #define when_workFormat(x)	if (workRecord.getfmt() == x)
 #define when_workFile		if (workRecord.getfile())			/* test _file switch */

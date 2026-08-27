@@ -68,6 +68,10 @@ static void addition_tests()
 	datafield decimal("10.5");
 	datafield sum = decimal + 2;
 	assert(std::fabs(std::atof(sum.getptr()) - 12.5) < 0.0001);
+
+	datafield blank("    ");
+	expect_text(blank + 5, "5");
+	expect_text(blank + datafield("5"), "5");
 }
 
 static void arithmetic_tests()
@@ -77,6 +81,11 @@ static void arithmetic_tests()
 
 	datafield quotient = datafield("7.5") / 2;
 	assert(std::fabs(std::atof(quotient.getptr()) - 3.75) < 0.0001);
+
+	datafield blank("    ");
+	expect_text(blank * 5, "0");
+	expect_text(blank / 5, "0");
+	expect_text(datafield("") / 5, "0");
 
 	bool threw = false;
 	try {
@@ -89,6 +98,24 @@ static void arithmetic_tests()
 	threw = false;
 	try {
 		(void)(datafield("4") / 0);
+	} catch (const datamanError&) {
+		threw = true;
+	}
+	assert(threw);
+
+	threw = false;
+	try {
+		datafield five;
+		five = 5;
+		(void)(five / blank);
+	} catch (const datamanError&) {
+		threw = true;
+	}
+	assert(threw);
+
+	threw = false;
+	try {
+		(void)(datafield("12x") * 2);
 	} catch (const datamanError&) {
 		threw = true;
 	}

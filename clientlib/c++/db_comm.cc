@@ -191,6 +191,7 @@ int db_comm::db_connect(const char *host)
 	if (setsockopt(sock, SOL_TCP, TCP_NODELAY, (char *)&i, sizeof(int)) < 0) {
 		fprintf(stderr, "Can't set socket option in db_connect\n");
 		perror("");
+		close(sock);
 		return(ESOCKOPT);
 	}
 	if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -201,8 +202,10 @@ int db_comm::db_connect(const char *host)
 // we have made a connection.  send them a magic string so that the
 // server knows that we are to be trusted.  (christy's birthday)
 //
-	if (write(sock, "9-30-1966", 9) != 9)
+	if (write(sock, "9-30-1966", 9) != 9) {
+		close(sock);
 		return(ENORESP);
+	}
 /*
  * wait for a response
  */
@@ -218,6 +221,7 @@ int db_comm::db_connect(const char *host)
 				continue;			/* interrupted - reaped child? */
 			} else {
 				db_err(0, "%s, Can't accept new connection: ", _progname);
+				close(sock);
 				return ENORESP;
 			}
 		}
@@ -225,16 +229,21 @@ int db_comm::db_connect(const char *host)
 	}
 	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0 || i > 7) {
 		db_err(0, "%s: ioctl failed, socket gone", _progname);
+		close(sock);			// make sure it's really gone
 		return ENORESP;
 	}
 
-	if (read(sock, resp, i) != i)
+	if (read(sock, resp, i) != i) {
+		close(sock);
 		return(ENORESP);
+	}
 /*
  * return the response
  */
-	if (strcmp(resp, "ok"))
-		sock = atoi(resp);
+	if (strcmp(resp, "ok")) {
+		close(sock);
+		return atoi(resp);
+	}
 	return(sock);
 }
 
@@ -244,6 +253,10 @@ int db_comm::db_connect(const char *host)
 char *db_comm::db_send(char *cmd, int len)
 {
 	int32_t size;
+	if (len < 1) {
+		errno = EINVAL;
+		throw makeError(0, "%s: invalid argument to db_send", _progname);
+	}
 /*
  * the reason I chose to do two writes is that it would take much less
  * time and effort than to allocate a new buffer len+4 bytes long, copy

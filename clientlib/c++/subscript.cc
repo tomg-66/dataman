@@ -48,8 +48,12 @@ using namespace Dataman;
 
 datafield& datarecord::operator[](int i)
 {
+	if (!_filedesc || !_filedesc->record_desc)
+		throw makeError(ESUBSCR, "%s: has no file description", _progname);
+	if (fmt < 1 || fmt > _filedesc->n_rformats || !_fields)
+		throw makeError(ESUBSCR, "%s: has no valid current record", _progname);
 	if (i < 1 || i > _filedesc->record_desc[fmt-1].n_fields) {
-		db_err(ESUBSCR, "%s: subscript %i is out of bounds "
+		throw makeError(ESUBSCR, "%s: subscript %i is out of bounds "
 				"for file %s (min: 1 max %d)", _progname, i,
 				cur_index->get_files()[cur_index->get_fno()].get_fname(),
 				_filedesc->record_desc[fmt-1].n_fields);

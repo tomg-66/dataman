@@ -73,11 +73,20 @@ class files {
 			_desc = NULL;
 			_fno = -1;
 		}
+		files(const files&) = delete;
+		files& operator=(const files&) = delete;
+		files(files&&) = delete;
+		files& operator=(files&&) = delete;
 		~files() {
 			if (_fname)
 				delete[] _fname;
-			if (_desc)
+			if (_desc) {
+				for (int i = 0; i < _desc->n_rformats; i++) {
+					free(_desc->record_desc[i].field_sizes);
+				}
+				free(_desc->record_desc);
 				free(_desc);
+			}
 		}
 		void set_fno(int n) { _fno = n; }
 		int get_fno() { return(_fno); }
@@ -111,6 +120,10 @@ class index {
 	public:
 		index();						// this is used in mkidx...
 		index(char *name, int mode);	// open an index
+		index(const index&) = delete;
+		index& operator=(const index&) = delete;
+		index(index&&) = delete;
+		index& operator=(index&&) = delete;
 		~index();						// close and index
 
 //

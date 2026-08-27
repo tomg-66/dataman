@@ -32,6 +32,12 @@ unwinding.
 record protection, delete/remove, position save/restore, insert, include, and
 explicit close. `get_key()` returns the current key.
 
+When `dataman.hpp` is included, `KEY` names the current `key` object and
+`KEY_STR` returns only its visible, null-terminated key text. The qualified
+binary key used by navigation also contains the file number and record pointer;
+access it explicitly with `KEY.get_data()` and use the index key length plus the
+qualified-key header length rather than treating it as a C string.
+
 The binding preserves the previous current key until a new server reply has
 been completely validated and constructed. Communication failure is expressed
 as an exception; callers should not expect a usable response buffer on failure.
@@ -64,6 +70,12 @@ with the formatted numeric value. Multiplication and division are always
 numeric operations. They accept complete numeric strings with surrounding
 whitespace, but reject partially numeric or nonnumeric strings by throwing
 `datamanError`. Division by zero also throws `datamanError`.
+
+An empty or whitespace-only field is numeric zero when an operation requires a
+number. Thus a blank field multiplied or divided by a nonzero number produces
+zero, while using a blank field as a divisor raises the normal division-by-zero
+exception. Two character fields still concatenate with `+`; this rule does not
+turn string-to-string addition into arithmetic.
 
 Blob fields support binary data, including embedded null bytes and zero-length
 values. Text and arithmetic operations on blobs are rejected. Use `put_blob()`

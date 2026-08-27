@@ -7,6 +7,7 @@
  */
 
 #include <cerrno>
+#include <cctype>
 #include <climits>
 #include <cmath>
 #include <cstdio>
@@ -45,6 +46,15 @@ static bool parse_number(const char *text, number& result)
 {
 	if (!text)
 		return false;
+
+	const char *first = text;
+	while (*first && std::isspace((unsigned char)*first))
+		++first;
+	if (*first == '\0') {
+		result.value = 0.0;
+		result.integral = true;
+		return true;
+	}
 
 	char *end;
 	errno = 0;

@@ -62,7 +62,7 @@ void index::save()
 	if (this->_curkey.get_len() == 0)
 		throw makeError(ENOGET, "%s: error in save", _progname);
 
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles)
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles)
 		throw makeError(0, "%s: memory corruption detected in save", _progname);
 
 

@@ -91,7 +91,7 @@ int index::insert(int fmt, int mode)
 		db_err(0, "%s: memory corruption detected in insert", _progname);
 		return FALSE;
 	}
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles) {
 		db_err(0, "%s: memory corruption detected in insert", _progname);
 		return FALSE;
 	}
@@ -120,12 +120,12 @@ int index::insert(int fmt, int mode)
 	ptr = new char[masterRecord.len+1];
 	memset(ptr, ' ', masterRecord.len);
 	*(ptr+masterRecord.len) = '\0';
-    cur_index = this;				/* save the new current index */
 
-    if (!masterRecord.in_rec(ptr)) {				/* read in the empty record */
+    if (!masterRecord.in_rec(ptr, this)) {				/* read in the empty record */
 		return FALSE;
 	}
 
+    cur_index = this;				/* save the new current index */
 	delete[] ptr;
 	return TRUE;
 }

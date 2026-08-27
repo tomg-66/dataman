@@ -74,6 +74,8 @@ class datarecord {
 		FILEDESC 	*_filedesc;	// a parsed out file description
 		datafield 	*_fields;	// an array of datafields
 
+		void clear_desc();
+
 	public:
 		datarecord(int t) {
 			head = longest = 0;
@@ -85,20 +87,24 @@ class datarecord {
 			_filedesc = (FILEDESC *)NULL;
 			_fields = NULL;
 		}
+		datarecord(const datarecord&) = delete;
+		datarecord& operator=(const datarecord&) = delete;
+		datarecord(datarecord&&) = delete;
+		datarecord& operator=(datarecord&&) = delete;
 		void init(void) {
+			if (_fields) {
+				delete[] _fields;
+				_fields = NULL;
+			}
+			clear_desc();
 			head = longest = 0;
 			cur = prev = next = 0ll;
 			chan = len = 0;
 			fmt = _file = 0;
 			_dirty = false;
-			_filedesc = (FILEDESC *)NULL;
-			if (_fields) {
-				delete[] _fields;
-				_fields = NULL;
-			}
 		}
 
-		~datarecord() { if (this->_fields) delete[] _fields; }
+		~datarecord();
 
 		datafield& operator[](int i);
 
@@ -107,7 +113,7 @@ class datarecord {
 		friend int commit(void); 
 
 		void out_rec();
-		int in_rec(char *);
+		int in_rec(char *, index *operatingIndex = NULL);
 
 		int getwhich() { return(this->which); }
 //		int gethead() { return(this->head); }

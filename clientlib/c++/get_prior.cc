@@ -79,7 +79,7 @@ int index::get_prior()
 		return FALSE;
 	}
 
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles) {
 		db_err(0, "%s: memory corruption detected in get_prior", _progname);
 		return FALSE;
 	}

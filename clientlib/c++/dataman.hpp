@@ -69,7 +69,8 @@ using Dataman::masterRecord;
 
 #define itoa(val,buf)					sprintf(buf, "%d", val)
 
-#define KEY				cur_index->get_key()		// last accesed key
+#define KEY				cur_index->get_key()		// last accessed key object
+#define KEY_STR			cur_index->get_key().get_kstr()	// visible key text
 #define MFMT			masterRecord.getfmt()			// master file format number
 #define WFMT			workRecord.getfmt()		// work file format number
 #define INDEX			cur_index->get_ixname()		// name of last accessed index

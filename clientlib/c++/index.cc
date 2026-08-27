@@ -207,14 +207,16 @@ void index::_unwind()
 		}
 	}
 
+	if (cur_index == this) {
+		masterRecord.init();
+		cur_index = NULL;
+	}
+
 	if (_files)
 		delete[] _files;
 
 	if (_savptr)
 		free(_savptr);
-
-	if (cur_index == this)
-		cur_index = NULL;
 
 	_idxname = NULL;
 	_files = NULL;

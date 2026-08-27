@@ -81,12 +81,8 @@ int datarecord::release(void)
 
 	db_comm comm;
 
-	FILEDESC *fdesc;		// the parsed file description
-	RFDESC *rfdesc;
-
 	if (this->getwhich() != WORK) {
-		db_err(ENOTWORK, "%s: Error in release", _progname);
-		return FALSE;
+		throw makeError(ENOTWORK, "%s: Error in release", _progname);
 	}
 
     this->_file = 0;
@@ -97,16 +93,9 @@ int datarecord::release(void)
 			return (FALSE);
 		}
 //
-//ok, we need to free up the old description before in_rec allocates
-//us a new one
+// clear the old description before in_rec allocates the new file's schema
 //
-		fdesc = this->_filedesc;
-		rfdesc = fdesc->record_desc;
-		for (tmp = 0;tmp < fdesc->n_rformats; tmp++)
-			free((rfdesc+tmp)->field_sizes);
-		free(rfdesc);
-		free(fdesc);
-		this->_filedesc = NULL;
+		clear_desc();
 
 		sprintf(cmd, "%d|%d|0|%s/files/%s|", RELEASE, this->chan, _root,
 						_fnames[_fileno]);

@@ -60,6 +60,7 @@
 #include "index.h"
 #include "globs.h"
 #include "m_params.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "proto.h"					/* need for definition of type key */
@@ -71,8 +72,9 @@
 extern INDEX *findex(char *);
 extern char *substr(char *, int, int);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern void db_err(int, char *, ...);
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern int out_rec(int);
 extern int64_t get_ll(char *);
 
@@ -84,6 +86,7 @@ int db_g_key(char *idx, key key_val)
 	char *buff;
 	char *cptr;
 	char *tmp_key;
+	size_t response_len;
 
 	INDEX *index;
 
@@ -95,7 +98,7 @@ int db_g_key(char *idx, key key_val)
 	}
 
     if ((index = findex(idx)) == NULL) {					/* find the index number */
-		db_err(EIDXNOO, "%s: %s: index named %d is not open", _progname, __func__, idx);
+		db_err(EIDXNOO, "%s: %s: index named %s is not open", _progname, __func__, idx);
 		return FALSE;
 	}
 /*
@@ -104,7 +107,7 @@ int db_g_key(char *idx, key key_val)
  * get_current function is better suited to that.
  */
     if (*(key_val+index->_keylen) != 0) {
-		i = sprintf(cmd, "%d|%d|%" PRId64 "|%" PRId64 "|%d|", GET_CURRENT, index->_idxno,
+		i = sprintf(cmd, "%d|%d|%" PRIu64 "|%" PRIu64 "|%d|", GET_CURRENT, index->_idxno,
 						index->_generation, index->_curnode, index->_offs);
 		memcpy(cmd+i, key_val, index->_keylen+KEY_HEADER_LENGTH);
 		i += index->_keylen+KEY_HEADER_LENGTH;
@@ -114,7 +117,7 @@ int db_g_key(char *idx, key key_val)
 /*
  * send the command and deal with the return.
  */
-	buff = db_send(cmd, i, __FILE__);
+	buff = db_send_len(cmd, i, __FILE__, &response_len);
 
 	if (!buff)
 		return FALSE;
@@ -133,41 +136,65 @@ int db_g_key(char *idx, key key_val)
  * parse the return and update the globals
    "%d|%d|%"PRIu64"|%"PRIu64"|%u|", len, ret, generation, node_offset, entry_index);
  */
-	cptr = strchr(buff, '|') + 1;
-	m_fmt = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
-	index->_generation = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	index->_curnode = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	index->_offs = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
+	int tmp_fmt;
+	int tmp_offs;
+	int tmp_chan;
+	uint64_t tmp_generation;
+	uint64_t tmp_curnode;
+
+	cptr = buff;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_fmt = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_generation = strtoull(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_curnode = strtoull(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_offs = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 
 	tmp_key = substr(cptr, 0, index->_keylen+KEY_HEADER_LENGTH);
 	if (!tmp_key) {
 		free(buff);
 		return FALSE;
 	}
-	if (index->_curkey)
-		free(index->_curkey);
-	index->_curkey = tmp_key;
-
-	index->_fno = *(index->_curkey+index->_keylen) - 1;
+	tmp_chan = *(tmp_key+index->_keylen) - 1;
 	cptr += index->_keylen + KEY_HEADER_LENGTH;
-
-	m_chan = *(index->_curkey+index->_keylen) - 1;
-	index->_rptr = m_cur = get_ll(index->_curkey+index->_keylen+1);
-	m_fdesc = index->_files[m_chan]._filedesc;
-	m_head = index->_files[m_chan]._hlen;
-	cur_index = *index;
-	if (!in_rec(MASTER, cptr)) {
+	if ((size_t)(cptr-buff) > response_len ||
+			!in_rec(MASTER, cptr, response_len-(size_t)(cptr-buff),
+				index, tmp_fmt, tmp_chan)) {
 		db_err(EINREC, "%s: Error reading master record", _progname);
 		free(buff);
+		free(tmp_key);
 		return FALSE;
 	}
 	free(buff);
 
+	m_fmt = tmp_fmt;
+	index->_generation = tmp_generation;
+	index->_curnode = tmp_curnode;
+	index->_offs = tmp_offs;
+	if (index->_curkey)
+		free(index->_curkey);
+	index->_curkey = tmp_key;
+	index->_fno = tmp_chan;
+	m_chan = tmp_chan;
+	index->_rptr = m_cur = get_ll(index->_curkey+index->_keylen+1);
+	m_fdesc = index->_files[m_chan]._filedesc;
+	m_head = index->_files[m_chan]._hlen;
+	cur_index = *index;
+
 	return(TRUE);
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid GET response", _progname);
+	free(buff);
+	return FALSE;
 }
 
 /*

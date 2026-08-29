@@ -62,18 +62,18 @@ class key {
 //define the constructors and destructor
 		key();
 		key(const char *s, int i = 0);
-		key(key &k);
+		key(const key &k);
 		~key();
 //now a couple of operators that we want to use
 		void operator=(const char *s);
 		void operator=(const key& k);
 		inline operator const char *() const { return(key_str); }
 //and finally, a few access methods
-		int get_len() { return(this->_len); }
-		int get_fno() { return((int)this->_fno); }
-		int64_t get_rec() { return(this->_rec); }
-		const char *get_data() { return(this->data); }
-		const char *get_kstr() { return(this->key_str); }
+		int get_len() const { return(this->_len); }
+		int get_fno() const { return((int)this->_fno); }
+		int64_t get_rec() const { return(this->_rec); }
+		const char *get_data() const { return(this->data); }
+		const char *get_kstr() const { return(this->key_str); }
 
 };
 

@@ -162,7 +162,8 @@ int index::_mkidx(int argc, char *argv[])
 						useage(argv[0]);
 						return FALSE;
 					}
-					strcpy(host, argv[++i]);
+					::strncpy(host, argv[++i], sizeof(host)-1);
+					host[sizeof(host)-1] = '\0';
 					j = strlen(argv[i]) + 1;
 					break;
 				case 'r':
@@ -234,7 +235,8 @@ int index::_mkidx(int argc, char *argv[])
 		if (ptr == NULL)
 			strcpy(host, "localhost");
 		else
-			strcpy(host, ptr);
+			::strncpy(host, ptr, sizeof(host)-1);
+			host[sizeof(host)-1] = '\0';
 	}
 /*
  * put together the command for the server.

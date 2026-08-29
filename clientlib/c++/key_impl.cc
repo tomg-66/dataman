@@ -65,8 +65,10 @@ key::key() {
 // come from the server in a string array
 //
 key::key(const char *s, int i) {
-	if (i == 0)
+	if (i <= 0)
 		i = strlen(s);
+	if (i > MAX_KEY_SIZE)
+		i = MAX_KEY_SIZE;
 	this->_len = i;
 	memset(this->data, '\0', sizeof(data));
 	memset(this->key_str, '\0', sizeof(key_str));
@@ -84,7 +86,7 @@ key::key(const char *s, int i) {
 //
 // construct from another key.
 //
-key::key(key &k) {
+key::key(const key &k) {
    	this->_len = k._len;
 	::memcpy(this->key_str, k.key_str, sizeof(key_str));
 	::memcpy(this->data, k.data, sizeof(data));
@@ -100,11 +102,14 @@ key::~key() {}
 // keys, like those that come directly from the server.
 //
 void key::operator=(const char *s) {
+	int keySize = strlen(s);
+	if (keySize > MAX_KEY_SIZE)
+		keySize = MAX_KEY_SIZE;
 	memset(this->key_str, '\0', sizeof(key_str));
 	memset(this->data, '\0', sizeof(data));
-	strcpy(this->key_str, s);
-	::memcpy(this->data, s, strlen(s));
-	this->_len = 0;
+	::memcpy(this->key_str, s, keySize);
+	::memcpy(this->data, s, keySize);
+	this->_len = keySize;
 	_rec = 0;
 	_fno = 0;
 }

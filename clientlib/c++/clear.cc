@@ -77,7 +77,7 @@ int index::clear()
 		masterRecord.out_rec();
 
 	db_comm comm;
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0) {
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles || this->_rptr < 0) {
 		return FALSE;
 	}
 	sprintf(cmd, "%d|%d|%d|%" PRId64 "|", CLEAR, this->_idxno, this->_fno, this->_rptr);

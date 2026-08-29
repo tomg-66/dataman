@@ -55,8 +55,11 @@ using Dataman::_fnames;
 using Dataman::_fileno;
 using Dataman::workRecord;
 
-#define FILE 		_fnames[_fileno]	/* current file name */
-#define WFMT		workfile.getfmt()	/* format number */
+#define CURRENT_FILE	Dataman::current_file()
+#if defined DATAMAN_ENABLE_LEGACY_FILE_MACRO
+#define FILE		CURRENT_FILE
+#endif
+#define WORK_FORMAT		workRecord.getfmt()	/* format number */
 
 #define	ANY			0		/* accept any input */
 #define	LOWER		1		/* translate input to lower case */
@@ -64,9 +67,12 @@ using Dataman::workRecord;
 #define NUMERIC		3		/* accept numeric only input */
 #define NOECHO		04		/* bit mask to suppress echo on accept */
 #define ENDLIST		-1		/* end of argument list flag */
-#define release			if (workfile.release()) ;	/* def for release */
-#define when_wfmt(x)	if (WFMT == x)
-#define when_file		if (workfile.getfile())			/* test _file switch */
+
+#define WFMT				workRecord.getfmt()		// work file format number
+
+#define release				if (workRecord.release()) ;			/* def for release */
+#define when_workFormat(x)	if (workRecord.getfmt() == x)
+#define when_workFile		if (workRecord.getfile())			/* test _file switch */
 
 #endif
 

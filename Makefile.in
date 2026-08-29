@@ -403,6 +403,7 @@ TEST_DIST = \
 	tests/README.md \
 	tests/fixtures/one_rec.i \
 	tests/fixtures/one_rec.t \
+	tests/cpp/datafield_test.cc \
 	tests/java/BuildOneRecordIndex.java \
 	tests/java/OneRecordIntegrationTest.java \
 	tests/run_java_tests.sh \

@@ -23,7 +23,8 @@
  */
 
 #include <arpa/inet.h>		/* for def of ntohl */
-unsigned long get_long(char *ptr)
+#include <string.h>
+uint32_t get_long(char *ptr)
 {
 /*
     char ret[4];
@@ -34,7 +35,9 @@ unsigned long get_long(char *ptr)
     *(ret+3) = *ptr;
     return(*((unsigned long*)ret));
 */
-	return(ntohl(*(unsigned long *)ptr));
+	uint32_t tmp;
+	memcpy((void *)&tmp, ptr, sizeof(uint32_t));
+	return(ntohl(tmp));
 }
 
 /*

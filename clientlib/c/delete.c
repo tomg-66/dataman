@@ -59,14 +59,16 @@
 #include "index.h"
 #include "m_params.h"
 #include "globs.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
 
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern int out_rec(int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern void db_err(int, char *, ...);
 
 extern int in_xact;
@@ -84,6 +86,7 @@ int db_delete(char *idx_name)
 	char cmd[128];				/* command to send */
     char *buff;					/* output buffer */
 	char *ptr;
+	size_t response_len;
 
 	if (dbgsw) {
 		fprintf(stderr, "entered delete\n");
@@ -107,7 +110,7 @@ int db_delete(char *idx_name)
 
 	sprintf(cmd, "%d|%d|%d|%"PRId64"|%d|", DELETE, idx->_idxno,
 					idx->_fno, idx->_rptr,in_xact);
-	buff = db_send(cmd, strlen(cmd), __FILE__);
+	buff = db_send_len(cmd, strlen(cmd), __FILE__, &response_len);
 
 	if (!buff)
 		return FALSE;
@@ -125,26 +128,46 @@ int db_delete(char *idx_name)
 		return FALSE;
 	}
 
-	ptr = strchr(buff, '|') + 1;
-	idx->_rptr = m_cur = strtoll(ptr, NULL, 0);
-	ptr = strchr(ptr, '|') + 1;
-	m_fmt = atoi(ptr);
-	ptr = strchr(ptr, '|') + 1;
-	m_chan = idx->_fno;
-	m_fdesc = idx->_files[m_chan]._filedesc;
-	m_head = idx->_files[m_chan]._hlen;	
-	cur_index = *idx;
+	uint64_t tmp_rptr;
+	int tmp_fmt;
+
+	ptr = buff;
+	if (!dm_next_field(&ptr))
+		goto invalid_response;
+	tmp_rptr = strtoll(ptr, NULL, 0);
+	if (!dm_next_field(&ptr))
+		goto invalid_response;
+	tmp_fmt = atoi(ptr);
+	if (!dm_next_field(&ptr))
+		goto invalid_response;
+
 	if (dbgsw) {
 		fprintf(stderr, "m_fmt = %d, m_cur = %"PRId64"\n", m_fmt, m_cur);
 		fflush(stderr);
 	}
-	if (!in_rec(MASTER, ptr)) {
+
+	if ((size_t)(ptr-buff) > response_len ||
+			!in_rec(MASTER, ptr, response_len-(size_t)(ptr-buff),
+				idx, tmp_fmt, idx->_fno)) {
 		db_err(EINREC, "In %s: Error in out_rec", _progname);
 		free(buff);
 		return FALSE;
 	}
 	free(buff);
+
+	idx->_rptr = m_cur = tmp_rptr;
+	m_fmt = tmp_fmt;
+	m_chan = idx->_fno;
+	m_fdesc = idx->_files[m_chan]._filedesc;
+	m_head = idx->_files[m_chan]._hlen;
+	cur_index = *idx;
+
 	return TRUE;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid DELETE response", _progname);
+	free(buff);
+	return FALSE;
 }
 
 /*

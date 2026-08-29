@@ -76,7 +76,25 @@ extern unsigned long get_long(char *);
 
 using namespace Dataman;
 
-int datarecord::in_rec(char *buff)
+void datarecord::clear_desc()
+{
+	if (which == WORK && _filedesc) {
+		for (int i = 0; i < _filedesc->n_rformats; i++)
+			free(_filedesc->record_desc[i].field_sizes);
+		free(_filedesc->record_desc);
+		free(_filedesc);
+	}
+	_filedesc = NULL;
+}
+
+datarecord::~datarecord()
+{
+	if (_fields)
+		delete[] _fields;
+	clear_desc();
+}
+
+int datarecord::in_rec(char *buff, index *operatingIndex)
 {
 	int idx,i,j;			// misc usage
 
@@ -103,10 +121,13 @@ int datarecord::in_rec(char *buff)
 // do we need to now manually retrieve the file description?
 //
 	if ((fdesc = this->get_desc()) == NULL) {
-		if (this->getwhich() == MASTER)
-			sprintf(string, "%d|%d|%d|", GET_DESC, cur_index->get_idxno(),
-							this->getchan());
-		else
+		if (this->getwhich() == MASTER) {
+			if (!operatingIndex || this->getchan() < 0 ||
+					this->getchan() >= operatingIndex->get_nfiles())
+				throw makeError(EINVMSG, "%s: invalid master record file number", _progname);
+			sprintf(string, "%d|%d|%d|", GET_DESC, operatingIndex->get_idxno(),
+						this->getchan());
+		} else
 			sprintf(string, "%d|%d|", GET_DESC, -(this->getchan()));
 
 		std::unique_ptr<char[]> ret(comm.db_send(string, strlen(string)));
@@ -129,7 +150,7 @@ int datarecord::in_rec(char *buff)
 //master files need a bit more information saved than the work file
 //
 		if (this->getwhich() == MASTER) {
-			cur_file = cur_index->get_files() + cur_index->get_fno();
+			cur_file = operatingIndex->get_files() + this->getchan();
 			cur_file->set_hlen(len);
 			this->head = len;
 			fdesc = (FILEDESC *)calloc(1, sizeof(FILEDESC));
@@ -173,8 +194,8 @@ int datarecord::in_rec(char *buff)
 			fields[i+1].make_field(buff+j, rfdesc->field_sizes[i], this->which);
 		} else {
 			b_len = get_long(buff+offs);
-			offs += sizeof(long);
-			fields[i+1].make_field(buff+offs, -((int)b_len), this->which);
+			offs += sizeof(uint32_t);
+			fields[i+1].make_blob_field(buff+offs, (int)b_len, this->which);
 			offs += b_len;
 		}
 		j += rfdesc->field_sizes[i];
@@ -208,7 +229,7 @@ void datarecord::out_rec()
 	int chan,
 		val;
 
-	long b_size;
+	int32_t b_size;
 
 	RFDESC *rfdesc;
 
@@ -241,11 +262,11 @@ void datarecord::out_rec()
 	}
 
 	rfdesc = (this->get_desc())->record_desc+this->getfmt()-1;
-	b_size = (long)rfdesc->rf_len;
+	b_size = (int32_t)rfdesc->rf_len;
 
 	for (i = 0, tmp = 0; tmp < rfdesc->has_blob; i++) {
 		if (this->_fields[i].get_type() == type_blob) {
-			b_size += this->_fields[i].datalen() + sizeof(long);
+			b_size += this->_fields[i].datalen() + sizeof(int32_t);
 			tmp++;
 		}
 	}
@@ -261,8 +282,9 @@ void datarecord::out_rec()
 
 	for (tmp = 1; tmp <= rfdesc->n_fields; tmp++) {
 		if (this->_fields[tmp].get_type() == type_blob) {
-			*(unsigned long *)(sendBuffer+val) = ntohl((long)this->_fields[tmp].datalen());
-			val += sizeof(long);
+			uint32_t dataLen = htonl((uint32_t)(this->_fields[tmp].datalen()));
+			::memcpy(sendBuffer+val, (void *)&dataLen, sizeof(uint32_t));
+			val += sizeof(uint32_t);
 			::memcpy(sendBuffer+val, this->_fields[tmp].getptr(), this->_fields[tmp].datalen());
 			val += this->_fields[tmp].datalen();
 		} else {

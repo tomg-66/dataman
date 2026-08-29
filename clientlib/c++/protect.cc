@@ -79,7 +79,7 @@ int index::protect()
 	if (in_xact && this->_rptr < 0)
 		return(TRUE);
 	db_comm comm;
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles || this->_rptr < 0) {
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno < 0 || this->_fno >= this->_nfiles || this->_rptr < 0) {
 		db_err(0, "%s: memory corruption detected in protect", _progname);
 		return FALSE;
 	}
@@ -105,13 +105,30 @@ int index::protect()
 			fmt = atoi(ptr);
 	}
 
-	masterRecord._filedesc = this->_files[this->_fno].get_desc();
-	masterRecord.head = this->_files[this->_fno].get_hlen();
-	masterRecord.cur = this->_rptr;
-	masterRecord.chan = this->_fno;
-	masterRecord.len = tmp;
-	masterRecord.fmt = fmt;
-	masterRecord.in_rec(ptr);
+	datarecord tmpRec(MASTER);
+
+	tmpRec._filedesc = this->_files[this->_fno].get_desc();
+	tmpRec.chan = this->_fno;
+	tmpRec.cur = this->_rptr;
+	tmpRec.head = this->_files[this->_fno].get_hlen();
+	tmpRec.len = tmp;
+	tmpRec.fmt = fmt;
+
+	if (!tmpRec.in_rec(ptr, this)) {
+		return FALSE;
+	}
+
+	{
+		datafield *oldFields = masterRecord._fields;
+		masterRecord._filedesc = this->_files[this->_fno].get_desc();
+		masterRecord.head = this->_files[this->_fno].get_hlen();
+		masterRecord.cur = this->_rptr;
+		masterRecord.chan = this->_fno;
+		masterRecord.len = tmp;
+		masterRecord.fmt = fmt;
+		masterRecord._fields = tmpRec._fields;
+		tmpRec._fields = oldFields;
+	}
 
 	return(TRUE);
 }

@@ -24,6 +24,8 @@
 #if !defined _INDEX_INCLUDED_
 #define _INDEX_INCLUDED_
 
+#include <stdint.h>
+
 #include "datafile_header.h"
 
 typedef struct _files_ {
@@ -36,7 +38,7 @@ typedef struct _files_ {
 } FILES;
 
 typedef struct savbuff  {				/* buffer for SAVE info */
-	int64_t			 _savnode;			/* node pos to save */
+	uint64_t		 _savnode;			/* node pos to save */
 	int64_t 		 _savrec;			/* saved record pointer */
 	char			*_savkey;			/* saved key */
 	char			 _savfile;			/* saved file number */
@@ -53,9 +55,9 @@ typedef struct idxbuf   {               /* main index information */
 	int16_t         _keylen;			/* length of key */
 	int16_t			_longest;			/* longest master record */
 	char			_idxname[64];		/* name of index */
-	int64_t			_curnode;			/* pointer to current node */
+	uint64_t		_curnode;			/* pointer to current node */
 	int64_t			_rptr;				/* pointer to current record */
-	int64_t			_generation;		/* index V2 generation validator */
+	uint64_t		_generation;		/* index V2 generation validator */
 	unsigned char	_offs;				/* offset into node */
 	char           *_curkey;			/* pointer to current key */
 	FILES          *_files;				/* each of the files in the index */

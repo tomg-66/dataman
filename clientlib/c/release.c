@@ -50,6 +50,7 @@
 
 #include "globs.h"
 #include "w_params.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
@@ -60,9 +61,10 @@ extern char **_fnames;					/* the file names */
 extern int _fileno;						/* the current file number */
 extern short _maxfil;						/* maximum number of files */
 
-extern int in_rec(int, char *);			/* format the work record */
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern int out_rec(int);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern void db_err(int, char *, ...);
 
 int db_rel()
@@ -73,32 +75,34 @@ int db_rel()
     char cmd[256];                     /* path to file */
 	char *ptr;
 	char *cptr;
+	size_t response_len;
 
-    _file = FALSE;
+	int tmp_fmt;
+	int tmp_fileno;
+	int new_file;
+	uint64_t tmp_cur;
+	uint64_t tmp_prev;
+	uint64_t tmp_next;
+
+	new_file = !w_next;
+	tmp_fileno = _fileno;
     if (!out_rec(WORK)) {
 		db_err(EOUTREC, "%s: RELEASE", _progname);
 		return FALSE;
 	}
 
-    if (!w_next) {
-		if (++_fileno == _maxfil) {
-			_fileno--;
+    if (new_file) {
+		if (++tmp_fileno == _maxfil) {
 			return (FALSE);
 		}
-		for (i = 0; i < w_fdesc->n_rformats; i++)
-			free (w_fdesc->record_desc[i].field_sizes);
-		free(w_fdesc->record_desc);
-		free(w_fdesc);
-		w_fdesc = NULL;
 		sprintf(cmd, "%d|%d|0|%s/files/%s|", RELEASE, w_chan, _root,
-						_fnames[_fileno]);
-		_file = TRUE;
+						_fnames[tmp_fileno]);
 	} else
 		sprintf(cmd, "%d|%d|%"PRId64"|", RELEASE, w_chan, w_next);
 /*
  * send the command and wait for the response.
  */
-	ptr = db_send(cmd, strlen(cmd), __FILE__);
+	ptr = db_send_len(cmd, strlen(cmd), __FILE__, &response_len);
 
 	if (!ptr)
 		return FALSE;
@@ -119,27 +123,48 @@ int db_rel()
 /*
  * parse the response and save the appropriate stuff
  */
-	cptr = strchr(cptr, '|') + 1;
-	cptr = strchr(cptr, '|') + 1;
-	w_fmt = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
-	w_cur = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	w_prev = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	w_next = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') +1 ;
+	if (!dm_next_field(&cptr) || !dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_fmt = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_cur = strtoll(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_prev = strtoll(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_next = strtoll(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 /*
  * ok, done!
  */
-	if (!in_rec(WORK, cptr)) {					/* read record into memory */
+	if ((size_t)(cptr-ptr) > response_len ||
+			!(new_file ?
+				dm_in_rec_reload(WORK, cptr, response_len-(size_t)(cptr-ptr),
+					NULL, tmp_fmt, w_chan) :
+				in_rec(WORK, cptr, response_len-(size_t)(cptr-ptr),
+					NULL, tmp_fmt, w_chan))) {
 		db_err(EINREC, "%s: RELEASE", _progname);
 		free(ptr);
 		return FALSE;
 	}
 
+	w_fmt = tmp_fmt;
+	w_cur = tmp_cur;
+	w_prev = tmp_prev;
+	w_next = tmp_next;
+	_fileno = tmp_fileno;
+	_file = new_file;
+
 	free(ptr);
     return (TRUE);
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid release response", _progname);
+	free(ptr);
+	return FALSE;
 }
 
 /*

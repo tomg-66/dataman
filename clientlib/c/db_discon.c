@@ -57,6 +57,7 @@ extern int dataman_has_php;
 extern INDEX _indices[6];
 
 extern char *db_send(char *, int, char *);
+extern int iclose(char *);
 
 void db_discon(void)
 {
@@ -97,10 +98,14 @@ void db_discon(void)
  */
 		for (i = 0; i < 6; i++) {
 			if (strlen(_indices[i]._idxname)) {
+#if 0
 				sprintf(msg, "%d|%d|", ICLOSE, _indices[i]._idxno);
 				buff = db_send(msg, strlen(msg), __FILE__);
 				if (buff)
 					free(buff);
+#else
+				iclose(_indices[i]._idxname);
+#endif
 			}
 		}
 		if (!dataman_has_php) {

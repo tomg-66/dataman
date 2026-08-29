@@ -47,22 +47,23 @@
 #include <unistd.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-
 #include "m_params.h"
 #include "globs.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/datafile_header.h"
+#include "../../server/errors.h"
 
-extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
 extern void db_err(int, char *, ...);
 
-extern int32_t get_long(char *);
-extern void put_long(char *, int32_t);
+extern uint32_t get_long(char *);
+extern void put_long(char *, uint32_t);
 
 extern int dm_sock;
 extern char *_progname;
@@ -70,22 +71,35 @@ extern char *_progname;
 #define FALSE 0
 #define TRUE  1
 
-int in_rec(int type, char *buff)
+static void free_fdesc(FILEDESC *fdesc)
 {
-	int idx,i,j;               /* misc usage */
+	int i;
 
-	int fmt,				/* the working format number */
-		len,				/* length of record */
-		chan,
+	if (!fdesc)
+		return;
+	for (i = 0; i < fdesc->n_rformats; i++)
+		free(fdesc->record_desc[i].field_sizes);
+	free(fdesc->record_desc);
+	free(fdesc);
+}
+
+static int in_rec_impl(int type, char *buff, size_t buff_len, INDEX *idx,
+		int fmt, int chan, int reload_desc)
+{
+	int tmp,i,j;               /* misc usage */
+	int allocated_fields = 0;
+
+	int len,				/* length of record */
 		b_offs;				/* offset to blob in record */
 
-	unsigned long b_len;
+	uint32_t b_len;
 
     short *desc;			/* point at the unparsed file description */
 
 	char **old_flds;			/* pointers to the fields that are going away*/
 	char **new_flds = NULL;		/* pointers to the fields that are being read*/
-	short *new_sizes = NULL;
+	uint32_t *old_blob_lengths;
+	uint32_t *new_blob_lengths = NULL;
 	char string[128];
 	char *cptr = NULL;
 	char *desc_buff = NULL;
@@ -94,20 +108,23 @@ int in_rec(int type, char *buff)
 	int retval = TRUE;
 
 	FILEDESC *fdesc;		/* the parsed file description */
+	FILEDESC *old_fdesc;
 	FILEDESC *new_fdesc = NULL;
 	RFDESC *rfdesc;
-	INDEX *master_idx = NULL;
-
 	if (type == MASTER) {
-		chan = m_chan;
-		fdesc = m_fdesc;
-		fmt = m_fmt;
+		if (!idx || chan < 0 || chan >= idx->_nfiles) {
+			retval = FALSE;
+			goto fail;
+		}
+		old_fdesc = idx->_files[chan]._filedesc;
+		fdesc = old_fdesc;
 		old_flds = mfld;
+		old_blob_lengths = m_blob_lengths;
 	} else {
-		chan = -w_chan;
-		fdesc = w_fdesc;
-		fmt = w_fmt;
+		old_fdesc = w_fdesc;
+		fdesc = reload_desc ? NULL : old_fdesc;
 		old_flds = wfld;
+		old_blob_lengths = w_blob_lengths;
 	}
 
 /*
@@ -115,9 +132,9 @@ int in_rec(int type, char *buff)
  */
 	if (fdesc == NULL) {
 		if (type == MASTER)
-			sprintf(string, "%d|%d|%d|", GET_DESC, cur_index._idxno, chan);
+			sprintf(string, "%d|%d|%d|", GET_DESC, idx->_idxno, chan);
 		else
-			sprintf(string, "%d|%d|", GET_DESC, chan);
+			sprintf(string, "%d|%d|", GET_DESC, -chan);
 		desc_buff = db_send(string, strlen(string), __FILE__);
 
 		if (!desc_buff) {
@@ -132,15 +149,12 @@ int in_rec(int type, char *buff)
 			goto fail;
 		}
 
-		tptr = strchr(desc_buff, '|') + 1;
-		tptr = strchr(tptr, '|') + 1;
+		tptr = desc_buff;
+		if (!dm_next_field(&tptr))
+			goto invalid_response;
+		if (!dm_next_field(&tptr))
+			goto invalid_response;
 		desc = (short *)tptr;
-		if (type == MASTER) {
-			if ((master_idx = findex(cur_index._idxname)) == NULL) {
-				retval = FALSE;
-				goto fail;
-			}
-		}
 		new_fdesc = calloc(1, sizeof(FILEDESC));
 		fdesc = new_fdesc;
 
@@ -159,8 +173,8 @@ int in_rec(int type, char *buff)
 		}
 
 		i = 1;
-		for (idx = 0; idx < fdesc->n_rformats; idx++) {
-			rfdesc = fdesc->record_desc+idx;
+		for (tmp = 0; tmp < fdesc->n_rformats; tmp++) {
+			rfdesc = fdesc->record_desc+tmp;
 			rfdesc->n_fields = *(desc+i);
 			i++;
 			rfdesc->rf_len = *(desc+i);
@@ -176,15 +190,6 @@ int in_rec(int type, char *buff)
 			}
 		}
 
-		/* Do not publish a descriptor until it is completely constructed. */
-		if (type == MASTER) {
-			master_idx->_files[master_idx->_fno]._hlen = m_head = len;
-			master_idx->_files[master_idx->_fno]._filedesc = new_fdesc;
-			m_fdesc = new_fdesc;
-		} else {
-			w_fdesc = new_fdesc;
-		}
-		new_fdesc = NULL;
 		free(desc_buff);
 		desc_buff = NULL;
 	}
@@ -194,19 +199,21 @@ int in_rec(int type, char *buff)
 		goto fail;
 	}
 	rfdesc = fdesc->record_desc+fmt-1;
+	if (rfdesc->rf_len < 0 || (size_t)rfdesc->rf_len > buff_len) {
+		retval = FALSE;
+		goto fail;
+	}
 	new_flds = (char **)calloc((rfdesc->n_fields)+2, sizeof(char *));
-	new_sizes = malloc(rfdesc->n_fields * sizeof(*new_sizes));
+	new_blob_lengths = calloc(rfdesc->n_fields, sizeof(*new_blob_lengths));
 /*
  * if this allocate has failed we can just fail without freeing up any
  * file description we might have read in above.  it's fine.  This is
  * just the actual array of fields that failed
  */
-	if (!new_flds || !new_sizes) {
+	if (!new_flds || !new_blob_lengths) {
 		retval = FALSE;
 		goto fail;
 	}
-	memcpy(new_sizes, rfdesc->field_sizes,
-			rfdesc->n_fields * sizeof(*new_sizes));
 
     *new_flds = NULL;						/* zero the dirty bit */
     *(new_flds+rfdesc->n_fields+1) = NULL;	/* end of record indicator */
@@ -222,17 +229,32 @@ int in_rec(int type, char *buff)
 	j = 0;
 	for (i = 0; i < rfdesc->n_fields; i++) {
 		if (rfdesc->field_sizes[i] <= 0) {
+			if ((size_t)b_offs > buff_len ||
+					buff_len - (size_t)b_offs < sizeof(uint32_t)) {
+				retval = FALSE;
+				goto fail;
+			}
 			b_len = get_long(buff+b_offs);
 			b_offs += sizeof(int32_t);
-			cptr = malloc(b_len+1);
+			if ((size_t)b_len > buff_len - (size_t)b_offs) {
+				retval = FALSE;
+				goto fail;
+			}
+			cptr = malloc((size_t)b_len+1);
 			if (!cptr) {
 				retval = FALSE;
 				goto fail;
 			}
 			memcpy(cptr, buff+b_offs, b_len);
-			new_sizes[i] = -b_len;
-			b_offs += b_len;
+			cptr[b_len] = '\0';
+			new_blob_lengths[i] = b_len;
+			b_offs += (int)b_len;
 		} else {
+			if (j < 0 || j > rfdesc->rf_len ||
+					rfdesc->field_sizes[i] > rfdesc->rf_len - j) {
+				retval = FALSE;
+				goto fail;
+			}
 			cptr = calloc(1, rfdesc->field_sizes[i]+1);
 			if (!cptr) {
 				retval = FALSE;
@@ -247,11 +269,12 @@ int in_rec(int type, char *buff)
  */
 		new_flds[i+1] = cptr;
 		cptr = NULL;
+		allocated_fields++;
 	}
-	memcpy(rfdesc->field_sizes, new_sizes,
-			rfdesc->n_fields * sizeof(*new_sizes));
-	free(new_sizes);
-	new_sizes = NULL;
+	if (j != rfdesc->rf_len || (size_t)b_offs != buff_len) {
+		retval = FALSE;
+		goto fail;
+	}
 /*
  * get rid of the prior recrd
  */
@@ -260,18 +283,35 @@ int in_rec(int type, char *buff)
 			free(old_flds[i]);
 		free(old_flds);
 	}
+	free(old_blob_lengths);
+
+	/* Publish a newly loaded description only with its completed record. */
+	if (new_fdesc) {
+		if (type == MASTER) {
+			idx->_files[chan]._hlen = new_fdesc->header_len;
+			idx->_files[chan]._filedesc = new_fdesc;
+		} else {
+			w_fdesc = new_fdesc;
+			if (reload_desc)
+				free_fdesc(old_fdesc);
+		}
+		new_fdesc = NULL;
+	}
 
 	if (type == MASTER) {
 		mfld = new_flds;
+		m_blob_lengths = new_blob_lengths;
 	} else {
 		wfld = new_flds;
+		w_blob_lengths = new_blob_lengths;
     }
+	new_blob_lengths = NULL;
 
 fail:
 	free(desc_buff);
-	free(new_sizes);
+	free(new_blob_lengths);
 	if (new_flds && retval == FALSE) {
-		for (i = 1; i <= (fdesc ? fdesc->record_desc[fmt-1].n_fields : 0); i++)
+		for (i = 1; i <= allocated_fields; i++)
 			free(new_flds[i]);
 		free(new_flds);
 	}
@@ -284,6 +324,22 @@ fail:
 		free(new_fdesc);
 	}
 	return retval;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid IN_REC response", _progname);
+	retval = FALSE;
+	goto fail;
+}
+
+int in_rec(int type, char *buff, size_t buff_len, INDEX *idx, int fmt, int chan)
+{
+	return in_rec_impl(type, buff, buff_len, idx, fmt, chan, FALSE);
+}
+
+int dm_in_rec_reload(int type, char *buff, size_t buff_len, INDEX *idx,
+		int fmt, int chan)
+{
+	return in_rec_impl(type, buff, buff_len, idx, fmt, chan, TRUE);
 }
 
 /*
@@ -307,7 +363,8 @@ int out_rec(int type)
 		val;
 
 	int64_t cur;
-	long b_size;			/* size of rec inc. blob data */
+	uint64_t b_size;		/* size of rec including blob data */
+	uint32_t blob_len;
 
 //	short *desc;
 	FILEDESC *desc;
@@ -316,6 +373,7 @@ int out_rec(int type)
 	char *rec_buff;
 	char **flds;
 	char *nbuf;
+	uint32_t *blob_lengths;
 
 /*
  * if mfld is equal to zero (null) there has never been an assignment to
@@ -330,6 +388,7 @@ int out_rec(int type)
 		chan = m_chan;
 		desc = m_fdesc;
 		flds = mfld;
+		blob_lengths = m_blob_lengths;
 		idx = cur_index._idxno;
 	} else {
 		fmt = w_fmt & MSK;
@@ -337,6 +396,7 @@ int out_rec(int type)
 		chan = 0;
 		desc = w_fdesc;
 		flds = wfld;
+		blob_lengths = w_blob_lengths;
 		idx = -w_chan;
 	}
 	if (!flds)
@@ -351,26 +411,30 @@ int out_rec(int type)
 
 	b_size = r_len;
 	for (i = 0, tmp = 0; tmp < rfdesc->has_blob && i < rfdesc->n_fields; i++) {
-		if (rfdesc->field_sizes[i] < 1) {
-			b_size += (-rfdesc->field_sizes[i] + sizeof(int32_t));
+		if (rfdesc->field_sizes[i] <= 0) {
+			blob_len = blob_lengths ? blob_lengths[i] : 0;
+			b_size += (uint64_t)blob_len + sizeof(uint32_t);
+			if (b_size > INT32_MAX)
+				return FALSE;
 			tmp++;
 		}
 	}
-	rec_buff = malloc(b_size+64);
+	rec_buff = malloc((size_t)b_size+64);
 
 	if (!rec_buff)
 		return FALSE;
 
-	i = sprintf(rec_buff, "%d|%d|%d|%"PRId64"|%d|%ld|", FLUSH, idx, chan, cur, fmt, b_size);
+	i = sprintf(rec_buff, "%d|%d|%d|%"PRId64"|%d|%"PRIu64"|",
+			FLUSH, idx, chan, cur, fmt, b_size);
 	val = i + r_len;
 
 	for (tmp = 0; tmp < rfdesc->n_fields; tmp++) {
-		if (rfdesc->field_sizes[tmp] < 1) {
-			cur = -rfdesc->field_sizes[tmp];
-			put_long(rec_buff+val, (int32_t)cur);
+		if (rfdesc->field_sizes[tmp] <= 0) {
+			blob_len = blob_lengths ? blob_lengths[tmp] : 0;
+			put_long(rec_buff+val, blob_len);
 			val += sizeof(int32_t);
-			memcpy(rec_buff+val, flds[tmp+1], cur);
-		    val += cur;
+			memcpy(rec_buff+val, flds[tmp+1], blob_len);
+		    val += (int)blob_len;
 		} else {
 			memcpy(rec_buff+i, flds[tmp+1], rfdesc->field_sizes[tmp]);
 			i += rfdesc->field_sizes[tmp];
@@ -394,10 +458,6 @@ int out_rec(int type)
 fail:
 	if (i) {
 		*flds = NULL;
-		for (tmp = 0; tmp < rfdesc->n_fields; tmp++) {
-			if (rfdesc->field_sizes[tmp] < 0)
-				rfdesc->field_sizes[tmp] = 0;
-		}
 	}
 	if (rec_buff)
 		free(rec_buff);

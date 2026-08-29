@@ -53,13 +53,14 @@
 #include "index.h"              /* index description */
 #include "m_params.h"           /* master file description */
 #include "globs.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
 
 extern INDEX cur_index;         /* the current operating index */
 
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern int out_rec(int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
@@ -75,6 +76,8 @@ int insert(int fmt, int mode, char *ixname)
 	char cmd[128];
 	char *buff;
 	char *ptr;
+
+	uint64_t current_rec;
 
 	if (cur_index._wrmode) {
     	if (!out_rec(MASTER)) {			/* write out the current record */
@@ -117,24 +120,42 @@ int insert(int fmt, int mode, char *ixname)
 		return FALSE;
 	}
 
-	m_fmt = fmt;
-	m_chan = idx->_files[idx->_fno]._fno;
-	m_fdesc = idx->_files[idx->_fno]._filedesc;
 	tmp = idx->_files[idx->_fno]._filedesc->record_desc[fmt-1].rf_len;
 
-	ptr = strchr(buff, '|') + 1;
-	m_cur = idx->_rptr = strtoll(ptr, NULL, 0);
+	ptr = buff;
+	if (!dm_next_field(&ptr))
+		goto invalid_response;
+	current_rec = strtoll(ptr, NULL, 0);
 
-	ptr = malloc(tmp);
-	memset(ptr, ' ', tmp);
-    cur_index = *idx;					/* save the new current index */
-    if (!in_rec(MASTER, ptr)) {				/* read in the empty record */
-		db_err(EINREC, "Error reading master record", _progname);
+	if ((ptr = malloc(tmp)) == NULL) {
+		db_err(ENOALLOC, "%s: Can't allocate record space", _progname);
 		free(buff);
 		return FALSE;
 	}
+	memset(ptr, ' ', tmp);
+
+    if (!in_rec(MASTER, ptr, (size_t)tmp, idx, fmt, idx->_fno)) {
+		db_err(EINREC, "Error reading master record", _progname);
+		free(ptr);
+		free(buff);
+		return FALSE;
+	}
+
+	m_fmt = fmt;
+	m_chan = idx->_files[idx->_fno]._fno;
+	m_fdesc = idx->_files[idx->_fno]._filedesc;
+	idx->_rptr = m_cur = current_rec;
+
+    cur_index = *idx;					/* save the new current index */
+
+	free(ptr);
 	free(buff);
 	return TRUE;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid INSERT response", _progname);
+	free(buff);
+	return FALSE;
 }
 
 /*

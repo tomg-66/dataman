@@ -67,7 +67,7 @@ using namespace Dataman;
 int index::delrec()
 {
 
-	int tmp;					/* misc usage */
+	int recordLen;
 
 	char cmd[128];				/* command to send */
 	char *ptr;
@@ -95,26 +95,45 @@ int index::delrec()
 					this->_fno, this->_rptr, in_xact);
 	std::unique_ptr<char[]> buff(comm.db_send(cmd, strlen(cmd)));
 
-	tmp = atoi(buff.get());
-	if (tmp < 0)
-		throw makeError(tmp, "%s: communication error", _progname);
-	if (tmp == 0)
+	recordLen = atoi(buff.get());
+	if (recordLen < 0)
+		throw makeError(recordLen, "%s: communication error", _progname);
+	if (recordLen == 0)
 		return FALSE;
-
-	masterRecord.len = tmp;
 
 	ptr = strchr(buff.get(), '|') + 1;
-	this->_rptr = strtoll(ptr, NULL, 0);
+	int64_t recordPointer = strtoll(ptr, NULL, 0);
 	ptr = strchr(ptr, '|') + 1;
-	masterRecord.fmt = atoi(ptr);
+	int fmt = atoi(ptr);
 	ptr = strchr(ptr, '|') + 1;
-	masterRecord.cur = this->_rptr;
-	masterRecord.chan = this->_fno;
-	masterRecord._filedesc = this->_files[masterRecord.chan].get_desc();
-	masterRecord.head = this->_files[masterRecord.chan].get_hlen();
-	cur_index = this;
-	if (!masterRecord.in_rec(ptr))
+
+	datarecord tmpRec(MASTER);
+
+	tmpRec._filedesc = this->_files[this->_fno].get_desc();
+	tmpRec.chan = this->_fno;
+	tmpRec.cur = recordPointer;
+	tmpRec.head = this->_files[this->_fno].get_hlen();
+	tmpRec.len = recordLen;
+	tmpRec.fmt = fmt;
+
+	if (!tmpRec.in_rec(ptr, this))
 		return FALSE;
+
+	{
+		datafield *oldFields = masterRecord._fields;
+		masterRecord.fmt = fmt;
+		masterRecord.cur = recordPointer;
+		masterRecord.chan = this->_fno;
+		masterRecord._filedesc = this->_files[masterRecord.chan].get_desc();
+		masterRecord.head = this->_files[masterRecord.chan].get_hlen();
+		masterRecord.len = recordLen;
+		masterRecord._fields = tmpRec._fields;
+		tmpRec._fields = oldFields;
+	}
+
+	this->_rptr = recordPointer;
+	cur_index = this;
+
 	return TRUE;
 }
 

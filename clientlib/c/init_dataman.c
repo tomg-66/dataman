@@ -62,6 +62,7 @@
 #include <ctype.h>
 
 #include "globs.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #ifdef DATAMAN_CMAKE_BUILD
@@ -77,8 +78,9 @@ extern int in_xact;
 
 extern int db_connect(char *);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern void db_err(int, char *, ...);
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern void db_discon(void);
 extern void flush(void);
 
@@ -104,10 +106,11 @@ int init_dataman(int argc, char *argv[])
 {
 	int i, j;			/* argument handling */
 
-	char cmd[256];		/* command to send */
+	char *cmd;			/* command to send */
 	char *host;			/* host to connect to */
 	char *ptr;
 	char *cptr;
+	size_t response_len;
 
 	data_globs();
 	is_sort = 0;
@@ -155,7 +158,8 @@ int init_dataman(int argc, char *argv[])
 						useage();
 						return FALSE;
 					}
-					strcpy(_root, argv[++i]);
+					memset(_root,'\0', sizeof(_root));
+					strncpy(_root, argv[++i], sizeof(_root)-1);
 					j = strlen(argv[i]) + 1;
 					break;
 				default:
@@ -191,8 +195,8 @@ int init_dataman(int argc, char *argv[])
 			db_err(0, "ROOT not defined\n");
 			return FALSE;
 		}
-
-		strcpy(_root, ptr);
+		memset(_root, '\0', sizeof(_root));
+		strncpy(_root, ptr, sizeof(_root)-1);
 	}
 /*
  * and if we need to get the host to connect to, else default to
@@ -214,17 +218,21 @@ int init_dataman(int argc, char *argv[])
  * part.  when we do non-traditional, that will be the case
  * as well.
  */
-	if (dataman_has_php)
+	if (dataman_has_php || !traditional)
 		goto php_done;
 /*
  * ok, we're connected, initialize our connection on the server.
  */
-	sprintf(cmd, "%d|%s/files/%s|", INIT_DAT, _root, argv[i]);
+	if ((i = asprintf(&cmd, "%d|%s/files/%s|", INIT_DAT, _root, argv[i])) < 0) {
+		db_err(ENOALLOC, "%s: Can't allocate command buffer", _progname);
+		return -1;
+	}
 	if (dbgsw) {
 		fprintf(stderr, "file to open is %s\n", cmd);
 		fflush(stderr);
 	}
-	ptr = db_send(cmd, strlen(cmd), __FILE__);
+	ptr = db_send_len(cmd, i, __FILE__, &response_len);
+	free(cmd);
 
 	if (!ptr)
 		return FALSE;
@@ -237,20 +245,34 @@ int init_dataman(int argc, char *argv[])
 		return FALSE;
 	}
 
-	cptr = strchr(ptr, '|') + 1;
+/*
+ * don't have to worry about publishing early here because if the in_rec
+ * fails, dataman hasn't inited and nothing works anyway.
+ */
+	cptr = ptr;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_chan = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_fmt = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_cur = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_prev = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_next = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 
-	if (!in_rec(WORK, cptr)) {			/* read the work record */
+	if ((size_t)(cptr-ptr) > response_len ||
+			!in_rec(WORK, cptr, response_len-(size_t)(cptr-ptr),
+				NULL, w_fmt, w_chan)) {
 		db_err(EINREC, "%s: %s: Can't read record", _progname, __func__);
 		free(ptr);
 		return FALSE;
@@ -266,12 +288,17 @@ php_done:
 		init_dwin();
 #endif
 	return TRUE;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid INIT_DATAMAN response", _progname);
+	free(ptr);
+	return FALSE;
 }
 
 void dataman_disconnect()
 {
 	if (dm_sock < 0)
-		return
+		return;
 	db_discon();
 }
 

@@ -62,10 +62,15 @@ enum fieldTypes {type_non = -1, type_chr, type_int, type_flt, type_blob = 4};
 
 class datafield {
 	private:
+		static const int standalone = -1;
 		int length;				// length of the datarec buffer
 		fieldTypes type;		// current type stored in the datarec
 		char *data;				// the actual data
 		int which;				/* is this a member of the master or work record */
+
+		bool is_bound() const;
+		void mark_dirty();
+		void assign(const char *, int, fieldTypes);
 
 	public:
 //
@@ -75,7 +80,7 @@ class datafield {
 //
 //construct from string, offset, length
 //
-		datafield(const char *, int , int);
+		datafield(const char *, int = 0, int = 0);
 //
 //standard copy constructor
 //
@@ -88,13 +93,14 @@ class datafield {
 // make a new field in in_rec.  not for use anywhere else
 //
 		void make_field(const char *, int, int);
+		void make_blob_field(const void *, int, int);
 //
 //some access routines.
 //
-		inline const char *getptr() { return(data); }
-		inline int datalen() { return(length); }
-		inline int get_type() { return(type); }
-		inline int get_which(void) { return(which); }
+		inline const char *getptr() const { return(data ? data : ""); }
+		inline int datalen() const { return(length); }
+		inline int get_type() const { return(type); }
+		inline int get_which(void) const { return(which); }
 		int put_blob(const void *, int);
 
 		friend const char *strncpy(datafield&, const char *, int);
@@ -103,37 +109,37 @@ class datafield {
 //the data pointer
 //
 		inline operator const char *() const {
-			return(data);
+			return getptr();
 		};
 
 //
 //the different assignments to a datafield
 //
-		void operator=(const datafield&);
-		void operator=(const char *);
-		void operator=(const int);
-		void operator=(const float);
+		datafield& operator=(const datafield&);
+		datafield& operator=(const char *);
+		datafield& operator=(int);
+		datafield& operator=(float);
 //
 //define the different ways that you can 'add' to a datafield
 //
-		datafield operator+(const datafield&);
-		datafield operator+(const char *);
-		datafield operator+(int);
-		datafield operator+(float);
+		datafield operator+(const datafield&) const;
+		datafield operator+(const char *) const;
+		datafield operator+(int) const;
+		datafield operator+(float) const;
 //
 //multiplication operators
 //
-		datafield operator*(const datafield&);
-		datafield operator*(const char *);
-		datafield operator*(int);
-		datafield operator*(float);
+		datafield operator*(const datafield&) const;
+		datafield operator*(const char *) const;
+		datafield operator*(int) const;
+		datafield operator*(float) const;
 //
 //division operators
 //
-		datafield operator/(const datafield&);
-		datafield operator/(const char *);
-		datafield operator/(int);
-		datafield operator/(float);
+		datafield operator/(const datafield&) const;
+		datafield operator/(const char *) const;
+		datafield operator/(int) const;
+		datafield operator/(float) const;
 
 //
 //substraction from a datafield only makes sense if you are
@@ -150,15 +156,15 @@ class datafield {
 //
 // equality operators
 //
-		bool operator==(const datafield&);
-		bool operator==(const char *);
-		bool operator==(int);
-		bool operator==(float);
+		bool operator==(const datafield&) const;
+		bool operator==(const char *) const;
+		bool operator==(int) const;
+		bool operator==(float) const;
 
-		bool operator!=(const datafield&);
-		bool operator!=(const char *);
-		bool operator!=(int);
-		bool operator!=(float);
+		bool operator!=(const datafield&) const;
+		bool operator!=(const char *) const;
+		bool operator!=(int) const;
+		bool operator!=(float) const;
 
 };			// end of class
 	const void *memcpy (Dataman::datafield& d, const char *s, int i);

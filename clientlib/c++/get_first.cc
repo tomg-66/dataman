@@ -68,7 +68,7 @@ int index::get_first()
 		masterRecord.out_rec();
 
 	db_comm comm;
-	if (this->_idxno < 0 || this->_idxno > MAX_INDEX || this->_fno < 0 || this->_fno > this->_nfiles) {
+	if (this->_idxno < 0 || this->_idxno >= MAX_INDEX || this->_fno >= this->_nfiles) {
 		db_err(0, "%s: memory corruption detected in first", _progname);
 		return FALSE;
 	}

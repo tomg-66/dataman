@@ -113,18 +113,20 @@ int index::back()
 	datarecord tmpRec(MASTER);
 
 	tmpRec._filedesc = this->_files[this->_fno].get_desc();
+	tmpRec.chan = this->_fno;
 	tmpRec.cur = curr;
 	tmpRec.head = this->_files[this->_fno].get_hlen();
 	tmpRec.len = i;
 	tmpRec.fmt = fmt;
 
-	if (!tmpRec.in_rec(cptr)) {
+	if (!tmpRec.in_rec(cptr, this)) {
 		return FALSE;
 	}
 
 	{
 		datafield *oldFields = masterRecord._fields;
 		masterRecord.cur = curr;
+		masterRecord.chan = this->_fno;
 		masterRecord._filedesc = this->_files[this->_fno].get_desc();
 		masterRecord.head = this->_files[this->_fno].get_hlen();
 		masterRecord.len = i;

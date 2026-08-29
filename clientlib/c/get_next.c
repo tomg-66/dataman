@@ -56,6 +56,7 @@
 #include "globs.h"
 #include "index.h"
 #include "m_params.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
@@ -69,8 +70,9 @@ extern int in_xact;
 extern INDEX *findex(char *);
 extern char *substr(char *,int,int);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern void db_err(int, char *, ...);
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern int out_rec(int);
 extern int64_t get_ll(char *);
 
@@ -84,12 +86,13 @@ int db_g_next(char *index_name)
 	char *ret;
 	char *cptr;
 	char *tmp_key;
+	size_t response_len;
 
 	int64_t recno;
 
 	if (cur_index._wrmode) {
 		if (!out_rec(MASTER)) {
-			db_err(EOUTREC, "s: error writing record", _progname);
+			db_err(EOUTREC, "%s: error writing record", _progname);
 			return FALSE;
 		}
 	}
@@ -117,12 +120,12 @@ int db_g_next(char *index_name)
 		return FALSE;
 	}
 
-	sprintf(msg, "%d|%d|%"PRId64"|%"PRId64"|%d|", GET_NEXT, idx->_idxno,
+	sprintf(msg, "%d|%d|%"PRIu64"|%"PRIu64"|%d|", GET_NEXT, idx->_idxno,
 					idx->_generation, idx->_curnode, idx->_offs);
 	i = strlen(msg);
 	memcpy(msg+i, idx->_curkey, idx->_keylen+KEY_HEADER_LENGTH);
 	i += idx->_keylen+KEY_HEADER_LENGTH;
-	ret = db_send(msg, i, __FILE__);
+	ret = db_send_len(msg, i, __FILE__, &response_len);
 
 	if (!ret)
 		return FALSE;
@@ -137,41 +140,70 @@ int db_g_next(char *index_name)
 /*
  * parse the return and update the globals
  */
-	cptr = strchr(ret, '|') + 1;
-	m_fmt = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
-	idx->_generation = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	idx->_curnode = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	idx->_offs = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
+	int tmp_fmt;
+	int tmp_offs;
+	int tmp_chan;
+	uint64_t tmp_generation;
+	uint64_t tmp_curnode;
+
+	cptr = ret;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_fmt = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_generation = strtoull(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_curnode = strtoull(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_offs = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 
 	tmp_key = substr(cptr, 0, idx->_keylen+KEY_HEADER_LENGTH);
 	if (!tmp_key) {
 		free(ret);
 		return FALSE;
 	}
-	if (idx->_curkey)
-		free(idx->_curkey);
-	idx->_curkey = tmp_key;
 
-	idx->_fno = *(idx->_curkey+idx->_keylen) - 1;
+	tmp_chan = *(tmp_key+idx->_keylen) - 1;
 	cptr += idx->_keylen + KEY_HEADER_LENGTH;
-
-	m_chan = *(idx->_curkey+idx->_keylen) - 1;
-	idx->_rptr = m_cur = get_ll(idx->_curkey+idx->_keylen+1);
-	m_fdesc = idx->_files[m_chan]._filedesc;
-	m_head = idx->_files[m_chan]._hlen;
-	cur_index = *idx;
-	if (!in_rec(MASTER, cptr)) {
+	if ((size_t)(cptr-ret) > response_len ||
+			!in_rec(MASTER, cptr, response_len-(size_t)(cptr-ret),
+				idx, tmp_fmt, tmp_chan)) {
 		db_err(EINREC, "%s: error reading record", _progname);
 		free(ret);
+		free(tmp_key);
 		return FALSE;
 	}
 
 	free(ret);
+
+	m_fmt = tmp_fmt;
+	idx->_generation = tmp_generation;
+	idx->_curnode = tmp_curnode;
+	idx->_offs = tmp_offs;
+
+	if (idx->_curkey)
+		free(idx->_curkey);
+	idx->_curkey = tmp_key;
+
+	idx->_fno = tmp_chan;
+
+	m_chan = tmp_chan;
+	idx->_rptr = m_cur = get_ll(idx->_curkey+idx->_keylen+1);
+	m_fdesc = idx->_files[m_chan]._filedesc;
+	m_head = idx->_files[m_chan]._hlen;
+	cur_index = *idx;
+
 	return(TRUE);
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid GET_NEXT response", _progname);
+	free(ret);
+	return FALSE;
 }
 
 /*

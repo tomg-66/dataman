@@ -24,6 +24,7 @@
 #if !defined _MASTER_INC_
 #define _MASTER_INC_
 
+#include <stdint.h>
 #include "datafile_header.h"
 
 extern short *m_desc;			/* description of master file */
@@ -35,6 +36,7 @@ extern int64_t m_next;			/* pointer to next record */
 extern int m_chan;				/* master file channel */
 extern char m_fmt;				/* format number of current record */
 extern char **mfld;				/* pointers to each field */
+extern uint32_t *m_blob_lengths;	/* runtime lengths for blob fields */
 extern char *_m_rec_;			/* pointer to the record buffer */
 extern FILEDESC *m_fdesc;		/* parsed description of master file */
 

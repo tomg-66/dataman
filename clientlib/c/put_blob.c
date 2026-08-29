@@ -63,6 +63,7 @@ int put_blob(char *field, void *blob, int size)
 	int i, j;
 	char **rec;
 	void *buff;
+	uint32_t *blob_lengths;
 
 	RFDESC *rfdesc;
 
@@ -73,10 +74,18 @@ int put_blob(char *field, void *blob, int size)
  */
 	for (i = 0; i < 2; i++) {
 		if (i == 0) {
+			if (!mfld || !m_fdesc || !m_fdesc->record_desc ||
+					m_fmt < 1 || m_fmt > m_fdesc->n_rformats)
+				continue;
 			rec = mfld;
+			blob_lengths = m_blob_lengths;
 			rfdesc = m_fdesc->record_desc+(m_fmt-1);
 		} else {
+			if (!wfld || !w_fdesc || !w_fdesc->record_desc ||
+					w_fmt < 1 || w_fmt > w_fdesc->n_rformats)
+				continue;
 			rec = wfld;
+			blob_lengths = w_blob_lengths;
 			rfdesc = w_fdesc->record_desc+(w_fmt-1);
 		}
 		if (!rfdesc->has_blob)
@@ -90,22 +99,23 @@ int put_blob(char *field, void *blob, int size)
 found:
 /*
  * if the field they selected isn't a blob, return false.  a
- * blob will have a field length of 0 (empty blob) or a
- * negative number (the negative size of the assigned blob),
- * no positive numbers.
+ * blob has a schema field length of zero.  Its current runtime
+ * length is kept separately in the record's blob-length array.
  */
-	if (rfdesc->field_sizes[j-1] > 0)
+	if (rfdesc->field_sizes[j-1] != 0 || !blob_lengths || size < 0 ||
+			(size > 0 && !blob))
 		return(FALSE);
 
-	if ((buff = malloc(size)) == NULL)		/* allocate new space for blob */
+	if ((buff = malloc(size ? (size_t)size : 1U)) == NULL)
 		return(FALSE);
 
-	memcpy(buff, blob, size);				/* save the blob */
+	if (size)
+		memcpy(buff, blob, (size_t)size);	/* save the blob */
 	free(rec[j]);							/* free the old one */
 	rec[j] = (char *)buff;					/* make rec point to current one */
 
 	rec[0] = (char *)((uintptr_t)rec[0] | 1);	/* flag record as dirty */
-	rfdesc->field_sizes[j-1] = -size;		/* save the new size of the blob */
+	blob_lengths[j-1] = (uint32_t)size;
 	return(TRUE);
 }
 
@@ -116,15 +126,22 @@ long get_blob_size(char *field)
 {
 	int i, j;
 	char **rec;
+	uint32_t *blob_lengths;
 
 	RFDESC *rfdesc;
 
 	for (i = 0; i < 2; i++) {
 		if (i == 0) {
+			if (!mfld || !m_fdesc || m_fmt < 1 || m_fmt > m_fdesc->n_rformats)
+				continue;
 			rec = mfld;
+			blob_lengths = m_blob_lengths;
 			rfdesc = m_fdesc->record_desc+(m_fmt-1);
 		} else {
+			if (!wfld || !w_fdesc || w_fmt < 1 || w_fmt > w_fdesc->n_rformats)
+				continue;
 			rec = wfld;
+			blob_lengths = w_blob_lengths;
 			rfdesc = w_fdesc->record_desc+(w_fmt-1);
 		}
 		if (!rfdesc->has_blob)
@@ -137,9 +154,9 @@ long get_blob_size(char *field)
 
 found:
 	j--;
-	if (rfdesc->field_sizes[j] > 0)
+	if (rfdesc->field_sizes[j] != 0 || !blob_lengths)
 		return (0xffffffff);
-	return(-rfdesc->field_sizes[j]);
+	return((long)blob_lengths[j]);
 }
 
 /*

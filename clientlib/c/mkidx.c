@@ -50,6 +50,7 @@
 
 #include "index.h"              /* index description */
 #include "globs.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "../../server/errors.h"
@@ -71,9 +72,10 @@ extern int dbgsw;
 extern char _root[];
 
 extern void data_globs(void);
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern char *substr(char *,int,int);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern int db_connect(char *);
 extern void db_discon(void);
 extern void db_err(int, char *, ...);
@@ -106,6 +108,7 @@ int mkidx(int argc, char *argv[])		/* the command line args from main */
 	char host[32];				/* host to connect to */
     char *ptr;
 	char *cptr;
+	size_t response_len;
 
 	_progname = argv[0];		/* save the program name */
     if (argc < 3) {             /* got to get at least the right # of args */
@@ -253,7 +256,7 @@ int mkidx(int argc, char *argv[])		/* the command line args from main */
  * send the message and wait for response.  the returned string is
  * the response from the server
  */
-	ptr = db_send(cptr, j, __FILE__);
+	ptr = db_send_len(cptr, j, __FILE__, &response_len);
 
 	if (!ptr)
 		return FALSE;
@@ -271,30 +274,44 @@ int mkidx(int argc, char *argv[])		/* the command line args from main */
 		db_err(i, "%s: mkidx failed with", argv[0]);
 		return FALSE;
 	}
-
-	cptr = strchr(cptr, '|') + 1;
+/*
+ * we can just go straight to the globals here because if the in_rec fails
+ * everything fails, and nothing will sort anyway
+ */
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	cur_index._idxno = atoi(cptr);			/* idxno- offset in server */
-	cptr = strchr(cptr, '|') + 1;
-	cur_index._curnode = strtoll(cptr, NULL, 0);	/* current node */
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	cur_index._curnode = strtoull(cptr, NULL, 0);	/* current node */
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_chan = atoi(cptr);					/* work file offset in server */
-	cptr = strchr(cptr, '|') + 1;
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	h_len = atoi(cptr);						/* length of work file header */
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_cur = strtoll(cptr, NULL, 0);			/* current record offset */
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_fmt = atoi(cptr);						/* format number of record */
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	w_next = strtoll(cptr, NULL, 0);		/* pointer to next rec in file */
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 
 	if (dbgsw) {
 		fprintf(stderr, "Parsed mkidx return, calling in_rec\n");
 		fflush(stderr);
 	}
 
-	if (!in_rec(WORK, cptr)) {
+	if ((size_t)(cptr-ptr) > response_len ||
+			!in_rec(WORK, cptr, response_len-(size_t)(cptr-ptr),
+				NULL, w_fmt, w_chan)) {
 		db_err(EINREC, "%s: MKIDX", _progname);
 		free(ptr);
 		return FALSE;
@@ -310,6 +327,11 @@ int mkidx(int argc, char *argv[])		/* the command line args from main */
 #endif
 
 	return TRUE;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid MKIDX response", _progname);
+	free(ptr);
+	return FALSE;
 }
 
 

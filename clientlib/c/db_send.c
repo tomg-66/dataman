@@ -114,7 +114,7 @@ static bool read_exact(int fd, void *buf, size_t len)
 	return(true);
 }
 
-char * db_send(char *cmd, int len, char *module)
+char *db_send_len(char *cmd, int len, char *module, size_t *response_len)
 {
 
 	int32_t size;
@@ -122,8 +122,10 @@ char * db_send(char *cmd, int len, char *module)
 	int j;
 
 	char *ret;
+	if (response_len)
+		*response_len = 0;
 
-	if (dm_sock == -1)
+	if (dm_sock == -1 || len < 0)
 		return(NULL);
 
 	size = htonl((int32_t)len);
@@ -146,7 +148,7 @@ char * db_send(char *cmd, int len, char *module)
 	}
 
 	size = ntohl(size);
-	if (size < 0) {
+	if (size < 0 || size == INT32_MAX) {
 		db_err(0, "%s: invalid response length %"PRId32, _progname, size);
 		return NULL;
 	}
@@ -170,6 +172,8 @@ char * db_send(char *cmd, int len, char *module)
 		return NULL;
 	}
 	j = size;
+	if (response_len)
+		*response_len = (size_t)size;
 
 	if (dbgsw) {
 		fprintf(stderr, "have read %d bytes from socket\n", j);
@@ -177,6 +181,11 @@ char * db_send(char *cmd, int len, char *module)
 	}
 
 	return(ret);
+}
+
+char *db_send(char *cmd, int len, char *module)
+{
+	return db_send_len(cmd, len, module, NULL);
 }
 
 /*

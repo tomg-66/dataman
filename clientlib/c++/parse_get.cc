@@ -97,7 +97,7 @@ int index::parse_get(int recordLength, char *buff)
 	tmpRec.head = this->_files[fileNumber].get_hlen();
 	tmpRec.longest = this->_files[fileNumber].get_longest();
 
-	if (!tmpRec.in_rec(cptr))
+	if (!tmpRec.in_rec(cptr, this))
 		return FALSE;
 /*
  * parsing and allocations have succeded.  publish the new index state.

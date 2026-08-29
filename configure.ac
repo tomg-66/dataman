@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([dataman],[4.0.0],[tomg_66@users.sf.net])
+AC_INIT([dataman],[4.0.1],[tomg_66@users.sf.net])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([clientlib/c/accept.c])
 AC_CONFIG_HEADERS([config.h])

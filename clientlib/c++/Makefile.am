@@ -11,17 +11,16 @@ libdataman___la_SOURCES = accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc
 
 includedir = $(prefix)/include/dataman
 
-libdataman___la_LDFLAGS = -version-info 4:0:0 -lcurses
+libdataman___la_LDFLAGS = -version-info 4:1:0 -lcurses
 
 noinst_HEADERS = db_comm.hpp wind.h window.h
 
 include_HEADERS = datafield.hpp dataman.hpp datarecord.hpp fileEdit.hpp endSort.hpp  \
 		index.hpp key.hpp proto.hpp sort.hpp datamanError.hpp
 
-AM_CPPFLAGS = -I../../server
+AM_CPPFLAGS = -I$(top_srcdir)/server
 
 # have to add this because according to inttypes.h you muse explicitly 
 # declare that you want the defines in C++
 
 DEFS += -D__STDC_FORMAT_MACROS
-

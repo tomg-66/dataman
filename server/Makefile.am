@@ -23,9 +23,9 @@ dataman_srv_SOURCES = dbserve.c back.c clear.c delete.c \
 
 dataman_srv_LDADD = -lpthread
 
-dfedit_LDADD = -lmini -lcurses
+dfedit_LDADD = $(top_builddir)/clientlib/c/libmini.la -lcurses
 
-dfedit_LDFLAGS = -static -L$(top_srcdir)/clientlib/c
+dfedit_LDFLAGS = -static
 
 dataman_SOURCES = dataman.c err_sys.c verify_pid.c version.c
 

@@ -260,6 +260,7 @@ EXTRA_DIST = $(java_JAVA)
 JAVAC = javac
 JAVAROOT = ../
 JAVACFLAGS = -classpath ./
+CLEANFILES = $(JAVAROOT)Dataman/*.class
 javadir = /usr/local/java/Dataman
 all: all-am
 
@@ -396,6 +397,7 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-$(am__rm_f) $(CLEANFILES)
 
 distclean-generic:
 	-$(am__rm_f) $(CONFIG_CLEAN_FILES)

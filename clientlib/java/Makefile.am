@@ -13,4 +13,6 @@ JAVAROOT = ../
 
 JAVACFLAGS = -classpath ./
 
+CLEANFILES = $(JAVAROOT)Dataman/*.class
+
 javadir = /usr/local/java/Dataman

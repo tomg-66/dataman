@@ -153,7 +153,7 @@ am_dfedit_OBJECTS = dfedit.$(OBJEXT) get_short.$(OBJEXT) \
 	get_datafile_desc.$(OBJEXT) lock.$(OBJEXT) get_ll.$(OBJEXT) \
 	put_ll.$(OBJEXT)
 dfedit_OBJECTS = $(am_dfedit_OBJECTS)
-dfedit_DEPENDENCIES =
+dfedit_DEPENDENCIES = $(top_builddir)/clientlib/c/libmini.la
 dfedit_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(dfedit_LDFLAGS) $(LDFLAGS) -o $@
@@ -443,8 +443,8 @@ dataman_srv_SOURCES = dbserve.c back.c clear.c delete.c \
 	blob_ctl.c undelete.c index_v2.c
 
 dataman_srv_LDADD = -lpthread
-dfedit_LDADD = -lmini -lcurses
-dfedit_LDFLAGS = -static -L$(top_srcdir)/clientlib/c
+dfedit_LDADD = $(top_builddir)/clientlib/c/libmini.la -lcurses
+dfedit_LDFLAGS = -static
 dataman_SOURCES = dataman.c err_sys.c verify_pid.c version.c
 mkdf_SOURCES = mkdf.c substr.c put_short.c put_long.c put_ll.c get_ll.c
 dumpdf_SOURCES = dumpdf.c get_datafile_desc.c substr.c get_short.c \

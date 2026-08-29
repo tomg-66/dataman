@@ -97,7 +97,7 @@ am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(include_HEADERS) \
-	$(am__DIST_COMMON)
+	$(noinst_HEADERS) $(am__DIST_COMMON)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
@@ -223,7 +223,7 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-HEADERS = $(include_HEADERS)
+HEADERS = $(include_HEADERS) $(noinst_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -374,6 +374,7 @@ noinst_LTLIBRARIES = libmini.la
 libmini_la_SOURCES = show.c accept.c pause.c screen.c mask.c init_dwin.c \
 					db_err.c
 
+noinst_HEADERS = client_internal.h
 lib_LTLIBRARIES = libdataman.la
 libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 		data_globs.c db_connect.c db_discon.c db_err.c db_send.c \
@@ -386,11 +387,11 @@ libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 		put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c \
 		put_ll.c
 
-libdataman_la_LDFLAGS = -version-info 4:0:0 -lcurses
+libdataman_la_LDFLAGS = -version-info 4:1:0 -lcurses
 include_HEADERS = dataman.h globs.h index.h m_params.h proto.h \
 		sort.h wind.h window.h w_params.h
 
-AM_CPPFLAGS = -I../../server
+AM_CPPFLAGS = -I$(top_srcdir)/server
 all: all-am
 
 .SUFFIXES:

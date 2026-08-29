@@ -52,13 +52,15 @@
 #include "globs.h"
 #include "m_params.h"
 #include "index.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
 
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
-extern int in_rec(int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern void db_err(int, char *, ...);
 extern void add_protect(int, int, int);
 
@@ -74,6 +76,7 @@ int db_prtct(char *ixname)
 	char cmd[128];
 	char *buff;
 	char *ptr;
+	size_t response_len;
 
 	INDEX *idx;
 
@@ -97,7 +100,7 @@ int db_prtct(char *ixname)
 	} else
 		sprintf(cmd, "%d|%d|%"PRId64"|", PROTECT, -w_chan, w_cur);
 
-	buff = db_send(cmd, strlen(cmd), __FILE__);
+	buff = db_send_len(cmd, strlen(cmd), __FILE__, &response_len);
 
 	if (!buff)
 		return FALSE;
@@ -112,25 +115,35 @@ int db_prtct(char *ixname)
 
 	ptr = buff;
 	for(i = 0; i < 5; i++) {
-		ptr = strchr(ptr, '|') + 1;
+		if (!dm_next_field(&ptr)) {
+			db_err(EINVMSG, "%s: invalid protect response", _progname);
+			free(buff);
+			return FALSE;
+		}
 		if (i == 0)
 			fmt = atoi(ptr);
 	}
 
 	if (ixname) {
+		if ((size_t)(ptr-buff) > response_len ||
+				!in_rec(MASTER, ptr, response_len-(size_t)(ptr-buff),
+					idx, fmt, idx->_fno)) {
+			db_err(EINREC, "%s: Error reading master record:", _progname);
+			free(buff);
+			return (FALSE);
+		}
 		m_fdesc = idx->_files[idx->_fno]._filedesc;
 		m_head = idx->_files[idx->_fno]._hlen;
 		m_cur = idx->_rptr;
 		m_chan = idx->_fno;
 		m_fmt = fmt;
-		if (!in_rec(MASTER, ptr)) {
-			db_err(EINREC, "%s: Error reading master record:", _progname);
-			return (FALSE);
-		}
 		add_protect(idx->_idxno, idx->_fno, idx->_rptr);
 	} else {
-		if (!in_rec(WORK, ptr)) {
+		if ((size_t)(ptr-buff) > response_len ||
+				!in_rec(WORK, ptr, response_len-(size_t)(ptr-buff),
+					NULL, fmt, w_chan)) {
 			db_err(EINREC, "%s: Error reading work record:", _progname);
+			free(buff);
 			return (FALSE);
 		}
 		add_protect(-w_chan, 0, w_cur);

@@ -5,7 +5,7 @@ set(DATAMAN_C_SOURCES
 	get_last.c get_long.c get_next.c get_prior.c grow_win.c
 	iclose.c include.c init_dataman.c init_dwin.c insert.c
 	iopen.c mask.c match.c mkidx.c move.c new_win.c
-	pause.c pop_win.c protect.c recio.c release.c remove.c
+	pause.c pop_win.c protect.c recio.c release.c remove.c response.c
 	restore.c save.c screen.c show.c sort.c substr.c window.c
 	put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c
 	put_ll.c)

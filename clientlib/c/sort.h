@@ -31,7 +31,7 @@
 #include "w_params.h"		/* work file parameters */
 
 #define ENDLIST		-1					/* end of arg list */
-#define FILE 		_fnames[_fileno]	/* current file name */
+#define WORFILENAME _fnames[_fileno]	/* current file name */
 #define WFMT		w_fmt				/* format number */
 
 #define	ANY			0		/* accept any input */

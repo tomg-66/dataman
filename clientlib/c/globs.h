@@ -41,7 +41,7 @@ extern int is_sort;
 extern int traditional;
 
 extern char *_progname;			/* name of currently running program */
-extern char _root[];			/* pointer to various ROOT dirs */
+extern char _root[512];			/* pointer to various ROOT dirs */
 
 #endif
 

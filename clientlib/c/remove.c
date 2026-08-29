@@ -94,7 +94,7 @@ int db_rm_key(key key_val, char *ixname)
  */
 	memset(cmd, '\0', sizeof(cmd));
 	memcpy(cmd, key_val, idx->_keylen);
-	if (strchr(key_val, '*')) {
+	if (memchr(key_val, '*', idx->_keylen)) {
 		db_err(0, "%s: can't use wildcard in remove\n", _progname);
 		return FALSE;
 	}

@@ -46,6 +46,8 @@
 #else
 #include "../../config.h"
 #endif
+#include <stdint.h>
+
 #include "index.h"
 
 
@@ -63,6 +65,7 @@ int64_t m_next;			/* pointer to next master record */
 int m_chan;             /* channel number of master file */
 char m_fmt;             /* curr master record format number */
 char **mfld;            /* pointer to the individual fields */
+uint32_t *m_blob_lengths;	/* runtime lengths for master blob fields */
 char *_m_rec_;
 
 /*
@@ -76,6 +79,7 @@ int64_t w_next;			/* pointer to next work record */
 int w_chan;				/* channel number of work file */
 char w_fmt;				/* curr work record format number */
 char **wfld;			/* pointer to the individual fields */
+uint32_t *w_blob_lengths;	/* runtime lengths for work blob fields */
 char *_w_rec_;			/* pointer to the work field buffer */
 char _file;				/* next file accessed flag */
 

@@ -46,7 +46,9 @@
 
 #include "index.h"
 #include "globs.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
+#include "../../server/errors.h"
 
 extern INDEX _indices[6];				/* the currently opened indices */
 
@@ -57,13 +59,25 @@ extern void db_err(int, char *, ...);
 #define FALSE 0
 #define TRUE  1
 
+static void send_iclose(int idxno)
+{
+	char snd_buf[32];
+	char *ret_buf;
+
+	// we don't care if the iclose fails on the other side.  we're closed
+	// and if the server wastes space, that's it's problem.
+
+	sprintf(snd_buf, "%d|%d|", ICLOSE, idxno);
+	ret_buf = db_send(snd_buf, strlen(snd_buf), __FILE__);
+	free(ret_buf);
+}
+
 int iopen(char *index, int mode)
 {
     int idx;                    /* loop counter */
     int x;                      /* use only because open requires it */
 	int i;
 
-    char stuff[132];            /* general purpose buffer */
     char *buff;               /* read the file names from the index */
 	char *cptr;
 
@@ -88,8 +102,14 @@ int iopen(char *index, int mode)
 /*
  * send the message and wait for the return
  */
-	sprintf(stuff, "%d|%s|%s|", IOPEN, index, _root);
-	buff = db_send(stuff, strlen(stuff), __FILE__);
+	if ((i = asprintf(&cptr, "%d|%s|%s|", IOPEN, index, _root)) < 0) {
+		db_err(ENOALLOC, "%s: can't allocate message buff", _progname);
+		return(-1);
+	}
+
+	buff = db_send(cptr, i,  __FILE__);
+	free(cptr);
+	cptr = NULL;
 
 	if (!buff)
 		return FALSE;
@@ -104,36 +124,60 @@ int iopen(char *index, int mode)
 /*
  * parse the message
  */
-	cptr = strchr(buff, '|') + 1;
-	_indices[idx]._idxno = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
-	_indices[idx]._keylen = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
-	i = _indices[idx]._nfiles = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
+	int tmp_idxno = 0;
+	int tmp_keylen;
+	int tmp_nfiles;
 
-	_indices[idx]._files = calloc(i, sizeof(FILES));
+	cptr = buff;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_idxno = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_keylen = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_nfiles = atoi(cptr);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+
+	_indices[idx]._files = calloc(tmp_nfiles, sizeof(FILES));
 	if (!_indices[idx]._files) {
 		free(buff);
+		send_iclose(tmp_idxno);
+		memset(&_indices[idx], 0, sizeof(_indices[idx]));
 		return FALSE;
 	}
 
-	for (i = 0; i < _indices[idx]._nfiles; i++) {
+	for (i = 0; i < tmp_nfiles; i++) {
 		_indices[idx]._files[i]._fname = strdup(cptr);
 		if (!_indices[idx]._files[i]._fname) {
 			for (int k = 0; k < i; k++)
 				free(_indices[idx]._files[k]._fname);
 			free(_indices[idx]._files);
 			free(buff);
+			send_iclose(tmp_idxno);
+			memset(&_indices[idx], 0, sizeof(_indices[idx]));
 			return FALSE;
 		}
 		_indices[idx]._files[i]._fno = i;
 		cptr += strlen(cptr) + 1;
 	}
-	strcpy(_indices[idx]._idxname, index);
+	_indices[idx]._idxno = tmp_idxno;
+	_indices[idx]._keylen = tmp_keylen;
+	_indices[idx]._nfiles = tmp_nfiles;
+	strncpy(_indices[idx]._idxname, index, sizeof(_indices[idx]._idxname)-1);
 	_indices[idx]._wrmode = mode;
 	free(buff);
 	return TRUE;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid IOPEN response", _progname);
+	free(buff);
+	if (tmp_idxno > 0)
+		send_iclose(tmp_idxno);
+	memset(&_indices[idx], 0, sizeof(_indices[idx]));
+	return FALSE;
 }
 
 /*

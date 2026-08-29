@@ -65,7 +65,9 @@
 #define KEY_LEN			(cur_index._keylen + sizeof(char) + sizeof(int64_t))
 #define MFMT			m_fmt					/* master file format number */
 #define WFMT			w_fmt					/* work file format number */
-#define FILE			cur_index._files[cur_index._fno]->_fname
+#define MASTERFILENAME	cur_index._files[cur_index._fno]._fname
+#define MASTER_FIELD(n)	mfld[(n)]
+#define WORK_FIELD(n)	wfld[(n)]
 
 #define W_FILE			NULL					/* work file "flag" */
 

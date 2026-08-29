@@ -55,6 +55,8 @@ extern int init_dataman(int, char **);
 extern int mkidx(int, char **);
 extern int clear(char *);
 extern int save(char *);
+extern int put_blob(char *, void *, int);
+extern long get_blob_size(char *);
 
 extern int acept(int, int, char *, int);
 extern int pop_win(void);

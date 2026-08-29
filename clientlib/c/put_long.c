@@ -37,8 +37,9 @@
  */
 
 #include <netinet/in.h>
+#include <string.h>
 
-void put_long(char *ptr, unsigned long lval)
+void put_long(char *ptr, uint32_t lval)
 {
 /*
 	char *lptr;
@@ -56,7 +57,8 @@ void put_long(char *ptr, unsigned long lval)
  * this is implemented really well, a no-op for BIG-ENDIAN and
  * -really- efficient inline assembly for LITTLE-ENDIAN
  */
-	*(unsigned long *)ptr = ntohl(lval);
+	uint32_t n_val = htonl(lval);
+	memcpy(ptr, (char *)&n_val, sizeof(uint32_t));
 }
 
 /*

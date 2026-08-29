@@ -96,10 +96,12 @@ int db_connect(char *host)
  */
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		return(ENOSOCK);
+
 	i = 1;
 	if (setsockopt(sock, SOL_TCP, TCP_NODELAY, (char *)&i, sizeof(int)) < 0) {
 			fprintf(stderr, "Can't set socket option in db_connect\n");
 			perror("");
+			close(sock);
 			return(ESOCKOPT);
 	}
 	if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -110,8 +112,10 @@ int db_connect(char *host)
  * ok, we are connected. let them know we are to be trusted
  * 		(christy's birthday)
  */
-	if (write(sock, "9-30-1966", 9) != 9)
+	if (write(sock, "9-30-1966", 9) != 9) {
+		close(sock);
 		return(ENORESP);
+	}
 /*
  * wait for a response
  */
@@ -127,6 +131,7 @@ int db_connect(char *host)
 				continue;			/* interrupted - reaped child? */
 			} else {
 				db_err(0, "%s, Can't accept new connection: ", _progname);
+				close(sock);
 				return -1;
 			}
 		}
@@ -134,11 +139,20 @@ int db_connect(char *host)
 	}
 	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0) {
 		db_err(0, "%s: ioctl failed, socket gone", _progname);
+		close(sock);
 		return -1;
 	}
 
-	if (read(sock, resp, i) != i)
-		return(ENORESP);
+	if (i < sizeof(resp)) {
+		if (read(sock, resp, i) != i) {
+			close(sock);
+			return(ENORESP);
+		}
+	} else {
+		db_err(EINVMSG, "%s: invalid wrapper length in connect", _progname);
+		close(sock);
+		return -1;
+	}
 /*
  * return the response - "ok" if good, negative int if not
  */

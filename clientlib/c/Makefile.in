@@ -138,10 +138,10 @@ am_libdataman_la_OBJECTS = accept.lo add_protect.lo back.lo clear.lo \
 	get_next.lo get_prior.lo grow_win.lo iclose.lo include.lo \
 	init_dataman.lo init_dwin.lo insert.lo iopen.lo mask.lo \
 	match.lo mkidx.lo move.lo new_win.lo pause.lo pop_win.lo \
-	protect.lo recio.lo release.lo remove.lo restore.lo save.lo \
-	screen.lo show.lo sort.lo substr.lo window.lo put_long.lo \
-	put_blob.lo get_ll.lo start_xact.lo commit.lo rollback.lo \
-	put_ll.lo
+	protect.lo recio.lo release.lo remove.lo response.lo \
+	restore.lo save.lo screen.lo show.lo sort.lo substr.lo \
+	window.lo put_long.lo put_blob.lo get_ll.lo start_xact.lo \
+	commit.lo rollback.lo put_ll.lo
 libdataman_la_OBJECTS = $(am_libdataman_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -191,11 +191,12 @@ am__depfiles_remade = ./$(DEPDIR)/accept.Plo \
 	./$(DEPDIR)/protect.Plo ./$(DEPDIR)/put_blob.Plo \
 	./$(DEPDIR)/put_ll.Plo ./$(DEPDIR)/put_long.Plo \
 	./$(DEPDIR)/recio.Plo ./$(DEPDIR)/release.Plo \
-	./$(DEPDIR)/remove.Plo ./$(DEPDIR)/restore.Plo \
-	./$(DEPDIR)/rollback.Plo ./$(DEPDIR)/save.Plo \
-	./$(DEPDIR)/screen.Plo ./$(DEPDIR)/show.Plo \
-	./$(DEPDIR)/sort.Plo ./$(DEPDIR)/start_xact.Plo \
-	./$(DEPDIR)/substr.Plo ./$(DEPDIR)/window.Plo
+	./$(DEPDIR)/remove.Plo ./$(DEPDIR)/response.Plo \
+	./$(DEPDIR)/restore.Plo ./$(DEPDIR)/rollback.Plo \
+	./$(DEPDIR)/save.Plo ./$(DEPDIR)/screen.Plo \
+	./$(DEPDIR)/show.Plo ./$(DEPDIR)/sort.Plo \
+	./$(DEPDIR)/start_xact.Plo ./$(DEPDIR)/substr.Plo \
+	./$(DEPDIR)/window.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -380,7 +381,7 @@ libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 		get_last.c get_long.c get_next.c get_prior.c grow_win.c \
 		iclose.c include.c init_dataman.c init_dwin.c insert.c \
 		iopen.c mask.c match.c mkidx.c move.c new_win.c \
-		pause.c pop_win.c protect.c recio.c release.c remove.c \
+		pause.c pop_win.c protect.c recio.c release.c remove.c response.c \
 		restore.c save.c screen.c show.c sort.c substr.c window.c \
 		put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c \
 		put_ll.c
@@ -522,6 +523,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/recio.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/release.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remove.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/response.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/restore.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rollback.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/save.Plo@am__quote@ # am--include-marker
@@ -757,6 +759,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/recio.Plo
 	-rm -f ./$(DEPDIR)/release.Plo
 	-rm -f ./$(DEPDIR)/remove.Plo
+	-rm -f ./$(DEPDIR)/response.Plo
 	-rm -f ./$(DEPDIR)/restore.Plo
 	-rm -f ./$(DEPDIR)/rollback.Plo
 	-rm -f ./$(DEPDIR)/save.Plo
@@ -855,6 +858,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/recio.Plo
 	-rm -f ./$(DEPDIR)/release.Plo
 	-rm -f ./$(DEPDIR)/remove.Plo
+	-rm -f ./$(DEPDIR)/response.Plo
 	-rm -f ./$(DEPDIR)/restore.Plo
 	-rm -f ./$(DEPDIR)/rollback.Plo
 	-rm -f ./$(DEPDIR)/save.Plo

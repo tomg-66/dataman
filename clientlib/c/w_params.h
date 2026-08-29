@@ -24,6 +24,7 @@
 #ifndef _WPARAMS_INC_
 #define _WPARAMS_INC_
 
+#include <stdint.h>
 #include "datafile_header.h"
 
 extern short *w_desc;			/* work file description */
@@ -34,6 +35,7 @@ extern int64_t w_next;			/* pointer to previous work record */
 extern int w_chan;				/* channel of work file */
 extern char w_fmt;				/* format number of work record */
 extern char **wfld;				/* pointers to data fields */
+extern uint32_t *w_blob_lengths;	/* runtime lengths for blob fields */
 extern char *_w_rec_;			/* pointer to buffer */
 extern char _file;				/* new file switch */
 extern FILEDESC *w_fdesc;

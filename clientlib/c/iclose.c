@@ -68,7 +68,11 @@ int iclose(char *ixname)
 	char cmd[128];
 	char *buff;
 
-	if (cur_index._wrmode) {
+	if ((idx = findex(ixname)) == NULL) {
+		return FALSE;
+	}
+
+	if (idx->_idxno == cur_index._idxno && idx->_wrmode) {
 		if (!out_rec(MASTER)) {				/* flush the record */
 			db_err(EOUTREC, "%s: ICLOSE", _progname);
 			return FALSE;
@@ -79,9 +83,6 @@ int iclose(char *ixname)
  * don't need to check the return of this, because if the named
  * index isn't open, then findex will message and terminate
  */
-	if ((idx = findex(ixname)) == NULL) {
-		return FALSE;
-	}
 	sprintf(cmd, "%d|%d|", ICLOSE, idx->_idxno);
 	buff = db_send(cmd, strlen(cmd), __FILE__);
 
@@ -104,10 +105,27 @@ int iclose(char *ixname)
     if (idx->_curkey != NULL)				/* initial GET attempted? */
 		free(idx->_curkey);					/* free the key */
 
-    for(tmp = 0;tmp < idx->_fno;tmp++) {
+	if (idx->_idxno == cur_index._idxno) {
+		if (mfld) {
+			for (tmp = 1; mfld[tmp]; tmp++)
+				free(mfld[tmp]);
+			free(mfld);
+			mfld = NULL;
+		}
+		free(m_blob_lengths);
+		m_blob_lengths = NULL;
+	}
+
+    for(tmp = 0;tmp < idx->_nfiles;tmp++) {
 		free(idx->_files[tmp]._fname);			/* free the file name */
-		if (idx->_files[tmp]._desc != NULL)		/* is a file here? */
-			free(idx->_files[tmp]._desc);		/* free the description */
+		free(idx->_files[tmp]._desc);
+		if (idx->_files[tmp]._filedesc != NULL) {
+			for(int cnt=0; cnt < idx->_files[tmp]._filedesc->n_rformats; cnt++) {
+				free(idx->_files[tmp]._filedesc->record_desc[cnt].field_sizes);
+			}
+			free(idx->_files[tmp]._filedesc->record_desc);
+			free(idx->_files[tmp]._filedesc);		/* free the description */
+		}
 	}
 	free(idx->_files);
 

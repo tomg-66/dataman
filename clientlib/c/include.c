@@ -61,8 +61,10 @@
 
 #include "globs.h"
 #include "index.h"                      /* index description */
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+#include "../../server/errors.h"
 
 extern INDEX *findex(char *);
 extern char *substr(char *, int, int);
@@ -108,9 +110,13 @@ int db_include(char *idx1, char *idx2, char *key)
 	}
 	idx_2->_fno = tmp;
 
-	sprintf(buff, "%d|%d|%d|%d|%d|%"PRId64"|%s|", INCLUDE, idx_1->_idxno,
-				idx_1->_fno, idx_2->_idxno, idx_2->_fno, idx_1->_rptr, key);
-	ret = db_send(buff, strlen(buff), __FILE__);
+	if ((tmp = asprintf(&cptr, "%d|%d|%d|%d|%d|%"PRId64"|%s|", INCLUDE, idx_1->_idxno,
+				idx_1->_fno, idx_2->_idxno, idx_2->_fno, idx_1->_rptr, key)) < 0) {
+		db_err(ENOALLOC, "%s: Can't allocate command buffer", _progname);
+		return FALSE;
+	}
+	ret = db_send(cptr, tmp, __FILE__);
+	free(cptr);
 
 	if (!ret)
 		return FALSE;
@@ -123,12 +129,20 @@ int db_include(char *idx1, char *idx2, char *key)
 		return FALSE;
 	}
 
-	cptr = strchr(ret, '|') + 1;
-	idx_2->_generation = strtoull(cptr, NULL, 10);
-	cptr = strchr(cptr, '|') + 1;
-	idx_2->_curnode = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
-	idx_2->_offs = atoi(cptr);
+	uint64_t tmp_generation;
+	uint64_t tmp_curnode;
+	int tmp_offs;
+
+	cptr = ret;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_generation = strtoull(cptr, NULL, 10);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_curnode = strtoull(cptr, NULL, 0);
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
+	tmp_offs = atoi(cptr);
 
 	if (in_xact) {
 		memset(buff, '\0', sizeof(buff));
@@ -137,13 +151,18 @@ int db_include(char *idx1, char *idx2, char *key)
 		put_ll(buff+idx_2->_keylen+1, idx_1->_rptr);
 		cptr = buff;
 	} else
-		cptr = strchr(cptr, '|') + 1;
+		if (!dm_next_field(&cptr))
+			goto invalid_response;
 
 	tmp_key = substr(cptr, 0, idx_2->_keylen+KEY_HEADER_LENGTH);
 	if (!tmp_key) {
 		free(ret);
 		return FALSE;
 	}
+	idx_2->_generation = tmp_generation;
+	idx_2->_curnode = tmp_curnode;
+	idx_2->_offs = tmp_offs;
+
 	if (idx_2->_curkey)
 		free(idx_2->_curkey);
 	idx_2->_curkey = tmp_key;
@@ -153,6 +172,11 @@ int db_include(char *idx1, char *idx2, char *key)
 		cur_index = *idx_2;
 	free(ret);
 	return TRUE;
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid INCLUDE response", _progname);
+	free(ret);
+	return FALSE;
 }
 
 /*

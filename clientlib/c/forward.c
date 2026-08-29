@@ -56,6 +56,7 @@
 #include "index.h"
 #include "m_params.h"
 #include "w_params.h"
+#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
@@ -67,9 +68,10 @@ extern int in_xact;
 extern INDEX cur_index;					/* the current operation index */
 
 extern int out_rec(int);
-extern int in_rec(int, char *);
+extern int in_rec(int, char *, size_t, INDEX *, int, int);
 extern INDEX *findex(char *);
 extern char *db_send(char *, int, char *);
+extern char *db_send_len(char *, int, char *, size_t *);
 extern void db_err(int, char *, ...);
 
 int db_fwd(char *idx_name)
@@ -84,6 +86,7 @@ int db_fwd(char *idx_name)
 	char cmd[128];
 	char *buff;
 	char *cptr;
+	size_t response_len;
 
 	if (idx_name) {
 		if ((idx = findex(idx_name)) == NULL) {			/* get the index */
@@ -111,7 +114,7 @@ int db_fwd(char *idx_name)
 		}
 	}
 
-	buff = db_send(cmd, strlen(cmd), __FILE__);
+	buff = db_send_len(cmd, strlen(cmd), __FILE__, &response_len);
 
 	if (!buff)
 		return FALSE;
@@ -124,34 +127,47 @@ int db_fwd(char *idx_name)
 		return(FALSE);					/* no next record in this file */
 	}
 
-	cptr = strchr(buff, '|') + 1;
+	cptr = buff;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	curr = strtoll(cptr, NULL, 0);
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 	fmt = atoi(cptr);
-	cptr = strchr(cptr, '|') + 1;
+	if (!dm_next_field(&cptr))
+		goto invalid_response;
 
 	if (idx_name) {
+		if ((size_t)(cptr-buff) > response_len ||
+				!in_rec(MASTER, cptr, response_len-(size_t)(cptr-buff),
+					idx, fmt, idx->_fno)) {
+			db_err(EINREC, "%s: error reading master record", _progname);
+			free(buff);
+			return FALSE;
+		}
 		idx->_rptr = m_cur = curr;
 		cur_index = *idx;
 		m_fdesc = idx->_files[idx->_fno]._filedesc;
 		m_head = idx->_files[idx->_fno]._hlen;
 		m_fmt = fmt;
-		if (!in_rec(MASTER, cptr)) {
-			db_err(EINREC, "%s: error reading master record", _progname);
-			free(buff);
-			return FALSE;
-		}
 	} else {
-		w_cur = curr;
-		w_fmt = fmt;
-		if (!in_rec(WORK, cptr)) {
+		if ((size_t)(cptr-buff) > response_len ||
+				!in_rec(WORK, cptr, response_len-(size_t)(cptr-buff),
+					NULL, fmt, w_chan)) {
 			db_err(EINREC, "%s: error reading work record", _progname);
 			free(buff);
 			return FALSE;
 		}
+		w_cur = curr;
+		w_fmt = fmt;
 	} 
 	free(buff);
 	return(TRUE);						/* give the ok signal */
+
+invalid_response:
+	db_err(EINVMSG, "%s: invalid forward response", _progname);
+	free(buff);
+	return FALSE;
 }
 
 /*

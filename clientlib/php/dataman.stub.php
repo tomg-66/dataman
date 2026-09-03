@@ -35,8 +35,6 @@ function dataman_get_key(): string {}
 function dataman_key_str(): string {}
 function dataman_get_index(): string {}
 function dataman_get_file(): string {}
-function dataman_put_data(string $data): void {}
-function dataman_mark(): void {}
 function dataman_start_transaction(): bool {}
 function dataman_commit(): bool {}
 function dataman_rollback(): bool {}

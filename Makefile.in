@@ -355,7 +355,10 @@ PHP_EXTENSION_DIST = \
 	clientlib/php/tests/009.phpt \
 	clientlib/php/tests/010.phpt \
 	clientlib/php/tests/011.phpt \
-	clientlib/php/tests/012.phpt
+	clientlib/php/tests/012.phpt \
+	clientlib/php/tests/013.phpt \
+	clientlib/php/tests/014.phpt \
+	clientlib/php/tests/015.phpt
 
 CMAKE_DIST = \
 	CMakeLists.txt \
@@ -403,6 +406,8 @@ TEST_DIST = \
 	tests/README.md \
 	tests/fixtures/one_rec.i \
 	tests/fixtures/one_rec.t \
+	tests/fixtures/blob_rec.i \
+	tests/fixtures/blob_rec.t \
 	tests/cpp/datafield_test.cc \
 	tests/java/BuildOneRecordIndex.java \
 	tests/java/OneRecordIntegrationTest.java \

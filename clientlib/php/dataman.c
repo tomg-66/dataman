@@ -30,11 +30,6 @@
 	ZEND_PARSE_PARAMETERS_END()
 #endif
 
-typedef enum {
-	DATAMAN_MASTER_RECORD,
-	DATAMAN_WORK_RECORD
-} dataman_record_type;
-
 typedef struct _dataman_record_object {
 	dataman_record_type type;
 	zend_object zo;
@@ -90,18 +85,18 @@ static zval *dataman_record_read_dimension(zend_object *object, zval *offset, in
 	dataman_record_object *intern = dataman_record_from_obj(object);
 
 	if (intern->type == DATAMAN_MASTER_RECORD) {
-		if (!m_fdesc) {
+		if (!_has_record(DATAMAN_MASTER_RECORD)) {
 			zend_throw_exception(zend_ce_exception, "Error: No current master record\n", -1);
 			return NULL;
 		}
-		max_field_number = m_fdesc->record_desc[m_fmt-1].n_fields;
+		max_field_number = _get_maxfields(DATAMAN_MASTER_RECORD);
 		record = mfld;
 	} else {
-		if (!w_fdesc) {
+		if (!_has_record(DATAMAN_WORK_RECORD)) {
 			zend_throw_exception(zend_ce_exception, "Error: No current work record\n", -1);
 			return NULL;
 		}
-	   	max_field_number = w_fdesc->record_desc[w_fmt-1].n_fields;
+	   	max_field_number = _get_maxfields(DATAMAN_WORK_RECORD);
 		record = wfld;
 	}
 
@@ -112,21 +107,25 @@ static zval *dataman_record_read_dimension(zend_object *object, zval *offset, in
 
 	ssize_t datafield_length;
 	char *datafield;
+#if 0			// isn't this just a duplicate??????
 	if (intern->type == DATAMAN_MASTER_RECORD) {
 		datafield = mfld[field_number];
 	} else {
 		datafield = wfld[field_number];
 	}
+#endif
 	datafield = intern->type == DATAMAN_MASTER_RECORD ?
 			mfld[field_number] : wfld[field_number];
-// remember that format numbers and field numbers are 1 based, not 0
-	datafield_length = intern->type == DATAMAN_MASTER_RECORD ? 
-			m_fdesc->record_desc[m_fmt-1].field_sizes[field_number-1] :
-			w_fdesc->record_desc[w_fmt-1].field_sizes[field_number-1];
 
+// remember that format numbers and field numbers are 1 based, not 0
+	datafield_length = _get_datafield_length(intern->type == DATAMAN_MASTER_RECORD \
+		   	? DATAMAN_MASTER_RECORD : DATAMAN_WORK_RECORD, field_number);
+
+#if 0		// _get_datafield_length returns the actual length even if a blob
 // blobs store the data field length as a negative number
 	if (datafield_length < 0)
 		datafield_length = -datafield_length;
+#endif
 
 	ZVAL_STRINGL(retval, datafield, datafield_length);
 	return retval;
@@ -145,17 +144,17 @@ static void dataman_record_write_dimension(zend_object  *object, zval *offset, z
 	int max_field_number;
 
 	if (intern->type == DATAMAN_MASTER_RECORD) {
-		if (!m_fdesc) {
+		if (!_has_record(DATAMAN_MASTER_RECORD)) {
 			zend_throw_exception(zend_ce_exception, "Error: No current master record\n", -1);
 			return;
 		}
-		max_field_number = m_fdesc->record_desc[m_fmt-1].n_fields;
+		max_field_number = _get_maxfields(DATAMAN_MASTER_RECORD);
 	} else {
-		if (!w_fdesc) {
+		if (!_has_record(DATAMAN_WORK_RECORD)) {
 			zend_throw_exception(zend_ce_exception, "Error: No current work record\n", -1);
 			return;
 		}
-		max_field_number = w_fdesc->record_desc[w_fmt-1].n_fields;
+		max_field_number = _get_maxfields(DATAMAN_WORK_RECORD);
 	}
 
 	if (field_number < 1 || field_number > max_field_number) {
@@ -166,13 +165,14 @@ static void dataman_record_write_dimension(zend_object  *object, zval *offset, z
 	ssize_t datafield_length;
 	char *datafield;
 	char **fields;
+
 	if (intern->type == DATAMAN_MASTER_RECORD) {
 		datafield = mfld[field_number];
-		datafield_length = m_fdesc->record_desc[m_fmt-1].field_sizes[field_number-1];
+		datafield_length = _get_datafield_length(DATAMAN_MASTER_RECORD, field_number);
 		fields = mfld;
 	} else {
 		datafield = wfld[field_number];
-		datafield_length = w_fdesc->record_desc[w_fmt-1].field_sizes[field_number-1];
+		datafield_length = _get_datafield_length(DATAMAN_WORK_RECORD, field_number);
 		fields = wfld;
 	}
 
@@ -180,16 +180,17 @@ static void dataman_record_write_dimension(zend_object  *object, zval *offset, z
 		case IS_STRING:		// this handles strings and blobs (maybe we should think of not allowing work records to contain blobs)
 			zend_string *src_string = Z_STR_P(value);
 			size_t src_string_len = ZSTR_LEN(src_string);
-			if (datafield_length < 0) {
+//			if (datafield_length < 0) {
+			if (_is_blob(intern->type, field_number)) {
 				char *tmp_datafield;
 				tmp_datafield = malloc(src_string_len);
 				memcpy(tmp_datafield, ZSTR_VAL(src_string), src_string_len);
 				if (intern->type == DATAMAN_MASTER_RECORD) {
 					mfld[field_number] = tmp_datafield;
-					m_fdesc->record_desc[m_fmt-1].field_sizes[field_number-1] = -src_string_len;
+					_set_blob_length(DATAMAN_MASTER_RECORD, field_number, src_string_len);
 				} else {
 					wfld[field_number] = tmp_datafield;
-					w_fdesc->record_desc[w_fmt-1].field_sizes[field_number-1] = -src_string_len;
+					_set_blob_length(DATAMAN_WORK_RECORD, field_number, src_string_len);
 				}
 				free(datafield);
 			} else {
@@ -222,17 +223,17 @@ static int dataman_record_has_dimension(zend_object *object, zval *offset, int c
 	int max_field_number;
 
 	if (intern->type == DATAMAN_MASTER_RECORD) {
-		if (!m_fdesc) {
+		if (!_has_record(DATAMAN_MASTER_RECORD)) {
 			zend_throw_exception(zend_ce_exception, "Error: No current master record\n", -1);
 			return 0;
 		}
-		max_field_number = m_fdesc->record_desc[m_fmt-1].n_fields;
+		max_field_number = _get_maxfields(DATAMAN_MASTER_RECORD);
 	} else {
-		if (!m_fdesc) {
+		if (!_has_record(DATAMAN_WORK_RECORD)) {
 			zend_throw_exception(zend_ce_exception, "Error: No current work record\n", -1);
 			return 0;
 		}
-		max_field_number = w_fdesc->record_desc[w_fmt-1].n_fields;
+		max_field_number = _get_maxfields(DATAMAN_WORK_RECORD);
 	}
 	if (record_number < 1 || record_number > max_field_number)
 		return 0;
@@ -373,6 +374,8 @@ PHP_FUNCTION(dataman_connect)
 		}
 
 		bool ret = init_dataman(argc, argv);
+		for (int i = 0; i < argc; i++)
+			efree(argv[i]);
 		efree(argv);
 		if (ret)
 			RETURN_TRUE;
@@ -416,7 +419,7 @@ PHP_FUNCTION(dataman_mkidx)
 
 	int argc = SG(request_info).argc;
 	char **argv = SG(request_info).argv;
-	if (mkidx(argc, argv))
+	if (mkidx(argc, (const char **)argv))
 		RETURN_TRUE;
 	RETURN_FALSE;
 }
@@ -430,7 +433,7 @@ PHP_FUNCTION(dataman_sort)
 	ZEND_PARSE_PARAMETERS_START(1,1)		// set this up correctly
 		Z_PARAM_STRING(key, key_len);
 	ZEND_PARSE_PARAMETERS_END();
-	if (!sort(key))
+	if (!db_sort(key))
 		RETURN_FALSE;
 	RETURN_TRUE;
 }
@@ -447,7 +450,7 @@ PHP_FUNCTION(dataman_when_file)
 {
 	CHECK_CLI_ONLY();
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (_file)
+	if (_is_new_file())
 		RETURN_TRUE;
 	RETURN_FALSE;
 }
@@ -467,7 +470,7 @@ PHP_FUNCTION(dataman_iopen)
 		Z_PARAM_LONG(mode);
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!iopen(idx_name, (int)mode))
+	if (!db_iopen(idx_name, (int)mode))
 		RETURN_FALSE;
 	RETURN_TRUE;
 }
@@ -594,12 +597,6 @@ PHP_FUNCTION(dataman_forward)
 		Z_PARAM_STRING(idx_name, name_len);
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (name_len > 0) {
-		// set up for master record
-	} else {
-		// set up for the work record
-	}
-
 	if (!db_fwd(idx_name))
 		RETURN_FALSE;
 	RETURN_TRUE;
@@ -614,12 +611,6 @@ PHP_FUNCTION(dataman_back)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_STRING(idx_name, name_len);
 	ZEND_PARSE_PARAMETERS_END();
-
-	if (name_len > 0) {
-		// set up for master record
-	} else {
-		// set up for the work record
-	}
 
 	if (!db_bck(idx_name))
 		RETURN_FALSE;
@@ -649,7 +640,7 @@ PHP_FUNCTION(dataman_insert)
 		zend_argument_value_error(1, "Insert position must be BEFORE or AFTER");
         	RETURN_THROWS();
 	}
-	if (!insert(format_number, position, idx_name))
+	if (!db_insert(format_number, position, idx_name))
 		RETURN_FALSE;
 	RETURN_TRUE;
 }
@@ -707,12 +698,6 @@ PHP_FUNCTION(dataman_protect)
 		Z_PARAM_STRING(idx_name, name_len);
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (name_len > 0) {
-		// set up for master record
-	} else {
-		// set up for the work record
-	}
-
 	if (!db_prtct(idx_name))
 		RETURN_FALSE;
 	RETURN_TRUE;
@@ -730,13 +715,7 @@ PHP_FUNCTION(dataman_clear)
 		Z_PARAM_STRING(idx_name, name_len);
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (name_len > 0) {
-		// set up for master record
-	} else {
-		// set up for the work record
-	}
-
-	if (!clear(idx_name))
+	if (!db_clear(idx_name))
 		RETURN_FALSE;
 	RETURN_TRUE;
 }
@@ -808,59 +787,41 @@ PHP_FUNCTION(dataman_get_format)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (/* is a sort routine */ false)
-		RETURN_LONG(/* work file format */ 1);
+		RETURN_LONG(_get_work_format());
 	else
-		RETURN_LONG(/* _mfmt */ 2);
+		RETURN_LONG(_get_master_format());
 }
 
 /* get the key of the current index */
 PHP_FUNCTION(dataman_get_key)
 {
-	char *system_key;
-	int length = /* current_index._key_len+header_len */ 8;
-	system_key = emalloc(length+1);
-	memcpy(system_key, /*current_index._current_key*/ "hi there", length);
+	const char *system_key = _get_curkey();
+	int length = _get_keylength();
 	RETURN_STRINGL(system_key, length);
 }
 
 /* get the string rep of the key of the current index */
 PHP_FUNCTION(dataman_key_str)
 {
-	char *display_key;
-	int length = /*current_index._key_len*/ 5;
-	display_key = emalloc(length+1);
-	memcpy(display_key, /*current_index._current_key*/ "MYkEY", length);
+	const char *display_key = _get_curkey();
+	int length = _get_keylength() - (sizeof(char) + sizeof(int64_t));
 	RETURN_STRINGL(display_key, length);
 }
 
-/* get the name of the currend index */
+/* get the name of the current index */
 PHP_FUNCTION(dataman_get_index)
 {
-	char *index_name;
-	int length = strlen(/*current_index._idxname*/ "rxidx01");
-	index_name = emalloc(length+1);
-	memcpy(index_name, /*current_index._idxname*/ "rxidx01", length);
+	const char *index_name = _get_indexname();
+	int length = strlen(index_name);
 	RETURN_STRINGL(index_name, length);
 }
 
 /* get the name of the current master file */
 PHP_FUNCTION(dataman_get_file)
 {
-	char *file_name;
-	int length = strlen(/*current_index._files[_fileno]._name*/ "rxxfam");
-	file_name = emalloc(length+1);
-	memcpy(file_name, /*current_index._files[_fileno]._name*/ "rxxfam", length);
+	const char *file_name = _get_filename();
+	int length = strlen(file_name);
 	RETURN_STRINGL(file_name, length);
-}
-
-/* put data into a field of the mater record */
-PHP_FUNCTION(dataman_put_data)
-{
-}
-
-/* mark the master record */
-PHP_FUNCTION(dataman_mark)
-{
 }
 
 /* start a new transaction */

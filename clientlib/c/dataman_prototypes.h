@@ -1,6 +1,6 @@
 /*
- * @#proto.h DATAMAN ver 3.20 function prototype declarations.
- * Copyright (c) SuperUser Software 1989-2004.  All rights reserved.
+ * @#dataman_prototypes.h DATAMAN ver 4.0.0 function prototype declarations.
+ * Copyright (c) SuperUser Software 1989-2026.  All rights reserved.
  */
 /*
  * This program is free software; you can redistribute it and/or

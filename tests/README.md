@@ -42,4 +42,6 @@ classes are removed automatically.
 PHP test 010 rebuilds the PHP fixture and constructs `one_rec_idx`. Tests 011
 and 012 then perform the equivalent mutation and automatic-removal sequence.
 Those three tests are intentionally ordered and are not yet independently
-isolated.
+isolated. Test 013 rebuilds the fixtures and constructs the separate
+`blob_rec_idx`; tests 014 and 015 then exercise master-record fields, metadata,
+blob replacement, field boundaries, and repeated index open/close cycles.

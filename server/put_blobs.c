@@ -69,7 +69,7 @@ int put_blobs (FILES *fptr, int fmt, int64_t recno, char *rptr)
 			i++;
 			len = get_long(rptr+offs);
 			offs += sizeof(int32_t);
-			if (len > 0) {
+			if (len >= 0) {
 				sprintf(file_name, "%s/blobs/%s.%d.%"PRId64".%d", path_name,
 							data_name, fmt, recno, j);
 				if ((chan = open(file_name, O_CREAT|O_TRUNC|O_RDWR, 0666)) < 0) {

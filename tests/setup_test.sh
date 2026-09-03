@@ -38,6 +38,7 @@ fi
 
 mkdir -p "$root/files" "$root/index" "$root/blobs"
 rm -f -- "$root/index/one_rec_idx"
+rm -f -- "$root/index/blob_rec_idx"
 
 exe=$(command -v mkdf)
 if [ ! -x "$exe" ] ; then
@@ -46,3 +47,4 @@ if [ ! -x "$exe" ] ; then
 fi
 
 ROOT="$root" "$exe" one_rec "$fixtures_dir/one_rec.i" < "$fixtures_dir/one_rec.t"
+ROOT="$root" "$exe" blob_rec "$fixtures_dir/blob_rec.i" < "$fixtures_dir/blob_rec.t"

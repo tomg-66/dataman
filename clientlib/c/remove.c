@@ -48,24 +48,23 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <unistd.h>
 
-#include "index.h"
 #include "globs.h"
+#include "index.h"
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
-#include "proto.h"					/* this is where the typedef of key is */
+#include "dataman_prototypes.h"					/* this is where the typedef of key is */
 
 #define TRUE	1
 #define FALSE	0
 
-extern INDEX *findex(char *);
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-extern int in_xact;
+DATAMAN_HIDDEN extern int in_xact;
 
-int db_rm_key(key key_val, char *ixname)
+DATAMAN_API int db_rm_key(key key_val, char *ixname)
 {
 
 	int i;

@@ -49,8 +49,9 @@ extern int dwin_inited;
 
 #define DBERROR
 #include "../server/errors.h"
+#include "visibility.h"
 
-void db_err(int val, char *fmt, ...)
+DATAMAN_HIDDEN void db_err(int val, char *fmt, ...)
 {
 	va_list pt;
 

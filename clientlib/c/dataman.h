@@ -26,11 +26,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "proto.h"				/* declare all the function prototypes */
-#include "index.h"				/* open index description */
+#include "dataman_prototypes.h"	/* declare all the function prototypes */
 #include "wind.h"				/* windowing definitions */
-#include "m_params.h"			/* master file parameters */
-#include "w_params.h"			/* work file parameters */
 
 #define BEFORE		0			/* insert before switch */
 #define AFTER		1			/* insert after switch */
@@ -58,22 +55,25 @@
 #define commit							if (db_commit()) ;
 #define delete(idx)						if (db_delete(idx)) ;
 #define include(idx1, idx2, key)		if (db_include(idx1, idx2, key)) ;
+#define insert(fmt, mode, ixname)		if (db_insert(fmt, mode, ixname)) ;
+#define iopen(ixname, mode)				if (db_iopen(ixname, mode)) ;
+#define clear(ixname)					if (db_clear(ixname)) ;
 
 #define itoa(val,buf)					sprintf(buf, "%d", val)
 
-#define KEY				cur_index._curkey		/* last accesed key */
-#define KEY_LEN			(cur_index._keylen + sizeof(char) + sizeof(int64_t))
-#define MFMT			m_fmt					/* master file format number */
-#define WFMT			w_fmt					/* work file format number */
-#define MASTERFILENAME	cur_index._files[cur_index._fno]._fname
+#define KEY				_get_curkey()			/* last accesed key */
+#define KEY_LEN			_get_keylength()		/* internal length of the current key */
+#define MFMT			_get_master_format()	/* master file format number */
+#define WFMT			_get_work_format()		/* work file format number */
+#define MASTERFILENAME	_get_filename()			/* get the name of the file containing the current master record */
 #define MASTER_FIELD(n)	mfld[(n)]
 #define WORK_FIELD(n)	wfld[(n)]
 
-#define W_FILE			NULL					/* work file "flag" */
+#define W_FILE			NULL						/* work file "flag" */
 
-#define when_mfmt(x)	if (mfld&&m_fmt == x)	/* master file format test */
-#define when_wfmt(x)	if (wfld&&w_fmt == x)	/* work file format test */
-#define when_file		if (wfld&&_file)		/* new file test */
+#define when_mfmt(x)	if (_is_master_format(x))	/* master file format test */
+#define when_wfmt(x)	if (_is_work_format(x))		/* work file format test */
+#define when_file		if (_is_new_file())			/* new file test */
 
 #define dirty_m			(mfld[0] = (char *)((uintptr_t)mfld[0] | 1))	/* set master dirty bit */
 #define dirty_w			(wfld[0] = (char *)((uintptr_t)wfld[0] | 1))	/* set work file dirty bit */
@@ -84,9 +84,8 @@
 #define wstrcpy(pt1,pt2)        do { dirty_w;strcpy(pt1,pt2); } while (0)
 #define wstrncpy(pt1,pt2,i)     do { dirty_w;strncpy(pt1,pt2,i); } while (0)
 
-extern char _file;				/* new file flag */
-
-extern INDEX cur_index;			/* last accessed index */
+#define SHOW(...)						dtm_show(__VA_ARGS__)
+#define PAUSE(row, col, message)		dtm_pause(row, col, message)
 
 #endif
 

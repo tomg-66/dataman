@@ -5,7 +5,7 @@ libmini_la_SOURCES = show.c accept.c pause.c screen.c mask.c init_dwin.c \
 
 includedir = $(prefix)/include/dataman
 
-noinst_HEADERS = client_internal.h
+noinst_HEADERS = index.h m_params.h window.h w_params.h
 
 
 lib_LTLIBRARIES = libdataman.la
@@ -17,15 +17,13 @@ libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 		iclose.c include.c init_dataman.c init_dwin.c insert.c \
 		iopen.c mask.c match.c mkidx.c move.c new_win.c \
 		pause.c pop_win.c protect.c recio.c release.c remove.c response.c \
-		restore.c save.c screen.c show.c sort.c substr.c window.c \
-		put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c \
-		put_ll.c
+		restore.c save.c screen.c shortcuts.c show.c sort.c substr.c window.c \
+	       	put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c put_ll.c
 
 
 libdataman_la_LDFLAGS = -version-info 4:1:0 -lcurses
 
-include_HEADERS = dataman.h globs.h index.h m_params.h proto.h \
-		sort.h wind.h window.h w_params.h
+include_HEADERS = dataman.h dataman_prototypes.h sort.h wind.h visibility.h 
 
 AM_CPPFLAGS = -I$(top_srcdir)/server
 

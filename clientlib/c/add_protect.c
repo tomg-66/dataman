@@ -49,7 +49,7 @@
 
 #include "globs.h"
 
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
 typedef struct _pchain_ {
 	int idxno;					/* index number */
@@ -60,7 +60,7 @@ typedef struct _pchain_ {
 
 static PCHAIN *phead = NULL;	/* head of chain */
 
-bool add_protect(int idxno, int fileno, int64_t recno)
+DATAMAN_HIDDEN bool add_protect(int idxno, int fileno, int64_t recno)
 {
 
 	PCHAIN *tmp;
@@ -90,7 +90,7 @@ bool add_protect(int idxno, int fileno, int64_t recno)
 	return true;
 }
 
-void del_protect(int idxno, int fileno, int64_t recno)
+DATAMAN_HIDDEN void del_protect(int idxno, int fileno, int64_t recno)
 {
 	PCHAIN *tmp;
 	PCHAIN *ptr;

@@ -62,7 +62,6 @@
 #include <ctype.h>
 
 #include "globs.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #ifdef DATAMAN_CMAKE_BUILD
@@ -71,29 +70,29 @@
 #include "../../config.h"
 #endif
 
-INDEX _indices[6];
-int dataman_has_php;
+DATAMAN_HIDDEN INDEX _indices[6];
+DATAMAN_HIDDEN int dataman_has_php;
 
-extern int in_xact;
+DATAMAN_HIDDEN extern int in_xact;
 
-extern int db_connect(char *);
-extern char *db_send(char *, int, char *);
-extern char *db_send_len(char *, int, char *, size_t *);
-extern void db_err(int, char *, ...);
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern void db_discon(void);
-extern void flush(void);
+DATAMAN_HIDDEN extern int db_connect(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern char *db_send_len(char *, int, char *, size_t *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern void db_discon(void);
+DATAMAN_HIDDEN extern int flush(void);
 
-extern void data_globs(void);
+DATAMAN_HIDDEN extern void data_globs(void);
 
 #ifdef DWINDOW
-extern void init_dwin(void);
+DATAMAN_HIDDEN extern void init_dwin(void);
 #endif
 
 #define FALSE 0
 #define TRUE  1
 
-void useage()
+static void useage()
 {
 	db_err(0, "%s: useage: %s [-n] [-h host] [-r root] workfile\n"
 					"\t-n non-traditional (don't use workfile)\n"
@@ -102,7 +101,11 @@ void useage()
 					_progname, _progname);
 }
 
-int init_dataman(int argc, char *argv[])
+DATAMAN_HIDDEN void do_flush() {
+    flush();
+}
+
+DATAMAN_API int init_dataman(int argc, char *argv[])
 {
 	int i, j;			/* argument handling */
 
@@ -118,7 +121,7 @@ int init_dataman(int argc, char *argv[])
 	host = NULL;
 	*_root = '\0';
 
-	_progname = argv[0];
+	_progname = strdup(argv[0]);
 	for (i = 1; i < argc; i++) {
 		if (*argv[i] != '-')
 			break;
@@ -281,7 +284,7 @@ int init_dataman(int argc, char *argv[])
 	free(ptr);
 php_done:
 	atexit(db_discon);			/* clean up on exit */
-	atexit(flush);				/* flush any modified record */
+	atexit(do_flush);				/* flush any modified record */
 
 #ifdef DWINDOW
 	if (!dataman_has_php)
@@ -295,7 +298,7 @@ invalid_response:
 	return FALSE;
 }
 
-void dataman_disconnect()
+DATAMAN_API void dataman_disconnect()
 {
 	if (dm_sock < 0)
 		return;

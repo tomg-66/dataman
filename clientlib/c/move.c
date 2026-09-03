@@ -44,10 +44,12 @@
  */
 
 #include <string.h>
-#include "proto.h"			/* this is for the declaration of type key */
-#include "misc.h"			/* keyheader length def */
+#include "visibility.h"
+#include "dataman_prototypes.h"		/* this is for the declaration of type key */
+#include "misc.h"					/* keyheader length def */
 
-void mk_key(key dest, char *srce, int len)
+
+DATAMAN_API void mk_key(key dest, const char *srce, int len)
 
 {
     memset(dest,'\0',sizeof(key));               /* fill the 'key' with nulls */

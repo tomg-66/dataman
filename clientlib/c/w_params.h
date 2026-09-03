@@ -25,21 +25,22 @@
 #define _WPARAMS_INC_
 
 #include <stdint.h>
+#include "visibility.h"
 #include "datafile_header.h"
 
-extern short *w_desc;			/* work file description */
-extern short w_longest;			/* longest record in work file */
-extern int64_t w_cur;			/* pointer to current work record */
-extern int64_t w_prev;			/* pointer to next work record */
-extern int64_t w_next;			/* pointer to previous work record */
-extern int w_chan;				/* channel of work file */
-extern char w_fmt;				/* format number of work record */
-extern char **wfld;				/* pointers to data fields */
-extern uint32_t *w_blob_lengths;	/* runtime lengths for blob fields */
-extern char *_w_rec_;			/* pointer to buffer */
-extern char _file;				/* new file switch */
-extern FILEDESC *w_fdesc;
+DATAMAN_HIDDEN extern short *w_desc;			/* work file description */
+DATAMAN_HIDDEN extern short w_longest;			/* longest record in work file */
+DATAMAN_HIDDEN extern int64_t w_cur;			/* pointer to current work record */
+DATAMAN_HIDDEN extern int64_t w_prev;			/* pointer to next work record */
+DATAMAN_HIDDEN extern int64_t w_next;			/* pointer to previous work record */
+DATAMAN_HIDDEN extern int w_chan;				/* channel of work file */
+DATAMAN_HIDDEN extern char w_fmt;				/* format number of work record */
+DATAMAN_HIDDEN extern uint32_t *w_blob_lengths;	/* runtime lengths for blob fields */
+DATAMAN_HIDDEN extern char *_w_rec_;			/* pointer to buffer */
+DATAMAN_HIDDEN extern char _file;				/* new file switch */
+DATAMAN_HIDDEN extern FILEDESC *w_fdesc;
 
+DATAMAN_API extern char **wfld;				/* pointers to data fields */
 #define WORK	1			/* operate on work file */
 
 #endif

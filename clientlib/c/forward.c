@@ -56,25 +56,24 @@
 #include "index.h"
 #include "m_params.h"
 #include "w_params.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
 #define TRUE    1
 #define FALSE   0
 
-extern int in_xact;
+DATAMAN_HIDDEN extern int in_xact;
 
-extern INDEX cur_index;					/* the current operation index */
+DATAMAN_HIDDEN extern INDEX cur_index;					/* the current operation index */
 
-extern int out_rec(int);
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern INDEX *findex(char *);
-extern char *db_send(char *, int, char *);
-extern char *db_send_len(char *, int, char *, size_t *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int out_rec(int);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern char *db_send_len(char *, int, char *, size_t *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-int db_fwd(char *idx_name)
+DATAMAN_API int db_fwd(char *idx_name)
 
 {
 	int i;
@@ -88,7 +87,7 @@ int db_fwd(char *idx_name)
 	char *cptr;
 	size_t response_len;
 
-	if (idx_name) {
+	if (idx_name && strlen(idx_name)) {
 		if ((idx = findex(idx_name)) == NULL) {			/* get the index */
 			return FALSE;
 		}
@@ -137,7 +136,7 @@ int db_fwd(char *idx_name)
 	if (!dm_next_field(&cptr))
 		goto invalid_response;
 
-	if (idx_name) {
+	if (idx_name && strlen(idx_name)) {
 		if ((size_t)(cptr-buff) > response_len ||
 				!in_rec(MASTER, cptr, response_len-(size_t)(cptr-buff),
 					idx, fmt, idx->_fno)) {

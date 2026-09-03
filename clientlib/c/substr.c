@@ -25,22 +25,20 @@
 #include <stddef.h>
 #include <malloc.h>
 #include <string.h>
+#include "visibility.h"
 
-char *substr(arg1,arg2,arg3)
-register char *arg1;
-int arg2,arg3;
-
+DATAMAN_API char *substr(const char *arg1, const int arg2, const int arg3)
 {
 
 	char *buff;					/* returned buffer */
 
-	register unsigned idx;			/* index value */
+	unsigned idx;				/* index value */
 
-	if (arg2 > arg3)				/* validate args */
+	if (arg2 > arg3)			/* validate args */
 		return(NULL);
 
 	idx = arg3 - arg2 + 2;			/* length of buffer + \0 */
-	buff = (char *)malloc(idx);			/* get return buffer */
+	buff = (char *)malloc(idx);		/* get return buffer */
 	if (buff == NULL)
 		return(NULL);
 

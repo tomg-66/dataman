@@ -52,14 +52,14 @@
 #include "globs.h"
 #include "../../server/dbfunc.h"
 
-extern int is_sort;
-extern int dataman_has_php;
-extern INDEX _indices[6];
+DATAMAN_HIDDEN extern int is_sort;
+DATAMAN_HIDDEN extern int dataman_has_php;
+DATAMAN_HIDDEN extern INDEX _indices[6];
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
 
-extern char *db_send(char *, int, char *);
-extern int iclose(char *);
+DATAMAN_API extern int iclose(char *);
 
-void db_discon(void)
+DATAMAN_HIDDEN void db_discon(void)
 {
 	int i;
 

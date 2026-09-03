@@ -38,8 +38,9 @@
 
 #include <netinet/in.h>
 #include <string.h>
+#include "visibility.h"
 
-void put_long(char *ptr, uint32_t lval)
+DATAMAN_HIDDEN void put_long(char *ptr, uint32_t lval)
 {
 /*
 	char *lptr;

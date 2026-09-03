@@ -38,16 +38,16 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-int match(text,temp)
-register char text[];                           /* test string */
-register char temp[];                           /* template string */
+#include "visibility.h"
+
+DATAMAN_API int match(const char text[], const char temp[])
 
 {
 
-    register int ix1 = 0;       /* index into string text */
-    register int ix2 = 0;       /* index into string temp */
-    register char ch1;          /* character pointed by ix1 into text */
-    register char ch2;          /* character pointed by ix2 into temp */
+    int ix1 = 0;       /* index into string text */
+    int ix2 = 0;       /* index into string temp */
+    char ch1;          /* character pointed by ix1 into text */
+    char ch2;          /* character pointed by ix2 into temp */
 
     while (1) {                         /* do forever */
         ch2 = temp[ix2++];              /* the template charecter */

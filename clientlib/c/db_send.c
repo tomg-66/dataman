@@ -74,7 +74,7 @@
 
 #include "globs.h"
 
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
 static bool write_all(int fd, const void *buf, size_t len)
 {
@@ -114,7 +114,7 @@ static bool read_exact(int fd, void *buf, size_t len)
 	return(true);
 }
 
-char *db_send_len(char *cmd, int len, char *module, size_t *response_len)
+DATAMAN_HIDDEN char *db_send_len(char *cmd, int len, char *module, size_t *response_len)
 {
 
 	int32_t size;
@@ -183,7 +183,7 @@ char *db_send_len(char *cmd, int len, char *module, size_t *response_len)
 	return(ret);
 }
 
-char *db_send(char *cmd, int len, char *module)
+DATAMAN_HIDDEN char *db_send(char *cmd, int len, char *module)
 {
 	return db_send_len(cmd, len, module, NULL);
 }

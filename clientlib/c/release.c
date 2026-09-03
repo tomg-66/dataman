@@ -50,25 +50,25 @@
 
 #include "globs.h"
 #include "w_params.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
 #define FALSE   0
 #define TRUE    1
 
-extern char **_fnames;					/* the file names */
-extern int _fileno;						/* the current file number */
-extern short _maxfil;						/* maximum number of files */
+DATAMAN_HIDDEN extern char **_fnames;					/* the file names */
+DATAMAN_HIDDEN extern int _fileno;						/* the current file number */
+DATAMAN_HIDDEN extern short _maxfil;						/* maximum number of files */
 
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern int out_rec(int);
-extern char *db_send(char *, int, char *);
-extern char *db_send_len(char *, int, char *, size_t *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern int out_rec(int);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern char *db_send_len(char *, int, char *, size_t *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-int db_rel()
+DATAMAN_HIDDEN int dm_in_rec_reload(int, char *, size_t, INDEX *, int, int);
 
+DATAMAN_API int db_rel()
 {
 	int i;
 

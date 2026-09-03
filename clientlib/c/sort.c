@@ -51,17 +51,17 @@
 #include "globs.h"
 #include "../../server/dbfunc.h"
 
-extern INDEX cur_index;                         /* current working index */
+DATAMAN_HIDDEN extern INDEX cur_index;                         /* current working index */
 
-extern int  _fileno;                           /* current file number */
+DATAMAN_HIDDEN extern int  _fileno;                           /* current file number */
 
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
 #define FALSE 0
 #define TRUE  1
 
-int sort(char *pkey)
+DATAMAN_API int db_sort(char *pkey)
 {
 
 	int i;

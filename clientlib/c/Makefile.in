@@ -139,9 +139,9 @@ am_libdataman_la_OBJECTS = accept.lo add_protect.lo back.lo clear.lo \
 	init_dataman.lo init_dwin.lo insert.lo iopen.lo mask.lo \
 	match.lo mkidx.lo move.lo new_win.lo pause.lo pop_win.lo \
 	protect.lo recio.lo release.lo remove.lo response.lo \
-	restore.lo save.lo screen.lo show.lo sort.lo substr.lo \
-	window.lo put_long.lo put_blob.lo get_ll.lo start_xact.lo \
-	commit.lo rollback.lo put_ll.lo
+	restore.lo save.lo screen.lo shortcuts.lo show.lo sort.lo \
+	substr.lo window.lo put_long.lo put_blob.lo get_ll.lo \
+	start_xact.lo commit.lo rollback.lo put_ll.lo
 libdataman_la_OBJECTS = $(am_libdataman_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -194,9 +194,9 @@ am__depfiles_remade = ./$(DEPDIR)/accept.Plo \
 	./$(DEPDIR)/remove.Plo ./$(DEPDIR)/response.Plo \
 	./$(DEPDIR)/restore.Plo ./$(DEPDIR)/rollback.Plo \
 	./$(DEPDIR)/save.Plo ./$(DEPDIR)/screen.Plo \
-	./$(DEPDIR)/show.Plo ./$(DEPDIR)/sort.Plo \
-	./$(DEPDIR)/start_xact.Plo ./$(DEPDIR)/substr.Plo \
-	./$(DEPDIR)/window.Plo
+	./$(DEPDIR)/shortcuts.Plo ./$(DEPDIR)/show.Plo \
+	./$(DEPDIR)/sort.Plo ./$(DEPDIR)/start_xact.Plo \
+	./$(DEPDIR)/substr.Plo ./$(DEPDIR)/window.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -374,7 +374,7 @@ noinst_LTLIBRARIES = libmini.la
 libmini_la_SOURCES = show.c accept.c pause.c screen.c mask.c init_dwin.c \
 					db_err.c
 
-noinst_HEADERS = client_internal.h
+noinst_HEADERS = index.h m_params.h window.h w_params.h
 lib_LTLIBRARIES = libdataman.la
 libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 		data_globs.c db_connect.c db_discon.c db_err.c db_send.c \
@@ -383,14 +383,11 @@ libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 		iclose.c include.c init_dataman.c init_dwin.c insert.c \
 		iopen.c mask.c match.c mkidx.c move.c new_win.c \
 		pause.c pop_win.c protect.c recio.c release.c remove.c response.c \
-		restore.c save.c screen.c show.c sort.c substr.c window.c \
-		put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c \
-		put_ll.c
+		restore.c save.c screen.c shortcuts.c show.c sort.c substr.c window.c \
+	       	put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c put_ll.c
 
 libdataman_la_LDFLAGS = -version-info 4:1:0 -lcurses
-include_HEADERS = dataman.h globs.h index.h m_params.h proto.h \
-		sort.h wind.h window.h w_params.h
-
+include_HEADERS = dataman.h dataman_prototypes.h sort.h wind.h visibility.h 
 AM_CPPFLAGS = -I$(top_srcdir)/server
 all: all-am
 
@@ -529,6 +526,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rollback.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/save.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/screen.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shortcuts.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/show.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sort.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/start_xact.Plo@am__quote@ # am--include-marker
@@ -765,6 +763,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/rollback.Plo
 	-rm -f ./$(DEPDIR)/save.Plo
 	-rm -f ./$(DEPDIR)/screen.Plo
+	-rm -f ./$(DEPDIR)/shortcuts.Plo
 	-rm -f ./$(DEPDIR)/show.Plo
 	-rm -f ./$(DEPDIR)/sort.Plo
 	-rm -f ./$(DEPDIR)/start_xact.Plo
@@ -864,6 +863,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/rollback.Plo
 	-rm -f ./$(DEPDIR)/save.Plo
 	-rm -f ./$(DEPDIR)/screen.Plo
+	-rm -f ./$(DEPDIR)/shortcuts.Plo
 	-rm -f ./$(DEPDIR)/show.Plo
 	-rm -f ./$(DEPDIR)/sort.Plo
 	-rm -f ./$(DEPDIR)/start_xact.Plo

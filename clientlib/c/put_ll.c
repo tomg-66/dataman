@@ -11,10 +11,11 @@
 #include "misc.h"
 #endif
 #include <stdint.h>
+#include "visibility.h"
 
-extern int64_t get_ll(void *);
+DATAMAN_HIDDEN extern int64_t get_ll(void *);
 
-void put_ll(void *ptr, int64_t value)
+DATAMAN_HIDDEN void put_ll(void *ptr, int64_t value)
 {
 
 	*(int64_t *)ptr = get_ll(&value);

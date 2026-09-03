@@ -81,8 +81,8 @@ char dirty;			/* another dirty flag */
 int dbgsw;
 char *_progname;
 
-extern void show(int, int, char *, ...);
-extern void pause(int, int, char *);
+extern void dtm_show(int, int, char *, ...);
+extern void dtm_pause(int, int, char *);
 extern int acept(int, int, char *, int);
 extern int get_datafile_desc(FILES *);
 extern void db_err(int, char *, ...);
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 /*
  * display the main menu
  */
-	show(0,0,TOP,0,27,"Editing File ",0,40,argv[1],
+	dtm_show(0,0,TOP,0,27,"Editing File ",0,40,argv[1],
 		2,23,"Enter Record Number:",
 		4,9,"F1- Go To Prior Record",	4,49,"F5- Edit Field",
 		5,9,"F2- Go To Next Record",	5,49,"F6- Change Back Link",
@@ -212,8 +212,8 @@ int main(int argc, char *argv[])
  */
 			case F1:
 				if(m_prev == 0) {
-					pause(20,31,"On First Record!");
-					show(20,0,EOL,ENDLIST);
+					dtm_pause(20,31,"On First Record!");
+					dtm_show(20,0,EOL,ENDLIST);
 					break;
 				}
 				update(p_desc);
@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
  */
 			case F2:
 				if (m_next == 0) {
-					pause (20,31,"On Last Record!");
-					show(20,0,EOL,ENDLIST);
+					dtm_pause (20,31,"On Last Record!");
+					dtm_show(20,0,EOL,ENDLIST);
 					break;
 				}
 				update(p_desc);
@@ -238,12 +238,12 @@ int main(int argc, char *argv[])
  */
 			case F3:
 				if (m_cur == 0) {
-					pause(20,32,"Before First Record!");
+					dtm_pause(20,32,"Before First Record!");
 					break;
 				}
 				if (fno == 1) {
-					pause(20,32,"On First Field!");
-					show(20,0,EOL,ENDLIST);
+					dtm_pause(20,32,"On First Field!");
+					dtm_show(20,0,EOL,ENDLIST);
 					break;
 				}
 				fno--;
@@ -254,12 +254,12 @@ int main(int argc, char *argv[])
  */
 			case F4:
 				if (m_cur == 0) {
-					pause(20,32,"Before First Record!");
+					dtm_pause(20,32,"Before First Record!");
 					break;
 				}
 				if (mfld[++fno] == NULL) {
-					pause(20,32,"On Last Field!");
-					show(20,0,EOL,ENDLIST);
+					dtm_pause(20,32,"On Last Field!");
+					dtm_show(20,0,EOL,ENDLIST);
 					fno--;
 					break;
 				}
@@ -270,20 +270,20 @@ int main(int argc, char *argv[])
  */
 			case F5:
 				if (*(mfld[fno]) == '\0') {
-					pause(20,30, "Can't edit Blob Data");
-					show(20,0,EOL, ENDLIST);
+					dtm_pause(20,30, "Can't edit Blob Data");
+					dtm_show(20,0,EOL, ENDLIST);
 					break;
 				}
 				memset(inpt,' ',strlen(mfld[fno]));
 				*(inpt+strlen(mfld[fno])) = '\0';
 				accept(18,0,inpt,0) else {
-					show(18,0,EOL,19,0,EOL,20,0,EOL,ENDLIST);
+					dtm_show(18,0,EOL,19,0,EOL,20,0,EOL,ENDLIST);
 					break;
 				}
 				dirty = 1;
 				memset(mfld[fno],' ',strlen(mfld[fno]));
 				strncpy(mfld[fno],inpt,strlen(inpt));
-				show(18,0,EOL,19,0,EOL,20,0,EOL,13,0,mfld[fno],ENDLIST);
+				dtm_show(18,0,EOL,19,0,EOL,20,0,EOL,13,0,mfld[fno],ENDLIST);
 				break;
 /*
  * change the back pointer
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
 					sprintf(inpt, "%"PRId64, m_prev);
 				m_prev = strtoll(inpt, NULL, 10);
 				strcpy(inpt,MSK1);
-				show(10,17,mask(m_prev,inpt),ENDLIST);
+				dtm_show(10,17,mask(m_prev,inpt),ENDLIST);
 				put_ll(inpt,m_prev);
 				llseek(m_chan,m_cur+OFFSET_TO_PREV,SEEK_SET);
 				write(m_chan,inpt,sizeof(int64_t));
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 					sprintf(inpt, "%"PRId64, m_next);
 				m_next = strtoll(inpt, NULL, 10);
 				strcpy(inpt,MSK1);
-				show(11,17,mask(m_next,inpt),ENDLIST);
+				dtm_show(11,17,mask(m_next,inpt),ENDLIST);
 				llseek(m_chan,m_cur+OFFSET_TO_NEXT,0);
 				put_ll(inpt, m_next);
 				write(m_chan,inpt,sizeof(int64_t));
@@ -320,8 +320,8 @@ int main(int argc, char *argv[])
  */
 			case F8:
 				if (m_next == 0 && m_prev == 0) {
-					pause(20,22,"Cannot Delete Only Record In File!");
-					show(20,0,EOL);
+					dtm_pause(20,22,"Cannot Delete Only Record In File!");
+					dtm_show(20,0,EOL);
 					break;
 				}
 				tmp = 0;
@@ -401,9 +401,9 @@ static int update(FILEDESC *p_desc)
 	if (dirty) {
 		*sel = ' ';
 		*(sel+1) = '\0';
-		show(20,27,"Save Changes (Y,[N])?:",ENDLIST);
+		dtm_show(20,27,"Save Changes (Y,[N])?:",ENDLIST);
 		accept(20,50,sel,2);
-		show(20,0,EOL,ENDLIST);
+		dtm_show(20,0,EOL,ENDLIST);
 		if (*sel == 'Y')
 			mfld[0] = (char *)((uintptr_t)mfld[0] | 1);
 	}
@@ -423,29 +423,29 @@ static int disp_it(int val)
 	switch(val) {
 		case 1:
 			strcpy(msk,MSK1);
-			show(10,17,mask(m_prev,msk),ENDLIST);
+			dtm_show(10,17,mask(m_prev,msk),ENDLIST);
 			if (deleted)
-				show(10,45, "Deleted     ", ENDLIST);
+				dtm_show(10,45, "Deleted     ", ENDLIST);
 			else {
 				strcpy(msk,MSK1);
-				show(10,45,mask(m_cur,msk),ENDLIST);
+				dtm_show(10,45,mask(m_cur,msk),ENDLIST);
 			}
 
 			strcpy(msk,MSK1);
-			show(11,17,mask(m_next,msk),ENDLIST);
+			dtm_show(11,17,mask(m_next,msk),ENDLIST);
 
 			strcpy(msk,"0_");
 			disp = m_fmt;
-			show(11,40,mask(disp,msk),ENDLIST);
+			dtm_show(11,40,mask(disp,msk),ENDLIST);
 
 		case 2:
 			strcpy(msk,"_0_");
 			disp = fno;
-			show(11,72,mask(disp,msk),ENDLIST);
+			dtm_show(11,72,mask(disp,msk),ENDLIST);
 			if (*(mfld[fno]) == '\0') 
-				show(13,0,EOL,14,0,EOL,15,0,EOL,13,0,"Blob Data",ENDLIST);
+				dtm_show(13,0,EOL,14,0,EOL,15,0,EOL,13,0,"Blob Data",ENDLIST);
 			else
-				show(13,0,EOL,14,0,EOL,15,0,EOL,13,0,mfld[fno],ENDLIST);
+				dtm_show(13,0,EOL,14,0,EOL,15,0,EOL,13,0,mfld[fno],ENDLIST);
     }
 }
 

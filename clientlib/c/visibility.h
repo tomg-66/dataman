@@ -1,7 +1,6 @@
 /*
- * this procedure gets a long int from the pointer passed.  Since this
- * is dos, the long is stored in the string in reverse byte order.  this
- * routine is very dos dependant.
+ * @#visibility.h rev 4.0.0 dataman visibility.  define visibility macros
+ * Copyright (c) SuperUser Software 1988-2004.  All rights reserved.
  */
 /*
  * This program is free software; you can redistribute it and/or
@@ -22,30 +21,26 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#include <arpa/inet.h>		/* for def of ntohl */
-#include <string.h>
-#include "visibility.h"
+#ifndef DATAMAN_VISIBILITY_H
+#define DATAMAN_VISIBILITY_H
 
-DATAMAN_HIDDEN uint32_t get_long(char *ptr)
-{
-/*
-    char ret[4];
+#include <stdbool.h>
+#include <stddef.h>
 
-    *ret = *(ptr+3);
-    *(ret+1) = *(ptr+2);
-    *(ret+2) = *(ptr+1);
-    *(ret+3) = *ptr;
-    return(*((unsigned long*)ret));
-*/
-	uint32_t tmp;
-	memcpy((void *)&tmp, ptr, sizeof(uint32_t));
-	return(ntohl(tmp));
-}
+#if defined(__GNUC__) || defined(__clang__)
+#define DATAMAN_HIDDEN __attribute__((visibility("hidden")))
+#define DATAMAN_API    __attribute__((visibility("default")))
+#else
+#define DATAMAN_HIDDEN
+#define DATAMAN_API
+#endif
+
+#endif
 
 /*
  * Local variables:
  * tab-width: 4
  * c-basic-offset: 4
  * End:
- * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
+ * vim: set noet sw=4 sts=4 ts=4 ft=c fdm=marker:
  */

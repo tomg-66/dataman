@@ -46,15 +46,15 @@
 
 #include "index.h"
 #include "globs.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
-extern INDEX _indices[6];				/* the currently opened indices */
+DATAMAN_HIDDEN extern INDEX _indices[6];				/* the currently opened indices */
 
-extern char *substr(char *, int, int);
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+
+DATAMAN_API extern char *substr(const char *, const int, const int);
 
 #define FALSE 0
 #define TRUE  1
@@ -72,7 +72,7 @@ static void send_iclose(int idxno)
 	free(ret_buf);
 }
 
-int iopen(char *index, int mode)
+DATAMAN_API int db_iopen(char *index, int mode)
 {
     int idx;                    /* loop counter */
     int x;                      /* use only because open requires it */

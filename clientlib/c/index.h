@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "visibility.h"
 #include "datafile_header.h"
 
 typedef struct _files_ {
@@ -66,6 +67,8 @@ typedef struct idxbuf   {               /* main index information */
 
 #define MIN_KEY_SIZE	1		/* smallest allowable key */
 #define MAX_KEY_SIZE	32		/* biggest allowable key */
+
+DATAMAN_HIDDEN extern int flush(void);
 
 #endif
 

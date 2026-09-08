@@ -44,13 +44,16 @@
 #include <string.h>
 #include <curses.h>
 #include <malloc.h>
+#include "visibility.h"
+
+namespace Dataman {
 
 extern chtype HELP;		/* the help key character */
 
 extern void save_scr(int, int, int, int, chtype *);
 extern void rest_scr(int, int, int, int, chtype *);
 
-void pause(int row, int col, const char *mess)
+DATAMAN_API void pause(int row, int col, const char *mess)
 
 {
 	int offs;
@@ -81,6 +84,8 @@ void pause(int row, int col, const char *mess)
 	rest_scr(row, col, row, offs-1, buff);
 	free(buff);
 }
+
+} // end of namespace
 
 /*
  * Local variables:

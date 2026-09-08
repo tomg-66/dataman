@@ -1,23 +1,20 @@
 /* ***************************************************************
  *
- * PROCEDURE:	screen.c
+ * PROCEDURE:	datarecord.cc
  *
- * PROJECT:		dataman client side
+ * PROJECT:		dataman client data record implementation
  * 
- * DATE:		legacy, originally writtin in 1988
+ * DATE:		Sun Sep  6 04:42:29 PM MDT 2026
  * 
  * AUTHOR:		Tom Green
  * 
  * FILES:
  *
  * MODIFICATION HISTORY:
- * 				March 2002
- *				Tom Green
- *				modified to use the curses package.
+ *
  ************************************************************* */
-
 /*
- * this saves and restores the contents of the screen in the specified area
+ * implements the datarecord accessors that the user doesn't need
  */
 /*
  * This program is free software; you can redistribute it and/or
@@ -38,39 +35,65 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#include <curses.h>
-#include "visibility.h"
+#include "datarecord.hpp"
 
 namespace Dataman {
 
-DATAMAN_HIDDEN void save_scr(int row1, int col1,			/* row and column to begin */
-			  int row2, int col2,			/* ending row and col */
-			  chtype *buff)					/* where to put it */
-
-{
-	int i, j;
-
-	for (i = row1; i <= row2; i++) {
-		for (j = col1; j <= col2; j++)
-			*buff++ = mvinch(i, j);
-	}
+datarecord::datarecord(int t) {
+	head = longest = 0;
+	cur = prev = next = 0ll;
+	chan = len = 0;
+	fmt = _file = 0;
+	_dirty = false;
+	which = t;
+	_filedesc = (FILEDESC *)NULL;
+	_fields = NULL;
 }
 
-DATAMAN_HIDDEN void rest_scr(int row1, int col1,			/* where to begin restore */
-			  int row2, int col2,			/* where to end it */
-			  chtype *buff)					/* buffer of chars */
-{
-	int i, j;
-
-	for (i = row1; i <= row2; i++) {
-		move(i, col1);
-		for (j = col1; j <= col2; j++)
-			addch(*buff++);
+void datarecord::init(void) {
+	if (_fields) {
+		delete[] _fields;
+		_fields = NULL;
 	}
-	refresh();
+	clear_desc();
+	head = longest = 0;
+	cur = prev = next = 0ll;
+	chan = len = 0;
+	fmt = _file = 0;
+	_dirty = false;
 }
 
-} // namespace Dataman
+int datarecord::getwhich()
+{
+	return(this->which);
+}
+
+int64_t datarecord::getcur()
+{
+	return(this->cur);
+}
+
+int64_t datarecord::getnext()
+{
+	return(this->next);
+}
+
+int datarecord::getchan()
+{
+	return(this->chan);
+}
+
+bool datarecord::getdirty()
+{
+	return(this->_dirty);
+}
+
+FILEDESC * datarecord::get_desc()
+{
+	return(this->_filedesc);
+}
+
+} // end of namespace
 
 /*
  * Local variables:

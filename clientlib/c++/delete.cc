@@ -51,6 +51,7 @@
 #include <inttypes.h>
 
 #include "fileEdit.hpp"
+#include "datafile.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -59,7 +60,7 @@
 
 #include <memory>
 
-using namespace Dataman;
+namespace Dataman {
 
 #define FALSE 0
 #define TRUE  1
@@ -136,6 +137,8 @@ int index::delrec()
 
 	return TRUE;
 }
+
+} // end of namespace
 
 /*
  * Local variables:

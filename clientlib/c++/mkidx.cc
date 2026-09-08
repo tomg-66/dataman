@@ -57,6 +57,7 @@
 
 #include "index.hpp"
 #include "datarecord.hpp"
+#include "internal_state.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -73,8 +74,10 @@
 #define FALSE 0
 #define TRUE 1
 
+namespace Dataman {
+
 /* -------- these are globals declared here -------- */
-short _maxfil;					/* number of files in index */
+DATAMAN_HIDDEN short _maxfil;					/* number of files in index */
 
 extern void data_globs(void);
 
@@ -82,7 +85,7 @@ extern void data_globs(void);
 extern void init_dwin(void);
 #endif
 
-using namespace Dataman;
+DATAMAN_HIDDEN void dataman_disconnect(void);
 
 static void useage(char *name)
 {
@@ -94,32 +97,7 @@ static void useage(char *name)
 		"\n\t-r   rootdir is the database root directory\n",name);
 }
 
-extern void dataman_disconnect(void);
-
-namespace Dataman {
-
-	Dataman::datarecord workRecord(WORK);
-
-	char _file;					// the when_file flag
-
-	index *cur_index = NULL;
-
-	bool dbgsw = false;			// debug switch
-	bool is_sort = false;
-	bool dataman_has_php = false;
-
-	char *_progname = NULL;		// name of currently running program
-	char *_root = NULL;			// pointer to ROOT dir
-
-	char * index::_onames[6];	// this is static - should be inited to NULLs
-
-    char **_fnames = NULL;		// the names of the files in index */
-    char _fileno = 0;			// the offset to the current file */
-};
-
-using namespace Dataman;
-
-int mkidx(int argc, char *argv[])		/* the command line args from main */
+DATAMAN_API int mkidx(int argc, char *argv[])	/* command line args from main */
 
 {
 
@@ -212,7 +190,7 @@ int index::_mkidx(int argc, char *argv[])
 			return FALSE;
 		}
 		_fnames[j] = new char[strlen(argv[i])+1];
-		strcpy(_fnames[j], argv[i]);
+		::strcpy(_fnames[j], argv[i]);
 		h_len += strlen(argv[i]) + 1;
 	}
 /*
@@ -233,7 +211,7 @@ int index::_mkidx(int argc, char *argv[])
 	if (!strlen(host)) {
 		ptr = getenv("DSERVHOST");
 		if (ptr == NULL)
-			strcpy(host, "localhost");
+			::strcpy(host, "localhost");
 		else
 			::strncpy(host, ptr, sizeof(host)-1);
 			host[sizeof(host)-1] = '\0';
@@ -248,7 +226,7 @@ int index::_mkidx(int argc, char *argv[])
 		db_err(ENOALLOC, "%s: in mkidx: %s", strerror(errno));
 		return FALSE;
 	}
-	strcpy(cptr, string);
+	::strcpy(cptr, string);
 	for (i = 0; i < _maxfil; i++) {
 		j += sprintf(cptr+j, "%s|", _fnames[i]);
 	}
@@ -320,6 +298,8 @@ int index::_mkidx(int argc, char *argv[])
 #endif
 	return TRUE;
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

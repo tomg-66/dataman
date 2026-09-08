@@ -55,6 +55,7 @@
 #include <inttypes.h>
 
 #include "fileEdit.hpp"
+#include "datafile.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -67,7 +68,7 @@ extern void put_ll(void *, int64_t);
 #define FALSE 0
 #define TRUE  1
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::include(index *idx_1, const char *key)
 {
@@ -157,6 +158,8 @@ int index::include(index *idx_1, datafield& d)
 {
 	return this->include(idx_1, d.getptr());
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

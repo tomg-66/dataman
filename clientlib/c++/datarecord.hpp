@@ -50,10 +50,12 @@
 #include "datafield.hpp"
 #include "index.hpp"
 
-extern int init_dataman(int, char **);
-extern int commit(void); 
+typedef struct _filedesc_ FILEDESC;
 
 namespace Dataman {
+
+extern int init_dataman(int, char **);
+extern int commit(void);
 
 #define MASTER	0			// master file data record
 #define WORK	1			// work file data record
@@ -74,65 +76,42 @@ class datarecord {
 		FILEDESC 	*_filedesc;	// a parsed out file description
 		datafield 	*_fields;	// an array of datafields
 
-		void clear_desc();
+		DATAMAN_HIDDEN void clear_desc();
 
 	public:
-		datarecord(int t) {
-			head = longest = 0;
-			cur = prev = next = 0ll;
-			chan = len = 0;
-			fmt = _file = 0;
-			_dirty = false;
-			which = t;
-			_filedesc = (FILEDESC *)NULL;
-			_fields = NULL;
-		}
+		datarecord(int type);
 		datarecord(const datarecord&) = delete;
 		datarecord& operator=(const datarecord&) = delete;
 		datarecord(datarecord&&) = delete;
 		datarecord& operator=(datarecord&&) = delete;
-		void init(void) {
-			if (_fields) {
-				delete[] _fields;
-				_fields = NULL;
-			}
-			clear_desc();
-			head = longest = 0;
-			cur = prev = next = 0ll;
-			chan = len = 0;
-			fmt = _file = 0;
-			_dirty = false;
-		}
 
 		~datarecord();
 
 		datafield& operator[](int i);
-
-		friend class index;			// this will mess with my privates!
-		friend int ::init_dataman(int, char **);
-		friend int commit(void); 
-
-		void out_rec();
-		int in_rec(char *, index *operatingIndex = NULL);
-
-		int getwhich() { return(this->which); }
-//		int gethead() { return(this->head); }
-//		int getlongest() { return (this->longest); }
-		int64_t	 getcur() { return(this->cur); }
-		int64_t	 getnext() { return(this->next); }
-//		int64_t	 getprev() { return(this->prev); }
-		int getchan() { return(this->chan); }
-//		int getlen() { return(this->len); }
-		char getfmt() { return(this->fmt); }
-		char getfile() { return(this->_file); }
-		bool getdirty() { return(this->_dirty); }
-		void setdirty(bool b) { this->_dirty = b; }
-
-		FILEDESC *get_desc() { return(this->_filedesc); }
-
 		int release(void);
 
+		char getfmt() { return(this->fmt); }
+		char getfile() { return(this->_file); }
+		void setdirty(bool b) { this->_dirty = b; }
+
+		friend class index;			// this will mess with my privates!
+		friend class datafield;
+		friend int init_dataman(int, char **);
+		friend int commit(void);
+
+		DATAMAN_HIDDEN void init(void);
+		DATAMAN_HIDDEN void out_rec();
+		DATAMAN_HIDDEN int in_rec(char *, index *operatingIndex = NULL);
+
+		DATAMAN_HIDDEN int getwhich();
+		DATAMAN_HIDDEN int64_t	 getcur();
+		DATAMAN_HIDDEN int64_t	 getnext();
+		DATAMAN_HIDDEN int getchan();
+		DATAMAN_HIDDEN bool getdirty();
+		DATAMAN_HIDDEN FILEDESC *get_desc();
+
 } ;				// end of class
+
 };              // end of namespace
 
 #endif

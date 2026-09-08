@@ -55,7 +55,7 @@
 #define TRUE    1
 #define FALSE   0
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::get_first()
 {
@@ -88,11 +88,13 @@ int index::get_first()
 /*
  * parse the return and update the globals
  */
-	i = parse_get(i, ret.get());
+	i = _parse_get(i, ret.get());
 	if (!i)
 		return FALSE;
 	return(TRUE);
 }
+
+} //end of namespace
 
 /*
  * Local variables:

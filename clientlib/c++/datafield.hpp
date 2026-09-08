@@ -50,6 +50,7 @@
 #if !defined _DATAMAN_DATAFIELD_INCLUDED_
 #define  _DATAMAN_DATAFIELD_INCLUDED_
 
+#include "visibility.h"
 
 namespace Dataman {
 
@@ -68,9 +69,9 @@ class datafield {
 		char *data;				// the actual data
 		int which;				/* is this a member of the master or work record */
 
-		bool is_bound() const;
-		void mark_dirty();
-		void assign(const char *, int, fieldTypes);
+		DATAMAN_HIDDEN bool is_bound() const;
+		DATAMAN_HIDDEN void mark_dirty();
+		DATAMAN_HIDDEN void assign(const char *, int, fieldTypes);
 
 	public:
 //
@@ -92,16 +93,16 @@ class datafield {
 //
 // make a new field in in_rec.  not for use anywhere else
 //
-		void make_field(const char *, int, int);
-		void make_blob_field(const void *, int, int);
+		DATAMAN_HIDDEN void make_field(const char *, int, int);
+		DATAMAN_HIDDEN void make_blob_field(const void *, int, int);
 //
 //some access routines.
 //
 		inline const char *getptr() const { return(data ? data : ""); }
-		inline int datalen() const { return(length); }
-		inline int get_type() const { return(type); }
-		inline int get_which(void) const { return(which); }
-		int put_blob(const void *, int);
+		DATAMAN_API int datalen() const;
+		DATAMAN_API int get_type() const;
+		DATAMAN_HIDDEN int get_which(void);
+		DATAMAN_API int put_blob(const void *, int);
 
 		friend const char *strncpy(datafield&, const char *, int);
 		friend const void *memcpy (datafield&, const char *, int);
@@ -167,6 +168,12 @@ class datafield {
 		bool operator!=(float) const;
 
 };			// end of class
+	DATAMAN_API const char *strcpy(datafield&, const char *);
+	DATAMAN_API char *strcpy(char *, datafield&);
+	DATAMAN_API char *strncpy(char *, datafield&, int);
+	DATAMAN_API char *strcat(char *, datafield&);
+	DATAMAN_API char *strncat(char *, datafield&, int);
+	DATAMAN_API int atoi(const datafield&);
 	const void *memcpy (Dataman::datafield& d, const char *s, int i);
 	const char *strncpy (Dataman::datafield& d, const char *s, int i);
 };          // end of namespace

@@ -52,6 +52,8 @@
 #include <string.h>
 #include <key.hpp>
 
+namespace Dataman {
+
 char *substr(const char *src, int beg, int end)
 {
 
@@ -64,7 +66,7 @@ char *substr(const char *src, int beg, int end)
 	buff = new char[offs];
 	if (!buff)
 		return((char *)0);
-	memcpy(buff, src+beg, offs-1);
+	::memcpy(buff, src+beg, offs-1);
 	*(buff+offs-1) = '\0';
 	return(buff);
 }
@@ -74,6 +76,7 @@ char *substr(const Dataman::key &k, int b, int e)
 	return(substr((const char *)k, b, e));
 }
 
+} // end of namespace
 /*
  * Local variables:
  * tab-width: 4

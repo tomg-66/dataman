@@ -46,20 +46,14 @@
 #ifndef _DATAMAN_SORT_INC_
 #define _DATAMAN_SORT_INC_
 
-#include "wind.h"			/* the window definitions */
-
 #include "endSort.hpp"
 #include "proto.hpp"
-
-using Dataman::_fnames;
-using Dataman::_fileno;
-using Dataman::workRecord;
 
 #define CURRENT_FILE	Dataman::current_file()
 #if defined DATAMAN_ENABLE_LEGACY_FILE_MACRO
 #define FILE		CURRENT_FILE
 #endif
-#define WORK_FORMAT		workRecord.getfmt()	/* format number */
+#define WORK_FORMAT		Dataman::workRecord.getfmt()
 
 #define	ANY			0		/* accept any input */
 #define	LOWER		1		/* translate input to lower case */
@@ -68,11 +62,11 @@ using Dataman::workRecord;
 #define NOECHO		04		/* bit mask to suppress echo on accept */
 #define ENDLIST		-1		/* end of argument list flag */
 
-#define WFMT				workRecord.getfmt()		// work file format number
+#define WFMT				Dataman::workRecord.getfmt()
 
-#define release				if (workRecord.release()) ;			/* def for release */
-#define when_workFormat(x)	if (workRecord.getfmt() == x)
-#define when_workFile		if (workRecord.getfile())			/* test _file switch */
+#define release				if (Dataman::workRecord.release()) ;
+#define when_workFormat(x)	if (Dataman::workRecord.getfmt() == x)
+#define when_workFile		if (Dataman::workRecord.getfile())
 
 #endif
 

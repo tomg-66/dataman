@@ -45,6 +45,7 @@
 #include <inttypes.h>
 
 #include "fileEdit.hpp"
+#include "datafile.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -56,7 +57,7 @@
 #define FALSE 0
 #define TRUE  1
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::insert(int fmt, int mode)
 {
@@ -129,6 +130,8 @@ int index::insert(int fmt, int mode)
 	delete[] ptr;
 	return TRUE;
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

@@ -46,7 +46,7 @@
 
 extern int64_t get_ll(const char *);
 
-using namespace Dataman;
+namespace Dataman {
 
 //
 // the default constructor.  don't do anything!
@@ -123,6 +123,17 @@ void key::operator=(const key& k) {
 	this->_fno = k._fno;
 	this->_rec = k._rec;
 }
+
+int key::get_fno()
+{
+	return((int)this->_fno);
+}
+int64_t key::get_rec()
+{
+	return(this->_rec);
+}
+
+} // namespace Dataman
 
 /*
  * Local variables:

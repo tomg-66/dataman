@@ -56,9 +56,7 @@
 
 #include <memory>
 
-using namespace Dataman;
-
-using Dataman::masterRecord;
+namespace Dataman {
 
 #define FALSE 0
 #define TRUE  1
@@ -90,6 +88,8 @@ int index::clear()
 		throw makeError(i, "%s: error in clear", _progname);
 	return i;
 }
+
+} // end of namespace
 
 /*
  * Local variables:

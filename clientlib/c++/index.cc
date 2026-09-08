@@ -43,6 +43,8 @@
 #include <errno.h>
 
 #include "fileEdit.hpp"
+#include "datafile.hpp"
+#include "save.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -53,7 +55,9 @@
 
 extern void db_err(int, const char *, ...);
 
-using namespace Dataman;
+namespace Dataman {
+
+char *index::_onames[MAX_INDEX];
 
 index::index(void) :
 	_idxname(NULL),
@@ -70,6 +74,46 @@ index::index(void) :
 	_files(NULL),
 	_savptr(NULL)
 {
+}
+
+int index::get_wrmode()
+{
+	return _wrmode;
+}
+
+int index::get_idxno()
+{
+	return _idxno;
+}
+
+int index::get_nfiles()
+{
+	return _nfiles;
+}
+
+int index::get_fno()
+{
+	return _fno;
+}
+
+int index::get_keylen()
+{
+	return _keylen;
+}
+
+int64_t index::get_rptr()
+{
+	return _rptr;
+}
+
+files *index::get_file(int i)
+{
+	return _files + i;
+}
+
+files *index::get_files()
+{
+	return _files;
 }
 
 index::index(char *name, int mode) : index()
@@ -116,7 +160,7 @@ void index::_iopen(const char *name, int mode)
 		throw makeError(i, "%s: server error in IOPEN", _progname);
 
 	this->_onames[idx] = new char[strlen(name)+1];
-	strcpy(this->_onames[idx], name);
+	::strcpy(this->_onames[idx], name);
 /*
  * parse the message
  */
@@ -225,6 +269,8 @@ void index::_unwind()
 	_nfiles = 0;
 
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

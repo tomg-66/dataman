@@ -55,7 +55,7 @@
 
 #include <memory>
 
-using namespace Dataman;
+namespace Dataman {
 
 void sort(const char *pkey)
 {
@@ -86,6 +86,8 @@ void sort(const int i)
 	sprintf(k, "%d", i);
 	sort(k);
 }
+
+}		// end of namespace
 
 /*
  * Local variables:

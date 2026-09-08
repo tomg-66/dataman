@@ -49,6 +49,7 @@
 #include <inttypes.h>
 
 #include "fileEdit.hpp"
+#include "datafile.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -60,7 +61,7 @@
 #define TRUE	1
 #define FALSE	0
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::protect()
 {
@@ -133,6 +134,8 @@ int index::protect()
 	return(TRUE);
 }
 
+
+} // namespace Dataman
 
 /*
  * Local variables:

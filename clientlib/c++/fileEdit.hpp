@@ -42,8 +42,7 @@
 #include "endSort.hpp"
 
 namespace Dataman {
-	extern Dataman::datarecord masterRecord;
-	extern bool in_xact;
+	extern DATAMAN_API Dataman::datarecord masterRecord;
 };
 
 #endif

@@ -50,137 +50,81 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "datafield.hpp"
 #include "key.hpp"
-
-#include "datafile_header.h"
-
-extern char *substr(const char *, int, int);
+#include "visibility.h"
 
 namespace Dataman {
 
-class files {
-	private:
-		int				_fno;				// file number in server
-		int				_longest;			// longest record in this file
-		int				_hlen;				// length of header desc
-		FILEDESC		*_desc;				// parsed description of this file
-		char *			_fname;				// file name
-	public:
-		files() {
-			_fname = NULL;
-			_longest = 0;
-			_desc = NULL;
-			_fno = -1;
-		}
-		files(const files&) = delete;
-		files& operator=(const files&) = delete;
-		files(files&&) = delete;
-		files& operator=(files&&) = delete;
-		~files() {
-			if (_fname)
-				delete[] _fname;
-			if (_desc) {
-				for (int i = 0; i < _desc->n_rformats; i++) {
-					free(_desc->record_desc[i].field_sizes);
-				}
-				free(_desc->record_desc);
-				free(_desc);
-			}
-		}
-		void set_fno(int n) { _fno = n; }
-		int get_fno() { return(_fno); }
-		void set_name(char *s) {
-			if (_fname) delete[] _fname;
-				_fname = substr(s, 0, strlen(s));
-		}
-		char *get_fname() { return (_fname); }
-		FILEDESC *get_desc() { return (_desc); }
-		void set_desc(FILEDESC *d) { _desc = d; }
-		int get_longest() { return(_longest); }
-		void set_longest(int i) { _longest = i; }
-		int get_hlen() { return(_hlen); }
-		void set_hlen(int i) { _hlen = i; }
-};
+DATAMAN_API char *substr(const char *, int, int);
 
-struct save {
-		int64_t			_savnode;
-		int64_t			_savrec;
-		int				_savfile;
-		key				_savkey;
-		char			_savfmt;
-		unsigned char	_savoffs;
-};
-
+class files;
+class datafield;
 
 #define	RDONLY	0						// open index in read only mode
 #define UPDATE	1						// open index in read/write mode
 
 class index {
 	public:
-		index();						// this is used in mkidx...
-		index(char *name, int mode);	// open an index
+		DATAMAN_API index();						// this is used in mkidx...
+		DATAMAN_API index(char *name, int mode);	// open an index
 		index(const index&) = delete;
 		index& operator=(const index&) = delete;
 		index(index&&) = delete;
 		index& operator=(index&&) = delete;
-		~index();						// close and index
+		DATAMAN_API ~index();						// close and index
 
 //
 //interface routines
 //
-		int get(const key&);			// get key from index
-		int get(const char *);			// get key using string
-		int get(datafield&);
-		int get_next();					// get next key from index
-		int get_prior();				// get prior key from index
-		int get_first();				// get first key from index
-		int get_last();					// get last key from index
-		int get_current();
-		int forward();					// get next record in data file
-		int back();						// get prior record from data file
-		int protect();					// protect the current data record
-		int clear();						// clear the protect from the rec
-		int delrec();					// delete record from database
-		int remove(const key&);			// remove key from database
-		int remove(const char *);		// remove key using string
-		void save();					// save index state
-		int restore();					// restore index state
-		int insert(const int fmt, const int where);
-		int include(index& , const char *);
-		int include(index&, datafield&);
-		int include(index *, const char *);
-		int include(index *, datafield&);
-		void iclose();
+		DATAMAN_API int get(const key&);			// get key from index
+		DATAMAN_API int get(const char *);			// get key using string
+		DATAMAN_API int get(datafield&);
+		DATAMAN_API int get_next();					// get next key from index
+		DATAMAN_API int get_prior();				// get prior key from index
+		DATAMAN_API int get_first();				// get first key from index
+		DATAMAN_API int get_last();					// get last key from index
+		DATAMAN_API int get_current();
+		DATAMAN_API int forward();					// get next record in data file
+		DATAMAN_API int back();						// get prior record from data file
+		DATAMAN_API int protect();					// protect the current data record
+		DATAMAN_API int clear();						// clear the protect from the rec
+		DATAMAN_API int delrec();					// delete record from database
+		DATAMAN_API int remove(const key&);			// remove key from database
+		DATAMAN_API int remove(const char *);		// remove key using string
+		DATAMAN_API void save();					// save index state
+		DATAMAN_API int restore();					// restore index state
+		DATAMAN_API int insert(const int fmt, const int where);
+		DATAMAN_API int include(index& , const char *);
+		DATAMAN_API int include(index&, datafield&);
+		DATAMAN_API int include(index *, const char *);
+		DATAMAN_API int include(index *, datafield&);
+		DATAMAN_API void iclose();
 
-		const key& get_key(void) { return(_curkey); }
+		DATAMAN_API const key& get_key(void) { return(this->_curkey); }
+		DATAMAN_API char *get_ixname() { return(this->_idxname); }
 //
 //umm... these need to be public, but the user should -NEVER- use them
 //
-		int get_wrmode() { return(this->_wrmode); }
-		int get_idxno() { return(this->_idxno); }
-		int get_nfiles() { return(this->_nfiles); }
-		int get_fno() { return(this->_fno); }
-		int get_keylen(void) { return(this->_keylen); }
-
-		char *get_ixname() { return(this->_idxname); }
-		int64_t get_rptr() { return(this->_rptr); }
-
-		int _mkidx(int, char **);		// internal mkidx routine
-
-		files *get_file(int i) { return(this->_files+i); };
-		files *get_files() { return(this->_files); }
+		DATAMAN_HIDDEN int get_wrmode();
+		DATAMAN_HIDDEN int get_idxno();
+		DATAMAN_HIDDEN int get_nfiles();
+		DATAMAN_HIDDEN int get_fno();
+		DATAMAN_HIDDEN int get_keylen();
+		DATAMAN_HIDDEN int64_t get_rptr();
+		DATAMAN_HIDDEN int _mkidx(int, char **);	// internal mkidx routine
+		DATAMAN_HIDDEN files *get_file(int);
+		DATAMAN_HIDDEN files *get_files();
 
 	private:
 #define MAX_INDEX	6
-		static char		*_onames[MAX_INDEX];	// name of open indices
+		static DATAMAN_HIDDEN char		*_onames[MAX_INDEX]; // names of open indices
 		char			*_idxname;		// name of index file name
 		int				_idxno;			// index number (order of open)
 		int				_wrmode;		// read/write mode
 		int				_fno;			// offset in files to current file
 		int				_nfiles;		// nuber of files referred to
 		int				_keylen;		// length of key
-		int 			_longest;		// longest master record
+		int				_longest;		// longest master record
 		int64_t			_curnode;		// pointer to current node
 		int64_t			_rptr;			// pointer to current record
 		int64_t			_generation;	// V2 index generation flag
@@ -191,10 +135,10 @@ class index {
 //
 // ummm- non interface routines
 //
-		void _iopen(const char *name, int mode);	// constructor will call this
-		void _iclose();						// destructor will call this
-		void _unwind();                 // clean up if _iclose throws
-		int parse_get(int, char *);		// parse ret from get* routines
+		DATAMAN_HIDDEN void _iopen(const char *name, int mode); // constructor helper
+		DATAMAN_HIDDEN void _iclose();		// destructor helper
+		DATAMAN_HIDDEN void _unwind();		// clean up if _iclose throws
+		DATAMAN_HIDDEN int  _parse_get(int, char *); // parse get responses
 };
 
 };	// end of namespace

@@ -43,26 +43,10 @@
 #include "datarecord.hpp"
 
 namespace Dataman {
-	extern Dataman::datarecord workRecord;
-
-	extern char _file;				// the when_file flag
-
-	extern class Dataman::index *cur_index;
-
-	extern bool dbgsw;				// debug switch
-	extern bool is_sort;
-	extern bool dataman_has_php;
-
-	extern char *_progname;			// name of currently running program
-	extern char *_root;				// pointer to ROOT dir
-
-	extern char **_fnames;			// the names of the files in index
-	extern char _fileno;			// the offset to the current file
-
-	inline const char *current_file()
-	{
-		return _fnames[_fileno];
-	}
+	extern DATAMAN_API datarecord workRecord;
+	DATAMAN_API const char *current_file();
+	DATAMAN_API const key& current_key();
+	DATAMAN_API const char *current_index_name();
 };
 
 #endif

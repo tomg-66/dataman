@@ -5,9 +5,6 @@
 #include "datafield.hpp"
 #include "datarecord.hpp"
 #include "datamanError.hpp"
-#include "endSort.hpp"
-#include "dataman.hpp"
-#include "sort.hpp"
 
 using namespace Dataman;
 
@@ -30,26 +27,17 @@ static void assignment_tests()
 	expect_text(value, "chain");
 	expect_text(chained, "chain");
 
-	workRecord.setdirty(false);
-	datafield field;
-	field.make_field("abcde", 5, WORK);
-	field = "xy";
-	expect_text(field, "xy   ");
-	assert(field.datalen() == 5);
-	assert(field.get_type() == type_chr);
-	assert(workRecord.getdirty());
-
-	workRecord.setdirty(false);
+	datafield field("abcde");
 	datafield copy(field);
 	copy = "standalone can grow";
 	expect_text(copy, "standalone can grow");
-	assert(!workRecord.getdirty());
+	expect_text(field, "abcde");
 
 	field = "123456";
-	expect_text(field, "12345");
+	expect_text(field, "123456");
 	field = 12;
-	expect_text(field, "12   ");
-	assert(field.get_type() == type_chr);
+	expect_text(field, "12");
+	assert(field.get_type() == type_int);
 }
 
 static void addition_tests()
@@ -133,7 +121,7 @@ static void blob_tests()
 	assert(std::memcmp(copy.getptr(), bytes, sizeof(bytes)) == 0);
 
 	datafield empty_blob;
-	empty_blob.make_blob_field(NULL, 0, WORK);
+	assert(empty_blob.put_blob(NULL, 0) == 1);
 	assert(empty_blob.get_type() == type_blob);
 	assert(empty_blob.datalen() == 0);
 }

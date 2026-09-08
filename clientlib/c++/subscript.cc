@@ -39,12 +39,14 @@
  */
 
 #include <endSort.hpp>
+#include "internal_state.hpp"
 #include "datamanError.hpp"
 
 #include "../../server/datafile_header.h"
 #include "../../server/errors.h"
+#include "datafile.hpp"
 
-using namespace Dataman;
+namespace Dataman {
 
 datafield& datarecord::operator[](int i)
 {
@@ -60,6 +62,8 @@ datafield& datarecord::operator[](int i)
 	}
 	return(*(_fields+i));
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

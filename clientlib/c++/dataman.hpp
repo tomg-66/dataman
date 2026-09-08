@@ -44,15 +44,9 @@
 
 #pragma once
 
-#include "wind.h"				// windowing definitions
-
 #include "fileEdit.hpp"
 #include "proto.hpp"
 #include "datamanError.hpp"
-
-using Dataman::cur_index;
-using Dataman::workRecord;
-using Dataman::masterRecord;
 
 #define BEFORE		0			// insert before switch
 #define AFTER		1			// insert after switch
@@ -65,23 +59,23 @@ using Dataman::masterRecord;
 #define RDONLY		0			// open index (and files) for reading only
 #define UPDATE		1			// open index for read/write
 
-#define accept(row,col,buf,mode)        if (acept(row,col,buf,mode)) ;
+#define accept(row,col,buf,mode)        if (Dataman::acept(row,col,buf,mode)) ;
 
 #define itoa(val,buf)					sprintf(buf, "%d", val)
 
-#define KEY				cur_index->get_key()		// last accessed key object
-#define KEY_STR			cur_index->get_key().get_kstr()	// visible key text
-#define MFMT			masterRecord.getfmt()			// master file format number
-#define WFMT			workRecord.getfmt()		// work file format number
-#define INDEX			cur_index->get_ixname()		// name of last accessed index
+#define KEY				Dataman::current_key()		// last accessed key object
+#define KEY_STR			Dataman::current_key().get_kstr()	// visible key text
+#define MFMT			Dataman::masterRecord.getfmt()	// master file format number
+#define WFMT			Dataman::workRecord.getfmt()	// work file format number
+#define INDEX			Dataman::current_index_name()	// name of last accessed index
 #define CURRENT_FILE	Dataman::current_file()
 #if defined DATAMAN_ENABLE_LEGACY_FILE_MACRO
 #define FILE			CURRENT_FILE		// last accessed file name
 #endif
 
-#define when_masterFormat(x)	if (masterRecord.getfmt() == x)	// master file format test
-#define when_workFormat(x)		if (workRecord.getfmt() == x)	// work file format test
-#define when_workFile			if (workRecord.getfile())		// new file test
+#define when_masterFormat(x)	if (Dataman::masterRecord.getfmt() == x)
+#define when_workFormat(x)		if (Dataman::workRecord.getfmt() == x)
+#define when_workFile			if (Dataman::workRecord.getfile())
 
 /*
  * Local variables:

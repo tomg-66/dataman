@@ -40,9 +40,12 @@
 #if !defined _DATAMAN_COMM_DEFINED_
 #define _DATAMAN_COMM_DEFINED_
 
+#include "visibility.h"
+#include "internal_state.hpp"
+
 namespace Dataman {
 
-class db_comm {
+class DATAMAN_HIDDEN db_comm {
 	private:
 		static int db_sock;					// socket to talk out
 		int db_connect(const char *host);	// connect to server

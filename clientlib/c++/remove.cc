@@ -59,7 +59,7 @@
 #define TRUE	1
 #define FALSE	0
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::remove(const key& k)
 {
@@ -115,6 +115,8 @@ int index::remove(const char *s)
 	key k(s);
 	return(remove(k));
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

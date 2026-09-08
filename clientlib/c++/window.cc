@@ -42,8 +42,11 @@
 #include <curses.h>
 #include <malloc.h>
 #include <string.h>
+#include "visibility.h"
 
-void window(int row1, int col1,				/* row and col to begin */
+namespace Dataman {
+
+DATAMAN_API void window(int row1, int col1,				/* row and col to begin */
 			int row2, int col2,				/* row and col to end */
 			int attr)						/* which color scheme to use */
 {
@@ -76,6 +79,8 @@ void window(int row1, int col1,				/* row and col to begin */
 	refresh();
 	free(buff);
 }
+
+}			// end of namespace
 
 /*
  * Local variables:

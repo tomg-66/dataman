@@ -45,9 +45,12 @@
 #include <stddef.h>
 #include <curses.h>
 #include "window.h"
+#include "visibility.h"
 
-DB_WIN *chain;				/* pointer to head of window chain */
-DB_WIN *cur_win;			/* pointer to current window */
+namespace Dataman {
+
+DATAMAN_HIDDEN DB_WIN *chain;				/* pointer to head of window chain */
+DATAMAN_HIDDEN DB_WIN *cur_win;			/* pointer to current window */
 
 #define POP_UP	0			/* pop up the window */
 #define GROW	1			/* grow the window at you */
@@ -58,7 +61,7 @@ extern void save_scr(int,int,int,int,chtype *);
 extern void grow_win(int,int,int,int,int);
 extern void window(int,int,int,int,int);
 
-int new_win(int row1, int col1,				/* row and col to begin */
+DATAMAN_API int new_win(int row1, int col1,				/* row and col to begin */
 			int row2, int col2,				/* row and col to end */
 			int attr, int type)				/* background, and how to draw */
 {
@@ -95,6 +98,8 @@ int new_win(int row1, int col1,				/* row and col to begin */
 		window(row1,col1,row2,col2,attr);	/* pop it up */
 	return(TRUE);
 }
+
+} // end of namespace
 
 /*
  * Local variables:

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 1d3f2a1b88f949adae8b8c0d87a33368c78dfec0 */
+ * Stub hash: 8caa9ee1ba5a360b5949ab9780fcb2b5e7555822 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_dataman_connect, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, argc, IS_LONG, 0)
@@ -86,13 +86,6 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_dataman_get_file arginfo_dataman_get_key
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_dataman_put_data, 0, 1, IS_VOID, 0)
-	ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_dataman_mark, 0, 0, IS_VOID, 0)
-ZEND_END_ARG_INFO()
-
 #define arginfo_dataman_start_transaction arginfo_dataman_release
 
 #define arginfo_dataman_commit arginfo_dataman_release
@@ -128,8 +121,6 @@ ZEND_FUNCTION(dataman_get_key);
 ZEND_FUNCTION(dataman_key_str);
 ZEND_FUNCTION(dataman_get_index);
 ZEND_FUNCTION(dataman_get_file);
-ZEND_FUNCTION(dataman_put_data);
-ZEND_FUNCTION(dataman_mark);
 ZEND_FUNCTION(dataman_start_transaction);
 ZEND_FUNCTION(dataman_commit);
 ZEND_FUNCTION(dataman_rollback);
@@ -163,8 +154,6 @@ static const zend_function_entry ext_functions[] = {
 	ZEND_FE(dataman_key_str, arginfo_dataman_key_str)
 	ZEND_FE(dataman_get_index, arginfo_dataman_get_index)
 	ZEND_FE(dataman_get_file, arginfo_dataman_get_file)
-	ZEND_FE(dataman_put_data, arginfo_dataman_put_data)
-	ZEND_FE(dataman_mark, arginfo_dataman_mark)
 	ZEND_FE(dataman_start_transaction, arginfo_dataman_start_transaction)
 	ZEND_FE(dataman_commit, arginfo_dataman_commit)
 	ZEND_FE(dataman_rollback, arginfo_dataman_rollback)

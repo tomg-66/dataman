@@ -26,19 +26,21 @@
 
 #include <stdint.h>
 #include "datafile_header.h"
+#include "visibility.h"
 
-extern short *m_desc;			/* description of master file */
-extern short m_head;			/* length of description */
-extern short m_longest;			/* longest recrod in file */
-extern int64_t m_cur;			/* pointer to current record */
-extern int64_t m_prev;			/* pointer to previous record */
-extern int64_t m_next;			/* pointer to next record */
-extern int m_chan;				/* master file channel */
-extern char m_fmt;				/* format number of current record */
-extern char **mfld;				/* pointers to each field */
-extern uint32_t *m_blob_lengths;	/* runtime lengths for blob fields */
-extern char *_m_rec_;			/* pointer to the record buffer */
-extern FILEDESC *m_fdesc;		/* parsed description of master file */
+DATAMAN_HIDDEN extern short *m_desc;			/* description of master file */
+DATAMAN_HIDDEN extern short m_head;			/* length of description */
+DATAMAN_HIDDEN extern short m_longest;			/* longest recrod in file */
+DATAMAN_HIDDEN extern int64_t m_cur;			/* pointer to current record */
+DATAMAN_HIDDEN extern int64_t m_prev;			/* pointer to previous record */
+DATAMAN_HIDDEN extern int64_t m_next;			/* pointer to next record */
+DATAMAN_HIDDEN extern int m_chan;				/* master file channel */
+DATAMAN_HIDDEN extern char m_fmt;				/* format number of current record */
+DATAMAN_HIDDEN extern uint32_t *m_blob_lengths;	/* runtime lengths for blob fields */
+DATAMAN_HIDDEN extern char *_m_rec_;			/* pointer to the record buffer */
+DATAMAN_HIDDEN extern FILEDESC *m_fdesc;		/* parsed description of master file */
+
+DATAMAN_API extern char **mfld;				/* pointers to each field */
 
 #define MASTER	0				/* operate on master file */
 

@@ -53,15 +53,15 @@
 #define TRUE    1
 #define FALSE   0
 
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
-extern int out_rec(int);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int out_rec(int);
 
-extern int in_xact;
+DATAMAN_HIDDEN extern int in_xact;
 
-extern char *_progname;
+DATAMAN_HIDDEN extern char *_progname;
 
-int db_commit(void)
+DATAMAN_API int db_commit(void)
 {
     int i;								/* temporary */
 

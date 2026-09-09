@@ -55,20 +55,19 @@
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
-extern INDEX cur_index;					/* the current operation index */
+DATAMAN_HIDDEN extern INDEX cur_index;					/* the current operation index */
 
-extern int out_rec(int);
-extern INDEX *findex(char *);
-extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern int out_rec(int);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
 
-extern void db_err(int, char *, ...);
-extern void del_protect(int, int, int);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern void del_protect(int, int, int);
 
 #define FALSE 0
 #define TRUE  1
 
-int clear(char *idx_name)
-
+DATAMAN_API int db_clear(char *idx_name)
 {
 	int i;
 
@@ -77,7 +76,7 @@ int clear(char *idx_name)
 	char cmd[128];
 	char *buff;
 
-	if (idx_name) {
+	if (idx_name && strlen(idx_name)) {
 		if (cur_index._wrmode)
 			if (!out_rec(MASTER)) {
 				db_err(EOUTREC, "In %s: CLEAR", _progname);
@@ -111,7 +110,7 @@ int clear(char *idx_name)
 		return FALSE;
 	}
 
-	if (idx_name)
+	if (idx_name && strlen(idx_name))
 		del_protect(idx->_idxno, idx->_fno, idx->_rptr);
 	else
 		del_protect(-w_chan, 0, w_cur);

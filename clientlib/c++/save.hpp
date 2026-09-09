@@ -1,24 +1,21 @@
 /* ***************************************************************
  *
- * PROCEDURE:	wind.h
+ * PROCEDURE:	save.hpp
  *
- * PROJECT:		dataman client side
+ * PROJECT:		dataman client side c++ header file
  * 
- * DATE:		legacy, originally writtin in 1988
+ * DATE:		Sun Sep  6 08:24:42 PM MDT 2026
  * 
  * AUTHOR:		Tom Green
  * 
  * FILES:
  *
  * MODIFICATION HISTORY:
- * 				March 2002
- *				Tom Green
- *				modified to use curses package
+ *
  ************************************************************* */
-/*
- * @#wind.h rev 3.20 dataman text mode window definitions.
- * Copyright (c) SuperUser Software 1988-2004.  All rights reserved.
- */
+//
+// describe the structure used to save index state
+//
 /*
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -38,33 +35,24 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
-#ifndef _DATAMAN_WINS_DEFINED
-#define _DATAMAN_WINS_DEFINED
+#if !defined DATAMAN_SAVE_INCLUDED
+#define DATAMAN_SAVE_INCLUDED
 
-#define POP_UP		0		/* pop up a window */
-#define GROW		1		/* draw an "exploding" window */
+namespace Dataman {
 
-#define BLACK	1			/* define window colors */
-#define	BLUE	2
-#define GREEN	3
-#define	CYAN	4
-#define	RED		5
-#define	MAGEN	6
-#define	YELLOW	7
+class key;
 
-extern void  window(int, int, int, int, int);
-extern int pop_win(void);
+struct save {
+		int64_t			_savnode;
+		int64_t			_savrec;
+		int				_savfile;
+		key				_savkey;
+		char			_savfmt;
+		unsigned char	_savoffs;
+};
 
-extern void grow_win(int, int, int, int, int);
-extern void new_win(int, int, int, int, int, int);
-extern void cl_win(int, int, int, int, int);
-
-extern char HELP;
-extern unsigned char EOL[];
-extern unsigned char TOP[];
-
+};			// end of namespace
 #endif
-
 
 /*
  * Local variables:

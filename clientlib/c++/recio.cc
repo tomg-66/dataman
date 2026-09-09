@@ -60,6 +60,7 @@
 #include <netinet/in.h>				// for declaration of htonl
 
 #include "endSort.hpp"
+#include "datafile.hpp"
 #include "datafile_header.h"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
@@ -74,7 +75,7 @@
 
 extern unsigned long get_long(char *);
 
-using namespace Dataman;
+namespace Dataman {
 
 void datarecord::clear_desc()
 {
@@ -314,6 +315,8 @@ void datarecord::out_rec()
 	this->setdirty(0);
 	return;
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

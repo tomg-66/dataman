@@ -22,8 +22,7 @@
 
 #include "../../server/errors.h"
 
-using namespace Dataman;
-
+namespace Dataman {
 namespace {
 
 struct number {
@@ -510,7 +509,7 @@ char *strncpy(char *destination, datafield& source, int length)
 	return ::strncpy(destination, source.getptr(), (size_t)length);
 }
 
-const char *Dataman::strncpy(datafield& destination, const char *source,
+const char *strncpy(datafield& destination, const char *source,
 		int length)
 {
 	if (!source || length <= 0)
@@ -540,12 +539,12 @@ char *strncat(char *destination, datafield& source, int length)
 	return ::strncat(destination, source.getptr(), (size_t)length);
 }
 
-int atoi(datafield& source)
+int atoi(const datafield& source)
 {
 	return std::atoi(source.getptr());
 }
 
-const void *Dataman::memcpy(datafield& destination, const char *source,
+const void *memcpy(datafield& destination, const char *source,
 		int length)
 {
 	if (!source || length <= 0)
@@ -558,6 +557,21 @@ const void *Dataman::memcpy(datafield& destination, const char *source,
 	destination.mark_dirty();
 	return destination.getptr();
 }
+
+int datafield::datalen() const
+{
+	return(length);
+}
+int datafield::get_type() const
+{
+	return(type);
+}
+int datafield::get_which(void)
+{
+	return(which);
+}
+
+} // end of namespace
 
 /*
  * Local variables:

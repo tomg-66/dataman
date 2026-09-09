@@ -41,10 +41,13 @@
 
 #include <stdlib.h>
 #include <sys/time.h>
+#include "visibility.h"
+
+namespace Dataman {
 
 extern void window(int,int,int,int,int);
 
-void grow_win(int r1,int c1,		// row and column to begin on
+DATAMAN_API void grow_win(int r1,int c1,		// row and column to begin on
 				int r2, int c2,		// ending row and column
 				int attr)			// the color attribute
 {
@@ -73,6 +76,8 @@ void grow_win(int r1,int c1,		// row and column to begin on
 		select(0, NULL, NULL, NULL, &tv);
     }
 }
+
+} // end of namespace
 
 /*
  * Local variables:

@@ -40,21 +40,23 @@
 #include <ctype.h>
 #include <libgen.h>
 
-WINDOW *stdscr;
+#include "visibility.h"
 
-chtype HELP;					/* the 'help' key */
-char TOP[] = "\377";			/* the show top string */
-char EOL[] = "\376";			/* the clear to end of line string */
+DATAMAN_HIDDEN WINDOW *stdscr;
 
-int dwin_inited;
-extern int dbgsw;
-extern char *_progname;
+DATAMAN_API chtype HELP;					/* the 'help' key */
+DATAMAN_API char TOP[] = "\377";			/* the show top string */
+DATAMAN_API char EOL[] = "\376";			/* the clear to end of line string */
 
-void dm_endwin(void) {
+DATAMAN_HIDDEN int dwin_inited;
+DATAMAN_HIDDEN extern int dbgsw;
+DATAMAN_HIDDEN extern char *_progname;
+
+DATAMAN_HIDDEN void dm_endwin(void) {
 	endwin();
 }
 
-void init_dwin()
+DATAMAN_API void init_dwin()
 {
 	char *ptr;
 

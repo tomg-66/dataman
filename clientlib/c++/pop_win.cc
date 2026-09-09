@@ -41,6 +41,9 @@
 
 #include <window.h>
 #include <malloc.h>
+#include "visibility.h"
+
+namespace Dataman {
 
 #define TRUE	1
 #define FALSE	0
@@ -50,7 +53,7 @@ extern DB_WIN *chain;
 
 extern void rest_scr(int,int,int,int,chtype *);
 
-int pop_win()
+DATAMAN_API int pop_win()
 
 {
 	int row1,row2,col1,col2;		/* rows, and columns */
@@ -76,6 +79,8 @@ int pop_win()
 	}
 	return(TRUE);
 }
+
+} // end of namespace
 
 /*
  * Local variables:

@@ -61,27 +61,26 @@
 #include "globs.h"
 #include "index.h"
 #include "m_params.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
 
-extern int in_xact;
+DATAMAN_HIDDEN extern int in_xact;
 
 #define TRUE    1
 #define FALSE   0
 
-extern INDEX *findex(char *);
-extern char *substr(char *,int,int);
-extern char *db_send(char *, int, char *);
-extern char *db_send_len(char *, int, char *, size_t *);
-extern void db_err(int, char *, ...);
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern int out_rec(int);
-extern int64_t get_ll(char *);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern char *db_send_len(char *, int, char *, size_t *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern int out_rec(int);
+DATAMAN_HIDDEN extern int64_t get_ll(char *);
 
+DATAMAN_API extern char *substr(const char *, const int, const int);
 
-int db_g_curr(char *index_name)
+DATAMAN_API int db_g_curr(char *index_name)
 {
     INDEX *idx;                         /* index pointer */
 

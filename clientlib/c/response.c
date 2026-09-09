@@ -2,9 +2,9 @@
 
 #include <string.h>
 
-#include "client_internal.h"
+#include "visibility.h"
 
-bool dm_next_field(char **cursor)
+DATAMAN_HIDDEN bool dm_next_field(char **cursor)
 {
 	char *separator;
 

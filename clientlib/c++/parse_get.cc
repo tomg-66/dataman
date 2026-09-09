@@ -43,15 +43,17 @@
 #include <stdlib.h>
 
 #include <fileEdit.hpp>
+#include "internal_state.hpp"
+#include "datafile.hpp"
 
 #include "../../server/misc.h"
 
-using namespace Dataman;
+namespace Dataman {
 
 /*
  * this buffer only comes from the server.  we assume that it's formatted correctly.
  */
-int index::parse_get(int recordLength, char *buff)
+int index::_parse_get(int recordLength, char *buff)
 {
 	char *cptr;
 	char *next;
@@ -63,7 +65,7 @@ int index::parse_get(int recordLength, char *buff)
 	int64_t recordPointer;
 
 /*
- * parse into locala variables.  since this is coming from the server
+ * parse into local variables.  since this is coming from the server
  * (and the connection is verified) assume the data is in correct order
  */
 	cptr = strchr(buff, '|') + 1;
@@ -130,6 +132,8 @@ int index::parse_get(int recordLength, char *buff)
 	cur_index = this;
 	return TRUE;
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

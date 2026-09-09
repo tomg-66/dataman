@@ -132,15 +132,15 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libdataman___la_LIBADD =
 am_libdataman___la_OBJECTS = accept.lo back.lo clear.lo cl_win.lo \
-	datafield_impl.lo db_comm.lo datamanError.lo delete.lo \
-	flush.lo forward.lo get.lo get_current.lo get_first.lo \
-	get_last.lo get_long.lo get_next.lo get_prior.lo grow_win.lo \
-	include.lo index.lo init_dataman.lo init_dwin.lo insert.lo \
-	mask.lo mkidx.lo new_win.lo parse_get.lo pause.lo pop_win.lo \
-	protect.lo recio.lo release.lo restore.lo save.lo screen.lo \
-	show.lo sort.lo substr.lo window.lo key_impl.lo remove.lo \
-	get_ll.lo put_ll.lo start_xact.lo commit.lo rollback.lo \
-	subscript.lo
+	datafield_impl.lo datarecord.lo db_comm.lo datamanError.lo \
+	delete.lo flush.lo forward.lo endSort.lo get.lo get_current.lo \
+	get_first.lo get_last.lo get_long.lo get_next.lo get_prior.lo \
+	grow_win.lo include.lo index.lo init_dataman.lo init_dwin.lo \
+	insert.lo mask.lo mkidx.lo new_win.lo parse_get.lo pause.lo \
+	pop_win.lo protect.lo recio.lo release.lo restore.lo save.lo \
+	screen.lo show.lo sort.lo substr.lo window.lo key_impl.lo \
+	remove.lo get_ll.lo put_ll.lo start_xact.lo commit.lo \
+	rollback.lo subscript.lo
 libdataman___la_OBJECTS = $(am_libdataman___la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -168,8 +168,9 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/accept.Plo ./$(DEPDIR)/back.Plo \
 	./$(DEPDIR)/cl_win.Plo ./$(DEPDIR)/clear.Plo \
 	./$(DEPDIR)/commit.Plo ./$(DEPDIR)/datafield_impl.Plo \
-	./$(DEPDIR)/datamanError.Plo ./$(DEPDIR)/db_comm.Plo \
-	./$(DEPDIR)/delete.Plo ./$(DEPDIR)/flush.Plo \
+	./$(DEPDIR)/datamanError.Plo ./$(DEPDIR)/datarecord.Plo \
+	./$(DEPDIR)/db_comm.Plo ./$(DEPDIR)/delete.Plo \
+	./$(DEPDIR)/endSort.Plo ./$(DEPDIR)/flush.Plo \
 	./$(DEPDIR)/forward.Plo ./$(DEPDIR)/get.Plo \
 	./$(DEPDIR)/get_current.Plo ./$(DEPDIR)/get_first.Plo \
 	./$(DEPDIR)/get_last.Plo ./$(DEPDIR)/get_ll.Plo \
@@ -367,8 +368,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libdataman++.la
 libdataman___la_SOURCES = accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc \
-		db_comm.cc datamanError.cc delete.cc flush.cc forward.cc \
-		get.cc get_current.cc get_first.cc get_last.cc get_long.cc \
+		datarecord.cc db_comm.cc datamanError.cc delete.cc flush.cc forward.cc \
+		endSort.cc get.cc get_current.cc get_first.cc get_last.cc get_long.cc \
 		get_next.cc get_prior.cc grow_win.cc include.cc index.cc \
 		init_dataman.cc init_dwin.cc insert.cc mask.cc mkidx.cc \
 		new_win.cc parse_get.cc pause.cc pop_win.cc protect.cc recio.cc \
@@ -376,12 +377,12 @@ libdataman___la_SOURCES = accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc
 		window.cc key_impl.cc remove.cc get_ll.cc put_ll.cc start_xact.cc \
 		commit.cc rollback.cc subscript.cc
 
-libdataman___la_LDFLAGS = -version-info 4:1:0 -lcurses
-noinst_HEADERS = db_comm.hpp wind.h window.h
+libdataman___la_LDFLAGS = -version-info 5:0:1 -lcurses
+noinst_HEADERS = datafile.hpp db_comm.hpp internal_state.hpp save.hpp #wind.h window.h
 include_HEADERS = datafield.hpp dataman.hpp datarecord.hpp fileEdit.hpp endSort.hpp  \
 		index.hpp key.hpp proto.hpp sort.hpp datamanError.hpp
 
-AM_CPPFLAGS = -I$(top_srcdir)/server
+AM_CPPFLAGS = -I$(top_srcdir)/server -I$(top_srcdir)/clientlib/c
 all: all-am
 
 .SUFFIXES:
@@ -465,8 +466,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/commit.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/datafield_impl.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/datamanError.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/datarecord.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/db_comm.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/delete.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/endSort.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/flush.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/forward.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get.Plo@am__quote@ # am--include-marker
@@ -694,8 +697,10 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/commit.Plo
 	-rm -f ./$(DEPDIR)/datafield_impl.Plo
 	-rm -f ./$(DEPDIR)/datamanError.Plo
+	-rm -f ./$(DEPDIR)/datarecord.Plo
 	-rm -f ./$(DEPDIR)/db_comm.Plo
 	-rm -f ./$(DEPDIR)/delete.Plo
+	-rm -f ./$(DEPDIR)/endSort.Plo
 	-rm -f ./$(DEPDIR)/flush.Plo
 	-rm -f ./$(DEPDIR)/forward.Plo
 	-rm -f ./$(DEPDIR)/get.Plo
@@ -786,8 +791,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/commit.Plo
 	-rm -f ./$(DEPDIR)/datafield_impl.Plo
 	-rm -f ./$(DEPDIR)/datamanError.Plo
+	-rm -f ./$(DEPDIR)/datarecord.Plo
 	-rm -f ./$(DEPDIR)/db_comm.Plo
 	-rm -f ./$(DEPDIR)/delete.Plo
+	-rm -f ./$(DEPDIR)/endSort.Plo
 	-rm -f ./$(DEPDIR)/flush.Plo
 	-rm -f ./$(DEPDIR)/forward.Plo
 	-rm -f ./$(DEPDIR)/get.Plo

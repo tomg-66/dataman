@@ -45,6 +45,7 @@
 #include "fileEdit.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
+#include "visibility.h"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
@@ -54,9 +55,9 @@
 #define TRUE    1
 #define FALSE   0
 
-using namespace Dataman;
+namespace Dataman {
 
-int commit(void)
+DATAMAN_API int commit(void)
 {
     int i;								/* temporary */
 
@@ -87,6 +88,8 @@ int commit(void)
 	in_xact = FALSE;
 	return(i);
 }
+
+} // end of namespace
 
 /*
  * Local variables:

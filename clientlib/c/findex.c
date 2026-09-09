@@ -49,10 +49,10 @@
 #include "index.h"
 #include "../server/errors.h"
 
-extern INDEX _indices[6];                /* pointers to each index */
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern INDEX _indices[6];                /* pointers to each index */
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-INDEX *findex(char *name)
+DATAMAN_HIDDEN INDEX *findex(char *name)
 {
     register int tmp;           /* the index to return */
 

@@ -49,16 +49,16 @@
 #include "globs.h"
 #include "../../server/errors.h"
 
-extern int out_rec(int);
+DATAMAN_HIDDEN extern int out_rec(int);
 
-extern int in_xact;
+DATAMAN_HIDDEN extern int in_xact;
 
-extern int db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int db_err(int, char *, ...);
 
 #define FALSE 0
 #define TRUE  1
 
-int flush()
+DATAMAN_HIDDEN int flush()
 {
 	if (dm_sock == -1)
 		return FALSE;

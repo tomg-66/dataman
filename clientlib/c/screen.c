@@ -39,8 +39,9 @@
  */
 
 #include <curses.h>
+#include "visibility.h"
 
-void save_scr(int row1, int col1,			/* row and column to begin */
+DATAMAN_HIDDEN void save_scr(int row1, int col1,			/* row and column to begin */
 			  int row2, int col2,			/* ending row and col */
 			  chtype *buff)					/* where to put it */
 
@@ -53,7 +54,7 @@ void save_scr(int row1, int col1,			/* row and column to begin */
 	}
 }
 
-void rest_scr(int row1, int col1,			/* where to begin restore */
+DATAMAN_HIDDEN void rest_scr(int row1, int col1,			/* where to begin restore */
 			  int row2, int col2,			/* where to end it */
 			  chtype *buff)					/* buffer of chars */
 {

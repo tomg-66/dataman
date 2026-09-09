@@ -40,12 +40,11 @@
 
 #include <stdlib.h>
 #include <sys/time.h>
+#include "visibility.h"
 
-extern void window(int,int,int,int,int);
+DATAMAN_API extern void window(int,int,int,int,int);
 
-void grow_win(r1,c1,r2,c2,attr)
-int r1,r2,c1,c2,attr;			/* row and column of start and end */
-
+DATAMAN_API void grow_win(int r1,int c1,int r2,int c2,int attr)
 {
 	int start_row,start_col;		/* beginning row and column */
 	int end_row,end_col;

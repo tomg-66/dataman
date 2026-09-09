@@ -52,22 +52,21 @@
 #include "globs.h"
 #include "m_params.h"
 #include "index.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
 
-extern INDEX *findex(char *);
-extern char *db_send(char *, int, char *);
-extern char *db_send_len(char *, int, char *, size_t *);
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern void db_err(int, char *, ...);
-extern void add_protect(int, int, int);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern char *db_send_len(char *, int, char *, size_t *);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern void add_protect(int, int, int);
 
 #define TRUE	1
 #define FALSE	0
 
-int db_prtct(char *ixname)
+DATAMAN_API int db_prtct(char *ixname)
 {
 	
 	int i, tmp;
@@ -90,7 +89,7 @@ int db_prtct(char *ixname)
  * you can't protect a record that doesn't exist in the database
  * yet, and no one else can have it anyway, so just say ok.
  */
-	if (ixname) {
+	if (ixname && strlen(ixname)) {
 		if ((idx = findex(ixname)) == NULL) {
 			return FALSE;
 		}
@@ -124,7 +123,7 @@ int db_prtct(char *ixname)
 			fmt = atoi(ptr);
 	}
 
-	if (ixname) {
+	if (ixname && strlen(ixname)) {
 		if ((size_t)(ptr-buff) > response_len ||
 				!in_rec(MASTER, ptr, response_len-(size_t)(ptr-buff),
 					idx, fmt, idx->_fno)) {

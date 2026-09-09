@@ -54,50 +54,57 @@
 #include "datarecord.hpp"
 #include "datafield.hpp"
 #include "key.hpp"
+#include "visibility.h"
 
-using Dataman::index;
-using Dataman::datarecord;
-using Dataman::datafield;
-using Dataman::key;
+namespace Dataman {
 
-extern int acept(int, int, unsigned char *, int);
-extern int acept(int, int, char *, int);
-extern int pop_win(void);
-extern int match(char *, char *);
-extern int match(const key&, const char *);
-extern char *mask(int64_t, char *);
+enum windowType { POP_UP = 0, GROW = 1 };
+enum windowColor {
+	BLACK = 1, BLUE, GREEN, CYAN, RED, MAGEN, YELLOW
+};
 
-extern void show(int, ...);
-extern void pause(int, int, const char *);
-extern void grow_win(int, int, int, int, int);
+extern DATAMAN_API unsigned int HELP;
+extern DATAMAN_API unsigned char EOL[];
+extern DATAMAN_API unsigned char TOP[];
 
-extern void sort(const char *);
-extern void sort(datafield&);
-extern void sort(int);
+DATAMAN_API int acept(int, int, unsigned char *, int);
+DATAMAN_API int acept(int, int, char *, int);
+DATAMAN_API int pop_win(void);
+DATAMAN_API char *mask(int64_t, char *);
 
-extern int init_dataman(int, char **);
-extern void dataman_disconnect(void);
-extern int mkidx(int, char **);
-extern void flush(void);
+DATAMAN_API void show(int, ...);
+DATAMAN_API void pause(int, int, const char *);
+DATAMAN_API void grow_win(int, int, int, int, int);
+DATAMAN_API int new_win(int, int, int, int, int, int);
+DATAMAN_API void window(int, int, int, int, int);
+DATAMAN_API void cl_win(int, int, int, int, int);
+DATAMAN_API void init_dwin(void);
 
-extern char *substr(const char *, int, int);
-extern char *substr(const key&, int, int);
+DATAMAN_API void sort(const char *);
+DATAMAN_API void sort(datafield&);
+DATAMAN_API void sort(int);
 
-extern const char *strcpy(datafield&, const char *);
-extern const char *Dataman::strncpy(datafield&, const char *, int);
-extern const void *Dataman::memcpy(datafield&, const char *, int);
+DATAMAN_API int init_dataman(int, char **);
+DATAMAN_API int mkidx(int, char **);
+DATAMAN_API void flush(void);
 
-extern char *strcpy(char *, datafield&);
-extern char *strncpy(char *, datafield&, int);
+DATAMAN_API char *substr(const char *, int, int);
+DATAMAN_API char *substr(const key&, int, int);
 
-extern char *strcat(char *, datafield&);
-extern char *strncat(char *, datafield&, int);
+DATAMAN_API const char *strcpy(datafield&, const char *);
+DATAMAN_API const char *strncpy(datafield&, const char *, int);
+DATAMAN_API const void *memcpy(datafield&, const char *, int);
+DATAMAN_API char *strcpy(char *, datafield&);
+DATAMAN_API char *strncpy(char *, datafield&, int);
+DATAMAN_API char *strcat(char *, datafield&);
+DATAMAN_API char *strncat(char *, datafield&, int);
+DATAMAN_API int atoi(const datafield&);
 
-extern int atoi(datafield&);
+DATAMAN_API void start_transaction(void);
+DATAMAN_API void rollback(void);
+DATAMAN_API int commit(void);
 
-extern void start_transaction(void);
-extern void rollback(void);
-extern int commit(void);
+} // namespace Dataman
 
 #endif
 

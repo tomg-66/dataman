@@ -60,6 +60,7 @@
 #include "endSort.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
+#include "visibility.h"
 
 #include "../../server/dbfunc.h"
 #ifdef DATAMAN_CMAKE_BUILD
@@ -74,11 +75,9 @@
 #define TRUE  1
 
 namespace Dataman {
-	Dataman::datarecord masterRecord(MASTER);
-	bool in_xact;
-};
 
-using namespace Dataman;
+DATAMAN_API datarecord masterRecord(MASTER);
+DATAMAN_HIDDEN bool in_xact;
 
 extern void flush(void);
 
@@ -95,7 +94,8 @@ static void useage()
 					_progname, _progname);
 }
 
-void dataman_disconnect(void)
+
+DATAMAN_HIDDEN void dataman_disconnect(void)
 {
 	if (db_comm::get_sock() < 0)
 		return;
@@ -104,7 +104,7 @@ void dataman_disconnect(void)
 }
 
 
-int init_dataman(int argc, char **argv)
+DATAMAN_API int init_dataman(int argc, char **argv)
 
 {
 	int i, j;			/* argument handling */
@@ -268,6 +268,8 @@ done:
 #endif
 	return TRUE;
 }
+
+};	// end of namespace
 
 /*
  * Local variables:

@@ -41,17 +41,17 @@
 
 #include "window.h"
 #include <malloc.h>
+#include "visibility.h"
 
 #define TRUE	1
 #define FALSE	0
 
-extern DB_WIN *cur_win;
-extern DB_WIN *chain;
+DATAMAN_HIDDEN extern DB_WIN *cur_win;
+DATAMAN_HIDDEN extern DB_WIN *chain;
 
-extern void rest_scr(int,int,int,int,chtype *);
+DATAMAN_HIDDEN extern void rest_scr(int,int,int,int,chtype *);
 
-int pop_win()
-
+DATAMAN_API int pop_win()
 {
 	int row1,row2,col1,col2;		/* rows, and columns */
 	chtype *ptr;				/* pointer to buffer */

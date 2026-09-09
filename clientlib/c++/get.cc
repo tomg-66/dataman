@@ -56,7 +56,7 @@
 #define TRUE    1
 #define FALSE   0
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::get(const key &info)
 {
@@ -109,7 +109,7 @@ int index::get(const key &info)
 /*
  * parse the return and update the globals
  */
-	i = this->parse_get(i, buff.get());
+	i = this->_parse_get(i, buff.get());
 	if (!i)
 		return FALSE;
 	return(TRUE);
@@ -128,6 +128,8 @@ int index::get(datafield& d)
 	gbuf = d.getptr();
 	return(this->get(gbuf));
 }
+
+} // end of namespace
 
 /*
  * Local variables:

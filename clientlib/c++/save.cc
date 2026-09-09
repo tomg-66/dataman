@@ -48,10 +48,11 @@
 #include "fileEdit.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
+#include "save.hpp"
 
 #include "../../server/errors.h"
 
-using namespace Dataman;
+namespace Dataman {
 
 void index::save()
 
@@ -76,6 +77,8 @@ void index::save()
 	this->_savptr->_savfmt = masterRecord.getfmt();
 	this->_savptr->_savoffs = this->_offs;
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

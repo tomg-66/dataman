@@ -47,14 +47,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <curses.h>
+#include "visibility.h"
 
 #define TRUE	1
 #define FALSE	0
 #define NL	'\n'		/* the newline char? */
 #define BS	'\177'		/* the backspace character */
 #define NOECHO	04		/* the bit to determine if echo */
-
-extern chtype HELP;		/* the 'help' key value */
 
 static void __show__(int row, int col, char *str)
 {
@@ -81,7 +80,11 @@ static void __myecho__(int row, int col, char c)
 	mvaddch(row, col, (chtype)c|map);
 }
 
-int acept(int row, int col, char *acc, int mode)
+namespace Dataman {
+
+extern DATAMAN_API chtype HELP;
+
+DATAMAN_API int acept(int row, int col, char *acc, int mode)
 {
 
 	short idx;				/* loop counter */
@@ -187,6 +190,8 @@ int acept(int row, int col, unsigned char *acc, int mode)
 {
 	return(acept(row, col, (char *)acc, mode));
 }
+
+} // end of namespace
 
 /*
  * Local variables:

@@ -43,14 +43,14 @@
 #include <string.h>
 #include <curses.h>
 #include <malloc.h>
+#include "visibility.h"
 
-extern chtype HELP;		/* the help key character */
+DATAMAN_API extern chtype HELP;		/* the help key character */
 
-extern void save_scr(int, int, int, int, chtype *);
-extern void rest_scr(int, int, int, int, chtype *);
+DATAMAN_HIDDEN extern void save_scr(int, int, int, int, chtype *);
+DATAMAN_HIDDEN extern void rest_scr(int, int, int, int, chtype *);
 
-void pause(int row, int col, char *mess)
-
+DATAMAN_API void dtm_pause(int row, int col, char *mess)
 {
 	int offs;
 	int tst=0;					/* the returned char from dosgch */

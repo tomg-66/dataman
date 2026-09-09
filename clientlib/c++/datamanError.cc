@@ -1,16 +1,22 @@
 #include "datamanError.hpp"
 
 #define DBERROR
+#if defined __GNUC__
+#pragma GCC visibility push(hidden)
+#endif
 #include "../../server/errors.h"
+#if defined __GNUC__
+#pragma GCC visibility pop
+#endif
 
-using namespace Dataman;
+namespace Dataman {
 
 /*
  * dataman error is facing the user.  it is a catchable exception
  * that the user can receive outside of the normal true/false
  * functions that mutate the database.
  */
-datamanError Dataman::makeError(int code, const char *format, ...)
+datamanError makeError(int code, const char *format, ...)
 {
 	char message[512];
 	char tmp_str[512] = {0};
@@ -27,7 +33,7 @@ datamanError Dataman::makeError(int code, const char *format, ...)
 	}
 
 		// make sure to reserve a null!
-	strncat(message, tmp_str, 511 - strlen(message));
+	::strncat(message, tmp_str, 511 - strlen(message));
 	return datamanError(code, message);
 }
 
@@ -36,7 +42,7 @@ datamanError Dataman::makeError(int code, const char *format, ...)
  * that the message can get be displayed, but normal operation
  * can continue
  */
-void Dataman::db_err(int code, const char *fmt, ...)
+void db_err(int code, const char *fmt, ...)
 {
 	va_list pt;
 	va_start(pt, fmt);
@@ -50,6 +56,8 @@ void Dataman::db_err(int code, const char *fmt, ...)
 			perror("");
 	}
 }
+
+} //end of namespace
 
 /*
  * Local variables:

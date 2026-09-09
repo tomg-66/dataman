@@ -45,6 +45,7 @@
 #include "fileEdit.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
+#include "visibility.h"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
@@ -54,12 +55,9 @@
 #define TRUE    1
 #define FALSE   0
 
-using Dataman::in_xact;
-using Dataman::_progname;
+namespace Dataman {
 
-using namespace Dataman;
-
-void start_transaction(void)
+DATAMAN_API void start_transaction(void)
 {
     int i;								/* temporary */
 
@@ -69,7 +67,7 @@ void start_transaction(void)
 /*
  * send the command and deal with the return.
  */
-	Dataman::db_comm comm;
+	db_comm comm;
 	std::unique_ptr<char[]> buff(comm.db_send(cmd, i));
 /*
  * the first field of the return is an error code if necessary,
@@ -82,6 +80,8 @@ void start_transaction(void)
 	}
 	in_xact = TRUE;
 }
+
+} // end of namespace
 
 /*
  * Local variables:

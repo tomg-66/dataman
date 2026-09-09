@@ -42,8 +42,11 @@
 #include <curses.h>
 #include <malloc.h>
 #include <string.h>
+#include "visibility.h"
 
-void cl_win(int row1, int col1,			/* row and col to start */
+namespace Dataman {
+
+DATAMAN_API void cl_win(int row1, int col1,			/* row and col to start */
 			int row2, int col2,			/* where to end */
 			int attr)
 {
@@ -61,6 +64,8 @@ void cl_win(int row1, int col1,			/* row and col to start */
 	refresh();
 	free(buff);
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

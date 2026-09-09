@@ -46,9 +46,9 @@
 
 #include <datarecord.hpp>
 
-using namespace Dataman;
+namespace Dataman {
 
-void flush()
+DATAMAN_API void flush()
 {
 /*
  * this check is for if you call dataman_disconnect before you exit.
@@ -66,6 +66,8 @@ void flush()
 	if (cur_index && cur_index->get_wrmode() && masterRecord.getdirty())
 		masterRecord.out_rec();
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

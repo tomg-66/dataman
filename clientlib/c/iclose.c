@@ -51,15 +51,15 @@
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 
-extern int out_rec(int);
-extern INDEX *findex(char *);
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int out_rec(int);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
 #define FALSE 0
 #define TRUE  1
 
-int iclose(char *ixname)
+DATAMAN_API int iclose(char *ixname)
 {
 	INDEX *idx;			/* pointer to index structure to close */
 

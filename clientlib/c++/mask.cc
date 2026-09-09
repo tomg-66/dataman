@@ -46,6 +46,8 @@
 #include <stdint.h>
 #include <string.h>
 
+namespace Dataman {
+
 char *mask(int64_t num, char *msk)
 {
     char zero_found = 0;                        /* zero in the mask? */
@@ -61,7 +63,7 @@ char *mask(int64_t num, char *msk)
         offs--;                                 /* decrement offset */
     }
     if (num < 0)
-	num *= -1;				/* convert to pos num */
+        num *= -1;				/* convert to pos num */
 
     while (1) {
         tmp = num % 10;                         /* this number to insert */
@@ -91,6 +93,8 @@ char *mask(int64_t num, char *msk)
             return(msk);                        /* all done */
     }
 }
+
+}				// end of namespace
 
 /*
  * Local variables:

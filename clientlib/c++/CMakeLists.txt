@@ -1,6 +1,6 @@
 set(DATAMAN_CXX_SOURCES
-	accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc
-	db_comm.cc datamanError.cc delete.cc flush.cc forward.cc
+	accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc datarecord.cc
+	db_comm.cc datamanError.cc delete.cc endSort.cc flush.cc forward.cc
 	get.cc get_current.cc get_first.cc get_last.cc get_long.cc
 	get_next.cc get_prior.cc grow_win.cc include.cc index.cc
 	init_dataman.cc init_dwin.cc insert.cc mask.cc mkidx.cc
@@ -16,6 +16,7 @@ target_compile_definitions(dataman_cpp PRIVATE
 target_include_directories(dataman_cpp
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+		$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/clientlib/c>
 		$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dataman>
 	PRIVATE
 		"${PROJECT_SOURCE_DIR}/server"

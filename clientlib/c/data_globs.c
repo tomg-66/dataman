@@ -49,6 +49,7 @@
 #include <stdint.h>
 
 #include "index.h"
+#include "visibility.h"
 
 
 /*
@@ -56,47 +57,40 @@
  * because recio needs them at least declared.  they are never used in
  * sorts and never set up, but they at least need to be declared.
  */
-FILEDESC *m_fdesc;		/* parsed description of master file */
-short m_head;           /* length of the file header */
-//short m_longest;	/* longest record in master file */
-int64_t m_cur;			/* pointer ot current master record */
-int64_t m_prev;			/* pointer to prev master record */
-int64_t m_next;			/* pointer to next master record */
-int m_chan;             /* channel number of master file */
-char m_fmt;             /* curr master record format number */
-char **mfld;            /* pointer to the individual fields */
-uint32_t *m_blob_lengths;	/* runtime lengths for master blob fields */
-char *_m_rec_;
+DATAMAN_HIDDEN FILEDESC *m_fdesc;		/* parsed description of master file */
+DATAMAN_HIDDEN short m_head;           /* length of the file header */
+DATAMAN_HIDDEN int64_t m_cur;			/* pointer ot current master record */
+DATAMAN_HIDDEN int64_t m_prev;			/* pointer to prev master record */
+DATAMAN_HIDDEN int64_t m_next;			/* pointer to next master record */
+DATAMAN_HIDDEN int m_chan;             /* channel number of master file */
+DATAMAN_HIDDEN char m_fmt;             /* curr master record format number */
+DATAMAN_HIDDEN uint32_t *m_blob_lengths;	/* runtime lengths for master blob fields */
+DATAMAN_HIDDEN char *_m_rec_;
 
 /*
  * these are the work file parameters that really are used in sorts.
  */
-FILEDESC *w_fdesc;		/* parsed description of work file */
-//short w_longest;		/* longest record in work file */
-int64_t w_cur;			/* pointer ot current work record */
-int64_t w_prev;			/* pointer to prev work record */
-int64_t w_next;			/* pointer to next work record */
-int w_chan;				/* channel number of work file */
-char w_fmt;				/* curr work record format number */
-char **wfld;			/* pointer to the individual fields */
-uint32_t *w_blob_lengths;	/* runtime lengths for work blob fields */
-char *_w_rec_;			/* pointer to the work field buffer */
-char _file;				/* next file accessed flag */
+DATAMAN_HIDDEN FILEDESC *w_fdesc;		/* parsed description of work file */
+DATAMAN_HIDDEN int64_t w_cur;			/* pointer ot current work record */
+DATAMAN_HIDDEN int64_t w_prev;			/* pointer to prev work record */
+DATAMAN_HIDDEN int64_t w_next;			/* pointer to next work record */
+DATAMAN_HIDDEN int w_chan;				/* channel number of work file */
+DATAMAN_HIDDEN char w_fmt;				/* curr work record format number */
+DATAMAN_HIDDEN uint32_t *w_blob_lengths;	/* runtime lengths for work blob fields */
+DATAMAN_HIDDEN char *_w_rec_;			/* pointer to the work field buffer */
+DATAMAN_HIDDEN char _file;				/* next file accessed flag */
+DATAMAN_HIDDEN char _root[512];		/* pointer to ROOT dir */
+DATAMAN_HIDDEN INDEX cur_index;			/* the current operating index */
+DATAMAN_HIDDEN int is_sort;
+DATAMAN_HIDDEN int dm_sock = -1;				/* dataman socket */
+DATAMAN_HIDDEN int dbgsw;
+DATAMAN_HIDDEN int traditional = 1;		/* default to using traditional */
+DATAMAN_HIDDEN extern int dwin_inited;
 
-char _root[512];		/* pointer to ROOT dir */
+DATAMAN_API char **mfld;			/* pointer to the individual fields */
+DATAMAN_API char **wfld;			/* pointer to the individual fields */
 
-INDEX cur_index;			/* the current operating index */
-//NODE  cur_node;			/* the last accessed node */
-
-int is_sort;
-int dm_sock = -1;				/* dataman socket */
-int dbgsw;
-
-int traditional = 1;		/* default to using traditional */
-
-extern int dwin_inited;
-
-void data_globs(void)
+DATAMAN_HIDDEN void data_globs(void)
 {                               /* use only for the global declarations */
 }
 

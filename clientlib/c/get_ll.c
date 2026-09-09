@@ -11,7 +11,9 @@
 #endif
 #include <stdint.h>
 
-int64_t get_ll(void *ptr)
+#include "visibility.h"
+
+DATAMAN_HIDDEN int64_t get_ll(void *ptr)
 {
 
 	int64_t tmp;

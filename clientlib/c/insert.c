@@ -53,20 +53,19 @@
 #include "index.h"              /* index description */
 #include "m_params.h"           /* master file description */
 #include "globs.h"
-#include "client_internal.h"
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
 
-extern INDEX cur_index;         /* the current operating index */
+DATAMAN_HIDDEN extern INDEX cur_index;         /* the current operating index */
 
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern int out_rec(int);
-extern INDEX *findex(char *);
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern int out_rec(int);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-int insert(int fmt, int mode, char *ixname)
+DATAMAN_API int db_insert(int fmt, int mode, char *ixname)
 {
 
 	INDEX *idx;							/* the insert index structure */

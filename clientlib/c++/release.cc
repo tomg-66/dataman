@@ -56,6 +56,7 @@
 #include "endSort.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
+#include "visibility.h"
 
 #include "../../server/dbfunc.h"
 #include "../../server/errors.h"
@@ -66,11 +67,10 @@
 #define FALSE   0
 #define TRUE    1
 
-extern short _maxfil;						/* maximum number of files */
+namespace Dataman {
+DATAMAN_HIDDEN extern short _maxfil;
 
-using namespace Dataman;
-
-int datarecord::release(void)
+DATAMAN_API int datarecord::release(void)
 
 {
     char cmd[256];                     /* path to file */
@@ -137,6 +137,8 @@ int datarecord::release(void)
 		return FALSE;
     return TRUE;
 }
+
+} // end of namespace
 
 /*
  * Local variables:

@@ -74,10 +74,6 @@
 
 #define DBSOCK 8758
 
-using namespace Dataman;
-
-int db_comm::db_sock = -1;
-
 static bool write_all(int fd, const void *buf, size_t len)
 {
 	const char *ptr = (const char *)buf;
@@ -115,6 +111,10 @@ static bool read_exact(int fd, void *buf, size_t len)
 	}
 	return(true);
 }
+
+namespace Dataman {
+
+int db_comm::db_sock = -1;
 
 /*
  * constructors for the db_conn class
@@ -363,6 +363,8 @@ void db_comm::db_discon(void)
 	close(this->db_sock);
 	this->db_sock = -1;
 }
+
+} // end of namespace
 
 /*
  * Local variables:

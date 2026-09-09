@@ -43,11 +43,12 @@
 
 #include <string.h>
 #include <stdint.h>
+#include "visibility.h"
 
 #define MIN_KEY_SIZE	1
 #define MAX_KEY_SIZE	32
 
-extern unsigned long get_long(char *);
+extern DATAMAN_HIDDEN unsigned long get_long(char *);
 
 namespace Dataman {
 
@@ -70,10 +71,11 @@ class key {
 		inline operator const char *() const { return(key_str); }
 //and finally, a few access methods
 		int get_len() const { return(this->_len); }
-		int get_fno() const { return((int)this->_fno); }
-		int64_t get_rec() const { return(this->_rec); }
 		const char *get_data() const { return(this->data); }
 		const char *get_kstr() const { return(this->key_str); }
+
+		DATAMAN_HIDDEN int get_fno();
+		DATAMAN_HIDDEN int64_t get_rec();
 
 };
 

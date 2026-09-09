@@ -24,7 +24,9 @@
 
 #include <arpa/inet.h>		/* for def of ntohl */
 #include <string.h>
-uint32_t get_long(char *ptr)
+#include "visibility.h"
+
+DATAMAN_HIDDEN uint32_t get_long(char *ptr)
 {
 /*
     char ret[4];

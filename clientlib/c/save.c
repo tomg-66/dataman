@@ -44,19 +44,17 @@
 #include <malloc.h>
 #include <stdio.h>
 
+#include "globs.h"
 #include "m_params.h"
 #include "index.h"
-#include "globs.h"
 #include "../../server/errors.h"
 #include "../../server/misc.h"
 
-extern char *substr(char *,int, int);
-extern INDEX *findex(char *);
-extern void db_err(int, char *, ...);
+DATAMAN_API extern char *substr(const char *,const int, const int);
+DATAMAN_HIDDEN extern INDEX *findex(char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-int save(idx_name)
-char *idx_name;                         /* the index name to save info from */
-
+DATAMAN_API int save(char *idx_name)
 {
     INDEX *idx;                         /* pointer to the index to change */
 	char *tmp_key;

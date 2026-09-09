@@ -46,6 +46,7 @@
 #include "fileEdit.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
+#include "visibility.h"
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
@@ -55,15 +56,12 @@
 #define TRUE    1
 #define FALSE   0
 
-using Dataman::in_xact;
-using Dataman::_progname;
-
-using namespace Dataman;
+namespace Dataman {
 
 /*
  * this isn't a member of a class.  just a callable function
  */
-void rollback(void)
+DATAMAN_API void rollback(void)
 {
     int i;								/* temporary */
 
@@ -86,6 +84,8 @@ void rollback(void)
 
 	in_xact = FALSE;
 }
+
+} // end of namespace
 
 /*
  * Local variables:

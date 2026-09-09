@@ -44,7 +44,9 @@
  */
 
 #include <arpa/inet.h>		/* for def of ntohl */
-unsigned long get_long(char *ptr)
+#include "visibility.h"
+
+DATAMAN_HIDDEN unsigned long get_long(char *ptr)
 {
 	return(ntohl(*(unsigned long *)ptr));
 }

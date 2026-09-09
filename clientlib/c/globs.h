@@ -26,22 +26,21 @@
 
 #include "index.h"
 #include "w_params.h"
+#include "visibility.h"
 
-//extern char HELP;				/* the 'help' key */
-//extern char TOP[];			/* the show top string */
-//extern char EOL[];			/* the clear to end of line string */
-extern char _file;				/* the when_file flag */
+DATAMAN_HIDDEN extern char _file;				/* the when_file flag */
 
-extern INDEX cur_index;			/* the current operating index */
+DATAMAN_HIDDEN extern INDEX cur_index;		/* the current operating index */
 
-extern int dm_sock;				/* socket to server */
-extern int dbgsw;				/* debug switch */
-extern int is_sort;
+DATAMAN_HIDDEN extern int dm_sock;			/* socket to server */
+DATAMAN_HIDDEN extern int dbgsw;			/* debug switch */
+DATAMAN_HIDDEN extern int is_sort;
 
-extern int traditional;
+DATAMAN_HIDDEN extern int traditional;
 
-extern char *_progname;			/* name of currently running program */
-extern char _root[512];			/* pointer to various ROOT dirs */
+DATAMAN_HIDDEN extern char *_progname;		/* name of currently running program */
+DATAMAN_HIDDEN extern char _root[512];		/* pointer to various ROOT dirs */
+DATAMAN_HIDDEN extern bool dm_next_field(char **cursor);
 
 #endif
 

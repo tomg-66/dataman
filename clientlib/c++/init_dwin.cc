@@ -43,24 +43,25 @@
 #include <libgen.h>
 
 #include <endSort.hpp>
+#include "internal_state.hpp"
+#include "visibility.h"
 
 WINDOW *stdscr;
+
+namespace Dataman {
 
 chtype HELP;					/* the 'help' key */
 unsigned char TOP[] = "\377";			/* the show top string */
 unsigned char EOL[] = "\376";			/* the clear to end of line string */
 
-int dwin_inited;
+DATAMAN_HIDDEN int dwin_inited;
 
-using Dataman::dbgsw;
-using Dataman::_progname;
-
-void db_endit(void)
+DATAMAN_HIDDEN void db_endit(void)
 {
 	endwin();
 }
 
-void init_dwin()
+DATAMAN_API void init_dwin()
 {
 	char *ptr;
 
@@ -104,6 +105,8 @@ void init_dwin()
 	atexit(db_endit);					/* end the windowing on exit */
 	dwin_inited = 1;
 }
+
+} // namespace Dataman
 
 /*
  * Local variables:

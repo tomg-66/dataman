@@ -25,14 +25,12 @@
 #ifndef _SORT_INC_
 #define _SORT_INC_
 
-#include "proto.h"			/* the function prototypes */
-#include "wind.h"			/* the window definitions */
-#include "index.h"			/* current index description */
-#include "w_params.h"		/* work file parameters */
+#include "dataman_prototypes.h"	/* the function prototypes */
+#include "wind.h"				/* the window definitions */
 
-#define ENDLIST		-1					/* end of arg list */
-#define WORFILENAME _fnames[_fileno]	/* current file name */
-#define WFMT		w_fmt				/* format number */
+#define ENDLIST		-1						/* end of arg list */
+#define WORKFILENAME _get_workfilename()	/* current file name */
+#define WFMT		_get_work_format()		/* format number */
 
 #define	ANY			0		/* accept any input */
 #define	LOWER		1		/* translate input to lower case */
@@ -40,23 +38,18 @@
 #define NUMERIC		3		/* accept numeric only input */
 #define NOECHO		04		/* bit mask to suppress echo on accept */
 #define ENDLIST		-1		/* end of argument list flag */
+
+#define sort(key)		if (db_sort(key)) ;
 #define release			if (db_rel()) ;		/* def for release */
-#define when_wfmt(x)	if (w_fmt == x)
-#define when_file		if (_file)			/* test _file switch */
+#define when_wfmt(x)	if (_is_work_format(x))
+#define when_file		if (_is_new_file())		/* test _file switch */
+
 #define dirty_w			wfld[0] = (char *)((uintptr_t)wfld[0] | 1)	/* set dirty bit */
 #define wstrcpy(pt1,pt2)        do { dirty_w;strcpy(pt1,pt2) } while (0)
 #define wstrncpy(pt1,pt2,i)     do { dirty_w;strncpy(pt1,pt2,i) } while (0)
 
-extern char **_fnames;				/* names of files for index */
-extern char _file;					/* new file switch */
-extern int _fileno;					/* offset into _fnames */
-
-//extern char TOP[];				/* show clear screen */
-//extern char EOL[];				/* clear to end of line */
-
-extern INDEX cur_index;				/* index being built */
-//extern NODE  cur_node;				/* last accessed node */
-
+#define SHOW(...)					dtm_show(__VA_ARGS__)
+#define PAUSE(row, col, message)	dtm_pause(row, col, message)
 
 #endif
 

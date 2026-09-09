@@ -40,15 +40,15 @@
 
 #include <stdarg.h>
 #include <curses.h>
+#include "visibility.h"
 
 #define	END	-1
 #define TOP	'\377'
 #define EOL	'\376'
 
-/*
-extern int dbgsw;
-*/
-void show(int tmp1,...)
+namespace Dataman {
+
+DATAMAN_API void show(int tmp1,...)
 
 {
 	va_list pt;
@@ -92,6 +92,8 @@ void show(int tmp1,...)
 	}
 	va_end(pt);
 }
+
+} // end of namespace
 
 /*
  * Local variables:

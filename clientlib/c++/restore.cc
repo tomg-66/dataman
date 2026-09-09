@@ -50,6 +50,8 @@
 #include <inttypes.h>
 
 #include "fileEdit.hpp"
+#include "datafile.hpp"
+#include "save.hpp"
 #include "db_comm.hpp"
 #include "datamanError.hpp"
 
@@ -61,7 +63,7 @@
 #define TRUE	1
 #define FALSE	0
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::restore()
 {
@@ -131,6 +133,8 @@ int index::restore()
 	return(TRUE);
 }
 
+
+} // namespace Dataman
 
 /*
  * Local variables:

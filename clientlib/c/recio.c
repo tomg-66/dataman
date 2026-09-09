@@ -52,21 +52,20 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-#include "m_params.h"
 #include "globs.h"
-#include "client_internal.h"
+#include "m_params.h"
 #include "../../server/dbfunc.h"
 #include "../../server/datafile_header.h"
 #include "../../server/errors.h"
 
-extern char *db_send(char *, int, char *);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
 
-extern uint32_t get_long(char *);
-extern void put_long(char *, uint32_t);
+DATAMAN_HIDDEN extern uint32_t get_long(char *);
+DATAMAN_HIDDEN extern void put_long(char *, uint32_t);
 
-extern int dm_sock;
-extern char *_progname;
+DATAMAN_HIDDEN extern int dm_sock;
+DATAMAN_HIDDEN extern char *_progname;
 
 #define FALSE 0
 #define TRUE  1
@@ -331,12 +330,12 @@ invalid_response:
 	goto fail;
 }
 
-int in_rec(int type, char *buff, size_t buff_len, INDEX *idx, int fmt, int chan)
+DATAMAN_HIDDEN int in_rec(int type, char *buff, size_t buff_len, INDEX *idx, int fmt, int chan)
 {
 	return in_rec_impl(type, buff, buff_len, idx, fmt, chan, FALSE);
 }
 
-int dm_in_rec_reload(int type, char *buff, size_t buff_len, INDEX *idx,
+DATAMAN_HIDDEN int dm_in_rec_reload(int type, char *buff, size_t buff_len, INDEX *idx,
 		int fmt, int chan)
 {
 	return in_rec_impl(type, buff, buff_len, idx, fmt, chan, TRUE);
@@ -351,7 +350,7 @@ int dm_in_rec_reload(int type, char *buff, size_t buff_len, INDEX *idx,
  */
 
 #define MSK	077
-int out_rec(int type)
+DATAMAN_HIDDEN int out_rec(int type)
 
 {
 	int i;

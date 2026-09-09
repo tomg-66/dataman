@@ -40,6 +40,7 @@
 
 #include <stdarg.h>
 #include <curses.h>
+#include "visibility.h"
 
 #define	END	-1
 #define TOP	'\377'
@@ -48,8 +49,7 @@
 /*
 extern int dbgsw;
 */
-void show(int tmp1, int tmp2, char *mess, ...)
-
+DATAMAN_API void dtm_show(int tmp1, int tmp2, char *mess, ...)
 {
 	va_list pt;
 

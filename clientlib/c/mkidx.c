@@ -48,9 +48,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "index.h"              /* index description */
 #include "globs.h"
-#include "client_internal.h"
+#include "index.h"              /* index description */
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "../../server/errors.h"
@@ -61,30 +60,32 @@
 #endif
 
 /* -------- these are globals declared here -------- */
-short _maxfil;				/* number of files in index */
+DATAMAN_HIDDEN short _maxfil;				/* number of files in index */
 
-int _fileno;				/* the offset to the current file */
-char **_fnames;				/* the names of the files in index */
-char *_progname;
+DATAMAN_HIDDEN int _fileno;				/* the offset to the current file */
+DATAMAN_HIDDEN char **_fnames;				/* the names of the files in index */
+DATAMAN_HIDDEN char *_progname;
 
-extern int is_sort;
-extern int dbgsw;
-extern char _root[];
+DATAMAN_HIDDEN extern int is_sort;
+DATAMAN_HIDDEN extern int dbgsw;
+DATAMAN_HIDDEN extern char _root[];
 
-extern void data_globs(void);
-extern int in_rec(int, char *, size_t, INDEX *, int, int);
-extern char *substr(char *,int,int);
-extern char *db_send(char *, int, char *);
-extern char *db_send_len(char *, int, char *, size_t *);
-extern int db_connect(char *);
-extern void db_discon(void);
-extern void db_err(int, char *, ...);
+DATAMAN_HIDDEN extern void data_globs(void);
+DATAMAN_HIDDEN extern int in_rec(int, char *, size_t, INDEX *, int, int);
+DATAMAN_HIDDEN extern char *db_send(char *, int, char *);
+DATAMAN_HIDDEN extern char *db_send_len(char *, int, char *, size_t *);
+DATAMAN_HIDDEN extern int db_connect(char *);
+DATAMAN_HIDDEN extern void db_discon(void);
+DATAMAN_HIDDEN extern void db_err(int, char *, ...);
+
+DATAMAN_API extern char *substr(const char *,const int,const int);
 
 #ifdef DWINDOW
 extern void init_dwin(void);
 #endif
 
-static void useage(char *name)
+
+static void useage(const char *name)
 {
     db_err(0,
         "Usage: %s [-len] [-D] [-h host] [-r rootdir] idx_name file1 "
@@ -97,8 +98,7 @@ static void useage(char *name)
 /*
  * make the index
  */
-int mkidx(int argc, char *argv[])		/* the command line args from main */
-
+DATAMAN_API int mkidx(int argc, const char *argv[])		/* the command line args from main */
 {
     int i, j;					/* general usage */
 	int h_len;
@@ -110,8 +110,8 @@ int mkidx(int argc, char *argv[])		/* the command line args from main */
 	char *cptr;
 	size_t response_len;
 
-	_progname = argv[0];		/* save the program name */
-    if (argc < 3) {             /* got to get at least the right # of args */
+	_progname = strdup(argv[0]);	/* save the program name */
+    if (argc < 3) {					/* got to get at least the right # of args */
         useage(argv[0]);
 		return FALSE;
 	}

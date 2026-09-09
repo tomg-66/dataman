@@ -53,15 +53,15 @@
 
 #define DBSOCK 8758
 
-extern void db_err(int, char*, ...);
+DATAMAN_HIDDEN extern void db_err(int, char*, ...);
 
-extern int dbgsw;
+DATAMAN_HIDDEN extern int dbgsw;
 
 /*
  * connect to the database server.  the only returns if the socket 
  * call succeeds is either a small negative number or the string "ok"
  */
-int db_connect(char *host)
+DATAMAN_HIDDEN int db_connect(char *host)
 {
 
 	int i;

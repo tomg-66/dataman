@@ -10,8 +10,9 @@
 #include "misc.h"
 #endif
 #include <stdint.h>
+#include "visibility.h"
 
-int64_t get_ll(const void *ptr)
+DATAMAN_HIDDEN int64_t get_ll(const void *ptr)
 {
 
 	int64_t tmp;
@@ -35,7 +36,7 @@ int64_t get_ll(const void *ptr)
 		return(*(int64_t *)ptr);
 }
 
-int64_t get_ll(const char *ptr)
+DATAMAN_HIDDEN int64_t get_ll(const char *ptr)
 {
 	return(get_ll((const void *)ptr));
 }

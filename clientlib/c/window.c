@@ -43,7 +43,9 @@
 #include <malloc.h>
 #include <string.h>
 
-void window(int row1, int col1,				/* row and col to begin */
+#include "visibility.h"
+
+DATAMAN_API void window(int row1, int col1,	/* row and col to begin */
 			int row2, int col2,				/* row and col to end */
 			int attr)						/* which color scheme to use */
 {

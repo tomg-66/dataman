@@ -44,6 +44,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "visibility.h"
+
 #include "m_params.h"
 #include "w_params.h"
 
@@ -57,7 +59,7 @@
 #define TRUE 1
 #endif
 
-int put_blob(char *field, void *blob, int size)
+DATAMAN_API int put_blob(char *field, void *blob, int size)
 {
 
 	int i, j;
@@ -122,7 +124,7 @@ found:
 /*
  * get the size of a blob that is contained in the datafield
  */
-long get_blob_size(char *field)
+DATAMAN_HIDDEN long get_blob_size(char *field)
 {
 	int i, j;
 	char **rec;

@@ -57,7 +57,7 @@
 #define TRUE    1
 #define FALSE   0
 
-using namespace Dataman;
+namespace Dataman {
 
 int index::get_current()
 {
@@ -98,11 +98,13 @@ int index::get_current()
 /*
  * parse the return and update the globals
  */
-	i = this->parse_get(i, ret.get());
+	i = this->_parse_get(i, ret.get());
 	if (!i)
 		return FALSE;
 	return(TRUE);
 }
+
+} // end of namespace
 
 /*
  * Local variables:

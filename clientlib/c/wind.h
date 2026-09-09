@@ -41,6 +41,9 @@
 #ifndef _DATAMAN_WINS_DEFINED
 #define _DATAMAN_WINS_DEFINED
 
+#include <curses.h>
+#include "visibility.h"
+
 #define POP_UP		0		/* pop up a window */
 #define GROW		1		/* draw an "exploding" window */
 
@@ -52,16 +55,16 @@
 #define	MAGEN	6
 #define	YELLOW	7
 
-extern void window(int, int, int, int, int);
-extern int pop_win(void);
+DATAMAN_API extern void window(int, int, int, int, int);
+DATAMAN_API extern int pop_win(void);
 
-extern void grow_win(int, int, int, int, int);
-extern void new_win(int, int, int, int, int, int);
-extern void cl_win(int, int, int, int, int);
+DATAMAN_API extern void grow_win(int, int, int, int, int);
+DATAMAN_API extern void new_win(int, int, int, int, int, int);
+DATAMAN_API extern void cl_win(int, int, int, int, int);
 
-extern char HELP;
-extern unsigned char EOL[];
-extern unsigned char TOP[];
+DATAMAN_API extern chtype HELP;
+DATAMAN_API extern unsigned char EOL[];
+DATAMAN_API extern unsigned char TOP[];
 
 #endif
 

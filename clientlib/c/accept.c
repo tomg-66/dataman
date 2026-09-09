@@ -46,6 +46,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <curses.h>
+#include "visibility.h"
 
 #define TRUE	1
 #define FALSE	0
@@ -53,7 +54,7 @@
 #define BS	'\177'		/* the backspace character */
 #define NOECHO	04		/* the bit to determine if echo */
 
-extern chtype HELP;		/* the 'help' key value */
+DATAMAN_API extern chtype HELP;		/* the 'help' key value */
 
 static void __show__(int row, int col, char *str)
 {
@@ -80,7 +81,7 @@ static void __myecho__(int row, int col, char c)
 	mvaddch(row, col, (chtype)c|map);
 }
 
-int acept(int row, int col, char *acc, int mode)
+DATAMAN_API int acept(int row, int col, char *acc, int mode)
 {
 
 	register short idx;		/* loop counter */

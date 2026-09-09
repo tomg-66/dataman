@@ -11,7 +11,7 @@ libdataman___la_SOURCES = accept.cc back.cc clear.cc cl_win.cc datafield_impl.cc
 
 includedir = $(prefix)/include/dataman
 
-libdataman___la_LDFLAGS = -version-info 4:1:0 -lcurses
+libdataman___la_LDFLAGS = -version-info 5:0:1 -lcurses
 
 noinst_HEADERS = datafile.hpp db_comm.hpp internal_state.hpp save.hpp #wind.h window.h
 

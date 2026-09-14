@@ -43,6 +43,13 @@ server/mkidx
 server/rebuild
 server/term_dbserve
 
+# Standalone storage tests
+server/storage_io_test
+server/flush_io_test
+server/undo_journal_test
+server/*.log
+server/*.trs
+
 #testing artifacts
 tests/php/files/one_rec
 tests/php/index/one_rec_idx

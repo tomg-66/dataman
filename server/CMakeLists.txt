@@ -27,8 +27,21 @@ dataman_server_program(dataman_srv
 	lock.c pend.c protect.c put_long.c get_file.c put_short.c remove.c
 	substr.c upd_idx.c verify_pid.c get_desc.c init_dataman.c release.c
 	mkidx.c sort.c restore.c get_datafile_desc.c version.c get_blobs.c
-	put_blobs.c get_ll.c put_ll.c get_rec.c blob_ctl.c undelete.c index_v2.c)
+	put_blobs.c get_ll.c put_ll.c get_rec.c blob_ctl.c undelete.c index_v2.c
+	storage_io.c)
 target_link_libraries(dataman_srv PRIVATE Threads::Threads)
+
+if(BUILD_TESTING)
+	add_executable(storage_io_test tests/storage_io_test.c)
+	target_include_directories(storage_io_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME storage-io COMMAND storage_io_test)
+	add_executable(flush_io_test tests/flush_io_test.c flush.c)
+	target_include_directories(flush_io_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME flush-io COMMAND flush_io_test)
+	add_executable(undo_journal_test tests/undo_journal_test.c storage_io.c)
+	target_include_directories(undo_journal_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME undo-journal COMMAND undo_journal_test)
+endif()
 
 dataman_server_program(mkdf
 	mkdf.c substr.c put_short.c put_long.c put_ll.c get_ll.c)

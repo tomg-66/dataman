@@ -155,16 +155,20 @@ public class Dataman{
 		try {
    			comm = new DatamanComms(host);
 			if (!traditional) {
+				cmd = DatamanFunc.DEF_ROOT + "|" + _root + "|";
+			} else {
 				cmd = DatamanFunc.INIT_DAT + "|" + _root + "/files/" + argv[i] + "|";
-				Charset cs = StandardCharsets.UTF_8;
-				buff = comm.db_send(cs.encode(cmd), cmd.length());
-				String[] result = readFields(buff, 1, "INIT_DATAMAN");
-				i = Integer.parseInt(result[0]);
-				if (i < 0) {
-					System.out.println(_progname + ": Error during INIT_DATAMAN");
-					DatamanErrVal e = new DatamanErrVal();
-					throw new DatamanRuntimeException(e.getDBErr(i));
-				}
+			}
+			Charset cs = StandardCharsets.UTF_8;
+			buff = comm.db_send(cs.encode(cmd), cmd.length());
+			String[] result = readFields(buff, 1, "INIT_DATAMAN");
+			i = Integer.parseInt(result[0]);
+			if (i < 0) {
+				System.out.println(_progname + ": Error during INIT_DATAMAN");
+				DatamanErrVal e = new DatamanErrVal();
+				throw new DatamanRuntimeException(e.getDBErr(i));
+			}
+			if (traditional) {
 				result = readFields(buff, 6, "INIT_DATAMAN");
 				workfile.setlen(i);
 				workfile.setchan(Integer.parseInt(result[0]));

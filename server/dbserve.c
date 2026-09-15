@@ -56,6 +56,7 @@
 #include "msg.h"			/* need for SHMSIZ */
 #include "errors.h"			/* dataman error numbers */
 #include "misc.h"			/* this is for various things */
+#include "journal_startup.h"
 
 #define MAX_CONNS	256
 
@@ -101,7 +102,8 @@ void useage(char *name)
 					"            of the shared memory segments\n"
 					"    -n count  where count is the number of worker \n"
 					"            threads to start\n"
-					"    -h/? prints this useful message\n",
+					"    -h/? prints this useful message\n"
+					"    DATAMAN_JOURNAL_DIR overrides /var/lib/dataman/journal\n",
 					name);
 	exit(0);
 }
@@ -123,6 +125,8 @@ int main(int argc, char *argv[])
 	pthread_attr_t attr;
 
 	struct sigaction act;
+	dm_journal_guard *journal;
+	const char *journal_path;
 
 	extern void *dispatch(void *);
 
@@ -186,17 +190,6 @@ int main(int argc, char *argv[])
 	if (shmsiz == 0)
 		shmsiz = SHMSIZ;
 /*
- * attach to the message queue and clean out any messages
- * that might be there.  This means we need to be up and
- * running before the db connection server!
- */
-	if ((msgid = msgget((key_t)MSGKEY, PERMS|IPC_CREAT)) < 0)
-		err_sys("%s: Can't create message queue: ", argv[0]);
-
-	while(msgrcv(msgid, &msgbuf, MAXSIZ, MSG_ANY, MSG_NOERROR|IPC_NOWAIT) > 0)
-		;
-
-/*
  * ok, run in daemon mode if necessary
  */
 	if (dmnsw) {
@@ -209,9 +202,9 @@ int main(int argc, char *argv[])
  * do this after we fork (if we're going to) so that the child (daemon)
  * can hold the lock over it's lifetime.
  */
-	if (verify_pid(basename(argv[0])) < 0) {
+	if (verify_pid("dataman_srv") < 0) {
 		fprintf(stderr, "%s: process already running\n", argv[0]);
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 /*
  * now finish up becoming the daemon.
@@ -254,6 +247,39 @@ int main(int argc, char *argv[])
 #if !defined __gnu_linux__
 	check_endian();					/* check endian_ness if needed */
 #endif
+
+/*
+ * The supervisor inherits this setting for both initial start and restart.
+ * Version/help exits above do not require access to the journal directory.
+ */
+	journal_path = getenv("DATAMAN_JOURNAL_DIR");
+	if (!journal_path)
+		journal_path = DATAMAN_DEFAULT_JOURNAL_DIR;
+	if (dm_journal_open(journal_path, &journal) < 0) {
+		fprintf(stderr, "%s: cannot own journal directory %s: %s\n",
+			argv[0], journal_path, strerror(errno));
+		return EXIT_FAILURE;
+	}
+/*
+ * Only the owner may discard stale messages. Drain before recovery so
+ * requests arriving during a long recovery remain queued for the workers.
+ */
+	if ((msgid = msgget((key_t)MSGKEY, PERMS|IPC_CREAT)) < 0)
+		err_sys("%s: Can't create message queue: ", argv[0]);
+
+	while (msgrcv(msgid, &msgbuf, MAXSIZ, MSG_ANY, MSG_NOERROR | IPC_NOWAIT) > 0)
+		;
+
+	if (dm_journal_recover(journal) < 0) {
+		fprintf(stderr, "%s: journal recovery failed in %s; database requests blocked: %s\n",
+			argv[0], dm_journal_directory(journal), strerror(errno));
+		dm_journal_close(journal);
+		return EXIT_FAILURE;
+	}
+/*
+ * Keep journal ownership until process exit; do not release it while detached
+ * dispatch workers can still be running. The kernel closes it on exit.
+ */
 
 /*
  * now spin up worker threads.  the default is 1 if not specified on the

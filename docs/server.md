@@ -26,6 +26,41 @@ installation-specific.
 
 ## Operational rules
 
+`dataman_srv` now uses `/var/lib/dataman/journal/` for persistent journal storage.
+Provision `/var/lib/dataman` for the account that runs Dataman before starting
+this development build. The server creates the `journal` subdirectory with
+mode 0700 if needed; an existing journal directory must be owned by the service
+account with no group or other permissions. For example, if that account is
+named `dataman`, an administrator can provision it with:
+
+```sh
+install -d -o dataman -g dataman -m 0700 /var/lib/dataman /var/lib/dataman/journal
+```
+
+`DATAMAN_JOURNAL_DIR` overrides the default with an absolute directory path.
+Set it in the supervisor's environment so initial starts and child restarts
+inherit the same location. Its parent must already exist. Production journals
+must remain on persistent storage; temporary directories are only for disposable
+tests. The installation process does not create a service account or change
+ownership automatically.
+
+After daemonization, the storage server acquires its PID lock and the persistent
+`.server.lock` in the journal directory. The latter remains locked until process
+exit and is never removed during normal shutdown. Do not remove it to start
+another server. Dataman still uses one server and fixed IPC keys; changing the
+journal path does not enable multiple instances.
+
+Only after acquiring ownership does the server clear stale queue messages and
+recover the journal. Worker threads start after recovery succeeds. New messages
+arriving during recovery remain queued. Missing database roots, corrupt journals,
+ownership failures, or synchronization errors cause a nonzero exit before any
+worker can execute a database request. The supervisor may restart the child;
+resolve the reported problem rather than deleting the recovery journal.
+
+Startup recovery is connected, but live transaction execution still uses the
+existing connection-server implementation and does not produce these journals
+yet. This step does not add ACID guarantees to client operations.
+
 - Keep `files/`, `index/`, and `blobs/` beneath one controlled database root.
 - Do not copy live database files as an assumed consistent backup.
 - Do not expose an index to clients while rebuilding it. V2 indexes carry a

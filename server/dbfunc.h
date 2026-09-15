@@ -73,6 +73,9 @@ extern int forward(char *, int, char **);
 extern int back(char *, int, char **);
 extern int get_desc(char *, int, char **);
 extern int init_dataman(char *, int, char **);
+extern int init_session(char *, int, char **);
+extern int def_root(char *, int, char **);
+extern int mkidx_session(char *, int, char **);
 extern int release(char *, int, char **);
 extern int sort(char *, int, char **);
 extern int mkidx(char *, int, char **);
@@ -95,9 +98,9 @@ static int (*(dbfunc)[])(char *, int, char **)  = {
 	back,
 	protect,
 	get_desc,
-	init_dataman,
+	init_session,
 	release,
-	mkidx,
+	mkidx_session,
 	restore,
 	get_rec,
 	undelete,
@@ -109,6 +112,7 @@ static int (*(dbfunc)[])(char *, int, char **)  = {
 	iopen,
 	iclose,
 	sort,
+	def_root,
 	flush
 };
 #endif
@@ -151,16 +155,17 @@ static int (*(dbfunc)[])(char *, int, char **)  = {
 #define IOPEN		21
 #define ICLOSE		22
 #define SORT		23
+#define DEF_ROOT	24
 /*
  * long commands with short responses
  * FLUSH -MUST- BE THE FIRST ONE
  */
-#define FLUSH		24
+#define FLUSH		25
 
 /*
  * and finally, the last of all of them...
  */
-#define DISCON		25
+#define DISCON		26
 
 /*
  * limits

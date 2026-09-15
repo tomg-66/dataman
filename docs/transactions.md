@@ -46,10 +46,10 @@ The first implementation step added checked positional reads/writes in
 `server/storage_io.c` and uses checked writes for record payloads in `flush`.
 Interrupted and short transfers are handled, and a failed record write stops
 before blob processing. Standalone fault-injection tests cover this behavior.
-The standalone existing-file undo journal described below now has recovery and
-fault-injection tests. It is not called by the live server. Server-owned
-transactions and journal integration remain planned; live partial writes are
-not yet automatically undone.
+The existing-file undo journal below has recovery and fault-injection tests.
+The storage server now runs recovery from its persistent journal directory before
+starting workers. Server-owned transactions and live write integration remain
+planned; ordinary client writes still bypass the journal.
 
 ### Ownership and transaction boundary
 
@@ -136,6 +136,37 @@ traced when each operation is integrated.
 
 ### API compatibility and lifecycle
 
+Root registration is now handled by `server/session_root.c`, alongside the
+existing connection-side transaction implementation. No journal is opened by
+registration, and journaled transaction execution is not enabled yet.
+
+Clients without a work file send `DEF_ROOT` as `24|<database-root>|` after
+connection setup. Success is `0|1|`, with no work-file payload. Failures use
+the normal negative first field: malformed requests or root changes return
+`EINVMSG`; missing/non-directory roots return `ENOFILE`; missing connection IPC
+returns `ENOSHM`. Existing short-command message-size limits still apply.
+This branch assigns `FLUSH=25` and `DISCON=26`; clients and both server processes
+must use matching protocol definitions. There is no version negotiation for
+the previous command numbering.
+
+Traditional `INIT_DAT` derives the root from the trailing `/files/<workfile>`
+path and publishes it only after work-file initialization succeeds. `MKIDX`
+also supports initial registration: its request carries the root after the key
+length and index name (`12|<key-length>|<index-name>|<root>|<file-count>|...`).
+It publishes the root only after index creation succeeds and rejects a different
+registered root before invoking the index builder. These initialization paths
+canonicalize the directory and store its device/inode identity. Repeating the
+same root is allowed; changing it, including replacing the directory at the
+same path, is rejected for that session. This registration does not yet enforce
+root containment on other database operations such as index opening.
+
+Metadata is keyed by the connection's shared-memory ID, including its kernel IPC
+generation, rather than PID alone. Registration and lookup discard entries for
+removed segments; normal connection cleanup already removes those segments.
+This is preparatory metadata, not the final transaction-session lifecycle.
+Connection-process death and orphaned IPC cleanup still need explicit handling
+before journals can be associated safely with live sessions.
+
 Retain public `start_transaction`, `commit`, and `rollback` entry points where
 possible. Audit all four client libraries before replacing the connection-side
 queue: inserted records currently use temporary negative identifiers, and
@@ -182,9 +213,9 @@ writes.
 ## Standalone existing-file journal prototype
 
 `server/undo_journal.h` exposes begin, write, commit, abort, close, and recovery
-operations. This module is currently exercised only by `undo_journal_test`;
-neither the connection server nor the storage server invokes it. It establishes
-the ordering and recovery behavior before integration with sessions and locks.
+operations. Storage-server startup invokes recovery under persistent journal
+ownership; `undo_journal_test` exercises the write, commit, and abort paths.
+It establishes ordering and recovery behavior before live transaction integration.
 
 ### Scope and caller contract
 
@@ -193,8 +224,11 @@ Begin takes a persistent journal directory and a separate database root:
 `dm_undo_recover(journal_directory)`: it discovers the root from the header,
 without a connected client or a dependency on the current working directory.
 Provision the journal directory in persistent service-owned storage (for example
-`/var/lib/dataman/journal`), not `/tmp`. The prototype does not create or select
-this directory; server configuration will supply it during integration.
+`/var/lib/dataman/journal`), not `/tmp`. The server now defaults to that path,
+with `DATAMAN_JOURNAL_DIR` as an absolute-path override. Startup creates the leaf
+directory if its parent exists, checks ownership/private permissions, holds
+`.server.lock`, and performs recovery before workers start. See
+[Server operation](server.md) for provisioning and failure behavior.
 
 The caller must serialize journal use and exclude other access, including reads,
 to the selected database root for the entire transaction and recovery. This

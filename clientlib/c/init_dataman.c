@@ -217,18 +217,18 @@ DATAMAN_API int init_dataman(int argc, char *argv[])
 		return FALSE;
 	}
 /*
- * for php, we don't use a work file, so we skip all of that
- * part.  when we do non-traditional, that will be the case
- * as well.
- */
-	if (dataman_has_php || !traditional)
-		goto php_done;
-/*
  * ok, we're connected, initialize our connection on the server.
  */
-	if ((i = asprintf(&cmd, "%d|%s/files/%s|", INIT_DAT, _root, argv[i])) < 0) {
-		db_err(ENOALLOC, "%s: Can't allocate command buffer", _progname);
-		return -1;
+	if (dataman_has_php || !traditional) {
+		if ((i = asprintf(&cmd, "%d|%s|", DEF_ROOT, _root)) < 0) {
+			db_err(ENOALLOC, "%s: Can't allocate command buffer", _progname);
+			return -1;
+		}
+	} else {
+		if ((i = asprintf(&cmd, "%d|%s/files/%s|", INIT_DAT, _root, argv[i])) < 0) {
+			db_err(ENOALLOC, "%s: Can't allocate command buffer", _progname);
+			return -1;
+		}
 	}
 	if (dbgsw) {
 		fprintf(stderr, "file to open is %s\n", cmd);
@@ -241,9 +241,13 @@ DATAMAN_API int init_dataman(int argc, char *argv[])
 		return FALSE;
 
 	i = atoi(ptr);
-	if (i < 1) {
-		if (i < 0)
-			db_err(i, "%s: Error during INIT_DATAMAN", _progname);
+/*
+ * i returns  < 0 if there was an internal error
+ * i returns == 0 if there is no work file, but otherwise consistent
+ * i return   > 0 if everything worked ok and we have a work record
+ */
+	if (i < 0) {
+		db_err(i, "%s: Error during INIT_DATAMAN", _progname);
 		free(ptr);
 		return FALSE;
 	}
@@ -252,6 +256,15 @@ DATAMAN_API int init_dataman(int argc, char *argv[])
  * don't have to worry about publishing early here because if the in_rec
  * fails, dataman hasn't inited and nothing works anyway.
  */
+	if (dataman_has_php || !traditional) {
+		goto php_done;
+	}
+
+	if (i == 0) {
+		free(ptr);
+		return FALSE;
+	}
+
 	cptr = ptr;
 	if (!dm_next_field(&cptr))
 		goto invalid_response;
@@ -281,8 +294,8 @@ DATAMAN_API int init_dataman(int argc, char *argv[])
 		return FALSE;
 	}
 
-	free(ptr);
 php_done:
+	free(ptr);
 	atexit(db_discon);			/* clean up on exit */
 	atexit(do_flush);				/* flush any modified record */
 

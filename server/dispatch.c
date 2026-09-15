@@ -180,6 +180,7 @@ void *dispatch(void *dummy)
  */
 	while (1) {
 		shptr = NULL;
+		ptr = NULL;
 		memset((void *)&msgbuf, '\0', sizeof(MSG));
 		if ((i = msgrcv(msgid, &msgbuf, MAXSIZ, MSG_SRV, 0)) < 0) {
 			switch(errno) {
@@ -209,7 +210,9 @@ void *dispatch(void *dummy)
 		pid = atoi(msgbuf.txt);
 		sptr = strchr(msgbuf.txt, '|') + 1;		/* point past pid */
 		cmd = atoi(sptr);
-		if (cmd < FUNC_MIN || cmd > FUNC_MAX) {
+		/* Transactions and disconnect are consumed by the connection process;
+		 * only nonnegative storage commands index dbfunc. */
+		if (cmd < 0 || cmd > FLUSH) {
 			ret = EINVMSG;
 			goto err_jump;
 		}

@@ -6,8 +6,8 @@ The server storage tests run without a database service or fixtures:
 
 ```sh
 cmake -S . -B /tmp/dataman-build -DBUILD_TESTING=ON
-cmake --build /tmp/dataman-build --target storage_io_test flush_io_test undo_journal_test
-ctest --test-dir /tmp/dataman-build -R '^(storage-io|flush-io|undo-journal)$' --output-on-failure
+cmake --build /tmp/dataman-build --target storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test
+ctest --test-dir /tmp/dataman-build -R '^(storage-io|flush-io|undo-journal|session-root|journal-startup|pid-ownership)$' --output-on-failure
 ```
 
 They also run through Automake's `make check` after building the project.
@@ -26,8 +26,25 @@ The journal and database use separate temporary directories. Root-discovery
 tests recover abandoned work without client state, reject missing/replaced roots
 and corrupt root paths, and exercise nested targets without following symlinks.
 
-The journal is not integrated with the server yet. These tests do not establish
+Live transaction writes are not journaled yet. These tests do not establish
 live-server ACID guarantees or emulate power loss in a storage device.
+
+`session_root_test` checks `DEF_ROOT`, `INIT_DAT`, and `MKIDX` root registration
+with substituted IPC, work-file initialization, and index creation. It covers
+repeated registration, root-change rejection before index creation, failed
+initialization, malformed requests, and reused PIDs
+with new shared-memory identifiers. It does not exercise a network connection.
+
+`journal_startup_test` runs the actual `dbserve` initialization in child
+processes with substituted PID checks, message queues, and worker creation.
+Journal I/O, recovery, directory permissions, and persistent locking are real.
+It checks fresh startup, unfinished/resolved journals, unavailable database
+roots, duplicate ownership, and rejection before workers start. Tests use
+private temporary directories and do not touch production IPC or `/var/lib`.
+
+`verify_pid_test` uses a unique temporary PID filename and a separate executable
+process to check that a failed contender does not unlink the active owner's PID
+file. It also checks close-on-exec on the held lock descriptor.
 
 ## Integration tests
 

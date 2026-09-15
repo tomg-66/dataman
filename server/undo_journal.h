@@ -12,7 +12,8 @@ typedef struct dm_undo dm_undo;
  * recovery needs only the persistent journal directory, not a client session.
  * Existing regular files only, addressed relative to that root (e.g. files/a);
  * no symlink components, traversal, create, rename, unlink, or explicit
- * truncation. Writes may extend files. No server integration yet.
+ * truncation. Writes may extend files. Server startup uses recovery; live
+ * transaction writes are not integrated yet.
  *
  * Returns 0 on success, -1 with errno on failure. A write failure makes the
  * transaction abort-only. Commit failure requires close + recovery; do not

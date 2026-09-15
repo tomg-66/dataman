@@ -47,6 +47,9 @@ server/term_dbserve
 server/storage_io_test
 server/flush_io_test
 server/undo_journal_test
+server/session_root_test
+server/journal_startup_test
+server/verify_pid_test
 server/*.log
 server/*.trs
 

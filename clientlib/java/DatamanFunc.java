@@ -50,6 +50,7 @@ class DatamanFunc{
 		"IOPEN",
 		"ICLOSE",
 		"SORT",
+		"DEF_ROOT",
 		"FLUSH",
 		"DISCON",
 	};
@@ -80,8 +81,9 @@ class DatamanFunc{
 	protected static final int IOPEN = 21;
 	protected static final int ICLOSE = 22;
 	protected static final int SORT = 23;
-	protected static final int FLUSH = 24;
-	protected static final int DISCON = 25;
+	protected static final int DEF_ROOT = 24;
+	protected static final int FLUSH = 25;
+	protected static final int DISCON = 26;
 
     protected String toString(int value) {
          return (funcStrings[value+3]);

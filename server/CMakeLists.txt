@@ -28,7 +28,7 @@ dataman_server_program(dataman_srv
 	substr.c upd_idx.c verify_pid.c get_desc.c init_dataman.c release.c
 	mkidx.c sort.c restore.c get_datafile_desc.c version.c get_blobs.c
 	put_blobs.c get_ll.c put_ll.c get_rec.c blob_ctl.c undelete.c index_v2.c
-	storage_io.c)
+	storage_io.c session_root.c undo_journal.c journal_startup.c)
 target_link_libraries(dataman_srv PRIVATE Threads::Threads)
 
 if(BUILD_TESTING)
@@ -41,6 +41,17 @@ if(BUILD_TESTING)
 	add_executable(undo_journal_test tests/undo_journal_test.c storage_io.c)
 	target_include_directories(undo_journal_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 	add_test(NAME undo-journal COMMAND undo_journal_test)
+	add_executable(session_root_test tests/session_root_test.c)
+	target_include_directories(session_root_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	target_link_libraries(session_root_test PRIVATE Threads::Threads)
+	add_test(NAME session-root COMMAND session_root_test)
+	add_executable(journal_startup_test tests/journal_startup_test.c
+		journal_startup.c storage_io.c)
+	target_include_directories(journal_startup_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	target_link_libraries(journal_startup_test PRIVATE Threads::Threads)
+	add_test(NAME journal-startup COMMAND journal_startup_test)
+	add_executable(verify_pid_test tests/verify_pid_test.c verify_pid.c)
+	add_test(NAME pid-ownership COMMAND verify_pid_test)
 endif()
 
 dataman_server_program(mkdf

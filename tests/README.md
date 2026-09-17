@@ -6,8 +6,8 @@ The server storage tests run without a database service or fixtures:
 
 ```sh
 cmake -S . -B /tmp/dataman-build -DBUILD_TESTING=ON
-cmake --build /tmp/dataman-build --target storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test
-ctest --test-dir /tmp/dataman-build -R '^(storage-io|flush-io|undo-journal|session-root|journal-startup|pid-ownership)$' --output-on-failure
+cmake --build /tmp/dataman-build --target storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test transaction_session_test
+ctest --test-dir /tmp/dataman-build -R '^(storage-io|flush-io|undo-journal|session-root|journal-startup|pid-ownership|transaction-session)$' --output-on-failure
 ```
 
 They also run through Automake's `make check` after building the project.
@@ -45,6 +45,12 @@ private temporary directories and do not touch production IPC or `/var/lib`.
 `verify_pid_test` uses a unique temporary PID filename and a separate executable
 process to check that a failed contender does not unlink the active owner's PID
 file. It also checks close-on-exec on the held lock descriptor.
+
+`transaction_session_test` combines the real root registry, journal owner manager,
+and undo I/O with substituted IPC identity/liveness. It checks duplicate begin,
+contention, non-owner rejection, commit, abort-only writes, explicit disconnect,
+orphan reaping, process death, and failed abort that blocks further admission.
+These are internal lifecycle tests, not end-to-end client transactions.
 
 ## Integration tests
 
@@ -93,3 +99,29 @@ Those three tests are intentionally ordered and are not yet independently
 isolated. Test 013 rebuilds the fixtures and constructs the separate
 `blob_rec_idx`; tests 014 and 015 then exercise master-record fields, metadata,
 blob replacement, field boundaries, and repeated index open/close cycles.
+
+`legacy_transaction_test` checks connection-side transaction cleanup across
+repeated transactions, commit reply handling, and propagation of server errors
+during rollback. Transport is stubbed; no running database or IPC is required.
+
+`record_mutation_test` uses a temporary data file and production insert, delete,
+and undelete handlers to check record flags, both neighboring links, and the
+first-record pointer at the beginning and middle of a record chain. It needs no
+running server. This checks direct-write behavior, not transaction atomicity.
+
+The undo-journal tests also cover descriptor/path identity, replaced paths,
+invalid descriptor modes, preservation of descriptor position, and recovery
+of descriptor-bound writes. Transaction-session tests check ownership and
+abort-only behavior through the descriptor-aware API.
+
+Transaction-session integration coverage now runs the production flush, insert,
+delete, undelete, and v2 index insert/remove paths through the mutation router.
+It checks byte-for-byte rollback and original file lengths after record and
+index growth, committed record contents, recovery after process exit, rejection
+of writes from an unscoped worker, missing descriptor bindings, and stale scopes.
+Blob processing is excluded; these tests do not claim full client isolation.
+
+Transaction-session admission tests use two synchronized worker threads to
+verify concurrent ordinary requests, exclusion of journal begin until both
+requests finish, rejection during an active journal, safe duplicate leave,
+and admission reopening after abort. Recovery-blocked admission is also checked.

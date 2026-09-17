@@ -43,6 +43,7 @@
 #include <unistd.h>
 
 #include "index_v2.h"
+#include "storage_io.h"
 
 static void put_u16(unsigned char *buf, uint16_t value)
 {
@@ -109,20 +110,7 @@ static bool read_full_at(int fd, void *buf, size_t len, off_t offset)
 
 static bool write_full_at(int fd, const void *buf, size_t len, off_t offset)
 {
-	const unsigned char *ptr = buf;
-	ssize_t ret;
-
-	while (len) {
-		ret = pwrite(fd, ptr, len, offset);
-		if (ret < 0 && errno == EINTR)
-			continue;
-		if (ret <= 0)
-			return(false);
-		ptr += ret;
-		offset += ret;
-		len -= (size_t)ret;
-	}
-	return(true);
+	return(dm_storage_mutate_at(fd, buf, len, offset) == 0);
 }
 
 static bool write_header(int fd, uint16_t keylen, uint16_t file_count,

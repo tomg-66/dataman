@@ -6,6 +6,20 @@
 #include <stdint.h>
 #include <unistd.h>
 
+static dm_storage_router mutation_router;
+
+void dm_storage_set_router(dm_storage_router router)
+{
+	mutation_router = router;
+}
+
+int dm_storage_mutate_at(int fd, const void *buffer, size_t length, int64_t offset)
+{
+	if (mutation_router)
+		return mutation_router(fd, buffer, length, offset);
+	return dm_storage_write_at(fd, buffer, length, offset);
+}
+
 static int valid_range(const void *buffer, size_t length, int64_t offset)
 {
 	uintmax_t end;
@@ -68,3 +82,11 @@ int dm_storage_write_at(int fd, const void *buffer, size_t length, int64_t offse
 	}
 	return 0;
 }
+
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
+ */

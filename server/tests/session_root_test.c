@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define CHECK(expr) do { if (!(expr)) { \
 	fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #expr); exit(1); \
@@ -12,6 +13,17 @@
 
 static int live_id = 100, work_result = 12, work_calls;
 static int index_result = 12, index_calls;
+static int attached = 1, abort_result, abort_calls, dead;
+static int fake_kill(pid_t pid, int signal)
+{
+	CHECK(pid == 123 && signal == 0);
+	if (dead) { errno = ESRCH; return -1; }
+	return 0;
+}
+int dm_tx_disconnect(int shmid)
+{
+	(void)shmid; ++abort_calls; return abort_result;
+}
 static int fake_shmget(key_t key, size_t size, int flags)
 {
 	(void)size; (void)flags;
@@ -20,7 +32,8 @@ static int fake_shmget(key_t key, size_t size, int flags)
 }
 static int fake_shmctl(int id, int cmd, struct shmid_ds *status)
 {
-	(void)status;
+	memset(status, 0, sizeof(*status));
+	status->shm_nattch = attached;
 	CHECK(cmd == IPC_STAT);
 	if (id != live_id) { errno = EINVAL; return -1; }
 	return 0;
@@ -28,7 +41,9 @@ static int fake_shmctl(int id, int cmd, struct shmid_ds *status)
 
 #define shmget fake_shmget
 #define shmctl fake_shmctl
+#define kill fake_kill
 #include "../session_root.c"
+#undef kill
 #undef shmget
 #undef shmctl
 
@@ -109,6 +124,24 @@ int main(void)
 	CHECK(request(payload, 2) == EINVMSG && index_calls == 2);
 	CHECK(request("20|test-index||1|work|", 2) == EINVMSG);
 	CHECK(request("20|test-index", 2) == EINVMSG);
+	/* Explicit close aborts before forgetting metadata; failed abort retains it. */
+	abort_result = EROLLBACK;
+	CHECK(session_root_close(live_id) == EROLLBACK);
+	copy = session_root_copy(live_id); CHECK(copy); free(copy);
+	abort_result = 0;
+	CHECK(session_root_close(live_id) == 0);
+	CHECK(session_root_copy(live_id) == NULL);
+	snprintf(payload, sizeof(payload), "%s|", root);
+	CHECK(request(payload, 0) == 4);
+	int before = abort_calls;
+	attached = 0;
+	CHECK(session_root_reap() == 0 && abort_calls == before + 1);
+	CHECK(session_root_copy(live_id) == NULL);
+	attached = 1;
+	CHECK(request(payload, 0) == 4);
+	before = abort_calls; dead = 1;
+	CHECK(session_root_reap() == 0 && abort_calls == before + 1);
+	dead = 0;
 	/* Neither command works without an established connection IPC segment. */
 	live_id = -1;
 	CHECK(request(payload, 1) == ENOSHM);

@@ -26,7 +26,7 @@ int fl_lock(P_LOCK *lock, int type)
 	return 0;
 }
 
-int dm_storage_write_at(int fd, const void *buffer, size_t length, int64_t offset)
+int dm_storage_mutate_at(int fd, const void *buffer, size_t length, int64_t offset)
 {
 	CHECK(locked && fd == 42 && length == 4);
 	CHECK(offset == 30 + DATARECORD_HEADER_LENGTH);

@@ -32,7 +32,7 @@
 #include "msg.h"
 #include "misc.h"
 
-extern bool recv_from_server(context_t *, MSG *, char **, int *, int *);
+extern bool recv_from_server(context_t *, MSG *, char **, int *, size_t *);
 extern bool send_to_server(context_t *, char *, char *, int, int);
 
 extern xact_t *xact_list;
@@ -67,12 +67,14 @@ int commit(context_t *ctx)
 	int diff;
 	int mode;
 
+	size_t msglen;
+
 	int64_t recno;
 
 	char *cptr;					/* misc char ptr */
 	char *tptr;					/* temp pointer */
 	char *rcvbuf;
-	char *sndbuf;
+	char *sndbuf = NULL;
 	char rec_buff[MAXSIZ];
 
 	int32_t b_size;
@@ -113,7 +115,7 @@ int commit(context_t *ctx)
 					return(FALSE);
 				}
 				sndbuf = NULL;
-				if (!recv_from_server(ctx, &msgbuf, &sndbuf, &len, &i)) {
+				if (!recv_from_server(ctx, &msgbuf, &sndbuf, &len, &msglen)) {
 					xact_curr = xact_curr->prev;
 					return(FALSE);
 				}
@@ -245,7 +247,7 @@ int commit(context_t *ctx)
 		}
 		if (!send_to_server(ctx, rcvbuf, cptr, size, j))
 			return(FALSE);
-		if (!recv_from_server(ctx, &msgbuf, &sndbuf, &len, &i))
+		if (!recv_from_server(ctx, &msgbuf, &sndbuf, &len, &msglen))
 			return(FALSE);
 		if (len < 0)
 			return(FALSE);
@@ -272,7 +274,7 @@ int commit(context_t *ctx)
 			*(cptr-2) = CLEANUP+060;
 			len = cptr - xact_curr->data;
 			send_to_server(ctx, xact_curr->data, NULL, len, 0);
-			recv_from_server(ctx, &msgbuf, &sndbuf, &len, &i);
+			recv_from_server(ctx, &msgbuf, &sndbuf, &len, &msglen);
 		}
 		xact_curr = xact_curr->next;
 	}

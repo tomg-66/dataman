@@ -234,10 +234,10 @@ static int append(dm_undo *tx, unsigned char *record, size_t size)
 	return 0;
 }
 
-int dm_undo_write(dm_undo *tx, const char *name, const void *data,
-		size_t length, int64_t offset)
+static int write_target(dm_undo *tx, const char *name, int expected_fd, int check_fd,
+		const void *data, size_t length, int64_t offset)
 {
-	struct stat st, journal_st;
+	struct stat st, journal_st, expected;
 	unsigned char *record = NULL;
 	size_t before, size, namesize;
 	uint64_t end;
@@ -250,13 +250,24 @@ int dm_undo_write(dm_undo *tx, const char *name, const void *data,
 		return invalid();
 	end = (uint64_t)offset + length;
 	if ((off_t)end < 0 || (uint64_t)(off_t)end != end) return invalid();
-	if (!length) { tx->state = 0; return 0; }
+	if (!length && !check_fd) { tx->state = 0; return 0; }
 	fd = open_beneath(tx->root, name, O_RDWR);
 	if (fd < 0) goto done;
 	if (regular(fd, &st) < 0 || fstat(tx->fd, &journal_st) < 0) goto done;
 	if (st.st_dev == journal_st.st_dev && st.st_ino == journal_st.st_ino) {
 		invalid(); goto done;
 	}
+	if (check_fd) {
+		int flags = fcntl(expected_fd, F_GETFL);
+		if (flags < 0 || regular(expected_fd, &expected) < 0) goto done;
+		if ((flags & O_ACCMODE) != O_RDWR || (flags & O_APPEND)) {
+			invalid(); goto done;
+		}
+		if (st.st_dev != expected.st_dev || st.st_ino != expected.st_ino) {
+			errno = ESTALE; goto done;
+		}
+	}
+	if (!length) { result = 0; goto done; }
 	before = offset >= st.st_size ? 0 :
 		((uint64_t)(st.st_size - offset) < length ? (size_t)(st.st_size - offset) : length);
 	namesize = strlen(name);
@@ -289,6 +300,18 @@ done:
 	if (!result) tx->state = 0;
 	errno = saved;
 	return result;
+}
+
+int dm_undo_write(dm_undo *tx, const char *name, const void *data,
+		size_t length, int64_t offset)
+{
+	return write_target(tx, name, -1, 0, data, length, offset);
+}
+
+int dm_undo_write_fd(dm_undo *tx, const char *name, int fd, const void *data,
+		size_t length, int64_t offset)
+{
+	return write_target(tx, name, fd, 1, data, length, offset);
 }
 
 /* Validate the ENTIRE log and all target identities before touching any data.
@@ -446,3 +469,11 @@ int dm_undo_recover(const char *directory)
 	dm_undo_close(tx);
 	return result;
 }
+
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
+ */

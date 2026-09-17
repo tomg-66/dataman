@@ -719,6 +719,21 @@ ok_conn:
 	}
 
 done:
+/*
+ * Release server-side ownership before index/protection cleanup. The IPC
+ * generation is explicit so a delayed close cannot target a reused PID.
+ */
+	if (context.msgid >= 0 && context.shmid >= 0) {
+		char close_cmd[64], *reply = NULL;
+		MSG close_reply;
+		int reply_len = 0;
+		size_t message_len = 0;
+		int command_len = snprintf(close_cmd, sizeof(close_cmd), "%d|%d|", DISCON, context.shmid);
+		if (!send_to_server(&context, close_cmd, NULL, command_len, 0) ||
+			!recv_from_server(&context, &close_reply, &reply, &reply_len, &message_len) || reply_len < 0)
+			fprintf(stderr, "pid %d: server session cleanup failed\n", context.mypid);
+		free(reply);
+	}
 	do_clear(NULL, context.msgid);				/* clear any recs left protected */
 	do_iclose(NULL, context.msgid);				/* close any indices left open */
 	if (context.semid > -1)

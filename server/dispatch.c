@@ -91,6 +91,8 @@ union semun {
 #include "msg.h"
 #include "dbfunc.h"
 #include "errors.h"
+#include "session_root.h"
+#include "transaction_session.h"
 
 extern int dbgsw;				/* debugging on? */
 extern int shmsiz;				/* size of shared mem seg */
@@ -210,15 +212,32 @@ void *dispatch(void *dummy)
 		pid = atoi(msgbuf.txt);
 		sptr = strchr(msgbuf.txt, '|') + 1;		/* point past pid */
 		cmd = atoi(sptr);
-		/* Transactions and disconnect are consumed by the connection process;
-		 * only nonnegative storage commands index dbfunc. */
-		if (cmd < 0 || cmd > FLUSH) {
+		/* Transaction execution remains in the connection process. DISCON is
+		 * an internal session-close notification and never indexes dbfunc. */
+		if (cmd < 0 || cmd > DISCON) {
 			ret = EINVMSG;
 			goto err_jump;
 		}
 		sptr = strchr(sptr, '|') + 1;		/* point past cmd */
 		if (sptr == (char *)1) {
 			ret = EINVMSG;
+			goto err_jump;
+		}
+		if (dm_tx_blocked()) {
+			ret = EROLLBACK;
+			goto err_jump;
+		}
+		if (cmd == DISCON) {
+			char *end;
+			long id;
+			errno = 0;
+			id = strtol(sptr, &end, 10);
+			if (errno || end == sptr || id < 0 || id > INT_MAX ||
+				*end != '|' || end[1] || shmget((key_t)pid, 0, 0) != id) {
+				ret = EINVMSG;
+			} else {
+				ret = session_root_close((int)id);
+			}
 			goto err_jump;
 		}
 /*
@@ -308,7 +327,14 @@ void *dispatch(void *dummy)
  * len gets the length of the shared memory portion of the return.
  * (if any)
  */
+		/* Drain incoming payload before rejecting admission, so the connection
+		 * server cannot be left waiting to finish a shared-memory send.
+		 * Release admission before response IPC; the handler owns its result. */
+		ret = dm_tx_request_enter();
+		if (ret < 0)
+			goto err_jump;
 		ret = dbfunc[cmd](msgbuf.txt, i, &ptr);
+		dm_tx_request_leave();
 
 		if (dbgsw) {
 			fprintf(stderr, "dbfunc[%d] returns %d - ", cmd, ret);

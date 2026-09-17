@@ -433,9 +433,66 @@ static void nested_cases(void)
 	CHECK(close(dir) == 0); original(); cleanup();
 }
 
+static void descriptor_cases(void)
+{
+	dm_undo *tx;
+	int fd;
+	setup();
+	fd = file("a", O_RDWR); CHECK(fd >= 0);
+	CHECK(lseek(fd, 3, SEEK_SET) == 3);
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_write_fd(tx, "a", fd, "XX", 2, 0) == 0);
+	CHECK(lseek(fd, 0, SEEK_CUR) == 3);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx); original();
+
+	/* A replaced pathname must not redirect a write from an already-open file. */
+	int dir = open(directory, O_RDONLY | O_DIRECTORY); CHECK(dir >= 0);
+	CHECK(renameat(dir, "a", dir, "saved-a") == 0);
+	int replacement = openat(dir, "a", O_CREAT | O_EXCL | O_RDWR, 0600);
+	CHECK(replacement >= 0 && write(replacement, "replacement", 11) == 11);
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_write_fd(tx, "a", fd, "XX", 2, 0) == -1 && errno == ESTALE);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+	expect("a", "replacement", 11); expect("saved-a", "abcdefgh", 8);
+	CHECK(close(replacement) == 0 && unlinkat(dir, "a", 0) == 0);
+	CHECK(renameat(dir, "saved-a", dir, "a") == 0 && close(dir) == 0);
+
+	/* A mismatched descriptor must neither append undo nor change either file. */
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	int64_t end = tx->end;
+	CHECK(dm_undo_write_fd(tx, "b", fd, "XX", 2, 0) == -1 && errno == ESTALE);
+	CHECK(tx->end == end);
+	CHECK(dm_undo_commit(tx) == -1);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx); original();
+	CHECK(close(fd) == 0);
+
+	int modes[] = {O_RDONLY, O_WRONLY, O_RDWR | O_APPEND};
+	for (size_t i = 0; i < sizeof(modes)/sizeof(modes[0]); i++) {
+		fd = file("a", modes[i]); CHECK(fd >= 0);
+		CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		CHECK(dm_undo_write_fd(tx, "a", fd, "X", 1, 0) == -1);
+		CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+		CHECK(close(fd) == 0); original();
+	}
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_write_fd(tx, "a", -1, NULL, 0, 0) == -1);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx); original();
+
+	fd = file("a", O_RDWR); CHECK(fd >= 0);
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_write_fd(tx, "a", fd, "XX", 2, 8) == 0);
+	dm_undo_close(tx);
+	CHECK(dm_undo_recover(journal_directory) == 0); original();
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_write_fd(tx, "a", fd, "XX", 2, 0) == 0);
+	CHECK(dm_undo_commit(tx) == 0); dm_undo_close(tx);
+	expect("a", "XXcdefgh", 8);
+	CHECK(close(fd) == 0); cleanup();
+}
+
 int main(void)
 {
 	normal_cases(); crash_cases(); damaged_cases(); identity_cases(); failure_cases();
-	root_cases(); nested_cases();
+	root_cases(); nested_cases(); descriptor_cases();
 	return 0;
 }

@@ -57,6 +57,8 @@
 #include "errors.h"			/* dataman error numbers */
 #include "misc.h"			/* this is for various things */
 #include "journal_startup.h"
+#include "transaction_session.h"
+#include "session_root.h"
 
 #define MAX_CONNS	256
 
@@ -276,6 +278,11 @@ int main(int argc, char *argv[])
 		dm_journal_close(journal);
 		return EXIT_FAILURE;
 	}
+	if (dm_tx_configure(dm_journal_directory(journal)) < 0) {
+		fprintf(stderr, "%s: cannot initialize transaction ownership\n", argv[0]);
+		dm_journal_close(journal);
+		return EXIT_FAILURE;
+	}
 /*
  * Keep journal ownership until process exit; do not release it while detached
  * dispatch workers can still be running. The kernel closes it on exit.
@@ -297,7 +304,11 @@ int main(int argc, char *argv[])
 		}
 	}
 	while(1) {
-		pause();
+		sleep(1);
+		if (session_root_reap() < 0 || dm_tx_blocked()) {
+			fprintf(stderr, "%s: transaction cleanup failed; restart recovery required\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 

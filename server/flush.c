@@ -111,7 +111,7 @@ int flush(char *cmd, int c_off, char **data)
 	len = fptr->_filedesc->record_desc[fmt-1].rf_len;
 	/* A failed record write must not be hidden by a successful blob write. */
 	if (offs < 0 || offs > INT64_MAX - (int64_t)DATARECORD_HEADER_LENGTH || len < 0 ||
-			dm_storage_write_at(fptr->_chan, cptr, (size_t)len,
+			dm_storage_mutate_at(fptr->_chan, cptr, (size_t)len,
 				offs + DATARECORD_HEADER_LENGTH) < 0) {
 		i = ERECWRT;
 		goto done;

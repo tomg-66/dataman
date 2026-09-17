@@ -54,6 +54,7 @@
 #include "srv_index.h"
 #include "lock.h"
 #include "errors.h"
+#include "storage_io.h"
 #include "misc.h"
 
 #define DEL     0200                    /* bit mask for deleted record */
@@ -143,16 +144,14 @@ int undelete(char *cmd, int c_off, char **ret)
  */
 	if (prev) {
 		put_ll(buff, recno);
-		llseek(fptr->_chan, prev+OFFSET_TO_NEXT, SEEK_SET);
-		if (write(fptr->_chan, buff, PTR_LENGTH) < PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, prev+OFFSET_TO_NEXT) < 0) {
 			i = EHDRWRT;
 			goto done;
 		}
 	} else {
 		prev = fptr->_hlen + 2;					/* where to seek to */
-		llseek(fptr->_chan, prev, SEEK_SET);	/* get to file position */
 		put_ll(buff, recno);
-		if (write(fptr->_chan, buff, PTR_LENGTH) != PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, prev) < 0) {
 			i = EBEGWRT;
 			goto done;
 		}
@@ -172,8 +171,7 @@ int undelete(char *cmd, int c_off, char **ret)
 	}
 	if (next) {
 		put_ll(buff, recno);
-		llseek(fptr->_chan, next+OFFSET_TO_PREV, SEEK_SET);
-		if (write(fptr->_chan, buff, PTR_LENGTH) < PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, next+OFFSET_TO_PREV) < 0) {
 			i = EHDRWRT;
 			goto done;
 		}
@@ -181,9 +179,8 @@ int undelete(char *cmd, int c_off, char **ret)
 /*
  * now mark this record as not deleted
  */
-	llseek(fptr->_chan, recno, SEEK_SET);
 	*buff = fmt;
-	if (write(fptr->_chan, buff, DATARECORD_FLAG_LENGTH) < DATARECORD_FLAG_LENGTH) {
+	if (dm_storage_mutate_at(fptr->_chan, buff, DATARECORD_FLAG_LENGTH, recno) < 0) {
 		i = EBEGWRT;
 		goto done;
 	}

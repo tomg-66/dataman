@@ -61,6 +61,12 @@ Startup recovery is connected, but live transaction execution still uses the
 existing connection-server implementation and does not produce these journals
 yet. This step does not add ACID guarantees to client operations.
 
+The server-side journal owner manager is configured after recovery. Session-close
+notifications and a periodic dead-session sweep abort any journal owned by that
+session before dropping its metadata. Cleanup failures block new requests and
+exit the storage server for restart recovery. The legacy transaction queue does
+not yet call the journal owner's begin/write/commit APIs.
+
 - Keep `files/`, `index/`, and `blobs/` beneath one controlled database root.
 - Do not copy live database files as an assumed consistent backup.
 - Do not expose an index to clients while rebuilding it. V2 indexes carry a

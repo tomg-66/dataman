@@ -50,6 +50,7 @@ server/undo_journal_test
 server/session_root_test
 server/journal_startup_test
 server/verify_pid_test
+server/transaction_session_test
 server/*.log
 server/*.trs
 
@@ -58,3 +59,6 @@ tests/php/files/one_rec
 tests/php/index/one_rec_idx
 tests/java/files/one_rec
 tests/java/index/one_rec_idx
+
+/server/legacy_transaction_test
+/server/record_mutation_test

@@ -28,7 +28,7 @@ dataman_server_program(dataman_srv
 	substr.c upd_idx.c verify_pid.c get_desc.c init_dataman.c release.c
 	mkidx.c sort.c restore.c get_datafile_desc.c version.c get_blobs.c
 	put_blobs.c get_ll.c put_ll.c get_rec.c blob_ctl.c undelete.c index_v2.c
-	storage_io.c session_root.c undo_journal.c journal_startup.c)
+	storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c)
 target_link_libraries(dataman_srv PRIVATE Threads::Threads)
 
 if(BUILD_TESTING)
@@ -52,6 +52,19 @@ if(BUILD_TESTING)
 	add_test(NAME journal-startup COMMAND journal_startup_test)
 	add_executable(verify_pid_test tests/verify_pid_test.c verify_pid.c)
 	add_test(NAME pid-ownership COMMAND verify_pid_test)
+	add_executable(transaction_session_test tests/transaction_session_test.c
+		transaction_session.c undo_journal.c storage_io.c flush.c index_v2.c
+		insert.c delete.c undelete.c get_ll.c put_ll.c)
+	target_include_directories(transaction_session_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	target_link_libraries(transaction_session_test PRIVATE Threads::Threads)
+	add_test(NAME transaction-session COMMAND transaction_session_test)
+	add_executable(legacy_transaction_test tests/legacy_transaction_test.c get_ll.c put_ll.c)
+	target_include_directories(legacy_transaction_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME legacy-transaction COMMAND legacy_transaction_test)
+	add_executable(record_mutation_test tests/record_mutation_test.c
+		insert.c delete.c undelete.c storage_io.c get_ll.c put_ll.c)
+	target_include_directories(record_mutation_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME record-mutation COMMAND record_mutation_test)
 endif()
 
 dataman_server_program(mkdf
@@ -59,8 +72,8 @@ dataman_server_program(mkdf
 dataman_server_program(dumpdf
 	dumpdf.c get_datafile_desc.c substr.c get_short.c get_long.c get_ll.c)
 dataman_server_program(dumpix
-	dumpix.c substr.c get_short.c get_long.c get_ll.c index_v2.c)
-dataman_server_program(dnodes dnodes.c index_v2.c)
+	dumpix.c substr.c get_short.c get_long.c get_ll.c index_v2.c storage_io.c)
+dataman_server_program(dnodes dnodes.c index_v2.c storage_io.c)
 dataman_server_program(dbclean
 	clean.c check_it.c rebuild.c get_datafile_desc.c get_ll.c put_ll.c
 	get_short.c put_short.c get_long.c)

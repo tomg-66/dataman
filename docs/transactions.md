@@ -134,6 +134,16 @@ traced when each operation is integrated.
 | `server/mkidx.c`, `server/sort.c` | Index creation and in-place rebuild; require exclusive maintenance handling initially. |
 | `server/mkdf.c`, `server/dfedit.c`, `server/rebuild.c` | Utility writes outside normal server dispatch; require enforced offline exclusion before ACID guarantees can cover a database. |
 
+The record payload, insert/delete/undelete link and flag writes, and v2 index
+page/header writes now use `dm_storage_mutate_at`. This includes legacy record
+error-repair writes. Their offsets are explicit, and interrupted/short writes
+are handled centrally. The server installs a transaction router at startup. With
+no journal owner it uses direct checked I/O; with an owner it requires an
+explicit worker scope and routes through descriptor-validated undo writes.
+Dispatch scope construction, exclusion, and restoration of cached index state
+remain integration work. Blob creation/truncation/rename/unlink still need journal
+operations and durable directory updates before activation.
+
 ### API compatibility and lifecycle
 
 Root registration is now handled by `server/session_root.c`, alongside the
@@ -161,11 +171,52 @@ same path, is rejected for that session. This registration does not yet enforce
 root containment on other database operations such as index opening.
 
 Metadata is keyed by the connection's shared-memory ID, including its kernel IPC
-generation, rather than PID alone. Registration and lookup discard entries for
-removed segments; normal connection cleanup already removes those segments.
-This is preparatory metadata, not the final transaction-session lifecycle.
-Connection-process death and orphaned IPC cleanup still need explicit handling
-before journals can be associated safely with live sessions.
+generation, rather than PID alone. Connection cleanup now sends an internal
+`DISCON|<shmid>|` notification before clearing protections, closing indexes, and
+removing IPC resources. The storage server validates that the supplied ID still
+belongs to that connection's PID. No additional public command or client change
+is required; client `DISCON` continues to terminate the connection normally.
+
+The storage server also sweeps registered sessions approximately once per second.
+A removed shared-memory segment, an orphaned segment with no attachments, or a
+connection PID that no longer exists triggers journal abort before metadata is
+forgotten. A still-attached worker does not prevent cleanup when the connection
+PID is gone. This does not yet reclaim all legacy work-file/index/protection
+resources left by a killed connection process, or make legacy commit replay
+crash-atomic. Complete IPC/session invalidation on server restart remains work
+for integration with transaction execution.
+
+### Server-side journal owner manager
+
+`transaction_session.c` supplies internal begin/write/commit/abort operations keyed
+by the registered session ID. Startup configures it after successful journal
+recovery while retaining the persistent journal lock. Only one owner is admitted;
+a second owner's begin returns `ENOLOCK` immediately rather than occupying a
+worker waiting for the journal. Duplicate begin returns `EINXACT`, and a write,
+commit, or abort from a non-owner returns `ENOXACT`.
+
+Beginning pins the registered root through journal creation, with a consistent
+root-metadata-before-transaction lock order. Disconnect/reaping cannot remove
+that session between root lookup and journal creation. Root identity is checked
+again before use. Successful commit or abort releases ownership; disconnect of
+an owner aborts, and disconnect of a non-owner is harmless.
+
+A failed write makes the owner abort-only. Failed begin, commit, or abort blocks
+new transaction ownership until restart recovery. A failed commit reports an
+unknown outcome (`EMULTIPLE`), not guaranteed rollback. Failed abort retains the
+session and journal; dispatch rejects further requests and the main server loop
+exits for startup recovery. Already executing requests cannot be safely stopped
+by this check alone; transaction-wide isolation must precede live activation.
+
+The owner manager is tested with real journals, but the legacy wire-level
+`START_XACT`, `COMMIT`, and `ROLLBACK` still execute in `serial_service`. They do
+not call the new begin/write/commit APIs. Opening an empty journal around those
+unmodified writes would give a false recovery guarantee. Live activation requires
+all persistent writes to use the manager and all other database access to
+participate in transaction isolation. Until then, disconnect/reaping hooks are
+in place but ordinary client transactions do not own recovery journals.
+
+### Remaining API compatibility and lifecycle work
 
 Retain public `start_transaction`, `commit`, and `rollback` entry points where
 possible. Audit all four client libraries before replacing the connection-side
@@ -334,8 +385,9 @@ recovery progress is discarded until restored data is durable.
 Close releases resources without committing, aborting, or deleting the journal.
 An unresolved journal abandoned by a disconnected or failed application must be
 undone, even if the application intentionally closed without committing. The
-future session manager must trigger abort on disconnect and retain exclusion
-until it completes; the standalone journal cannot detect a connection closing.
+session manager now calls abort on disconnect and reaping; live activation still
+requires transaction-wide exclusion until abort completes. The standalone
+journal cannot detect a connection closing by itself.
 Journal presence alone does not prove an unfinished transaction: a durable
 resolved marker means only retirement remains, even if the connection then dies.
 A failed commit or abort requires close followed by recovery before further
@@ -352,3 +404,65 @@ and database directories, missing/replaced roots, root-path corruption, nested
 targets, traversal rejection, and abandoned handles are also tested. It also
 constructs incomplete journal tails. These are process-crash and I/O-ordering
 tests; they do not emulate a storage device losing or reordering cached writes.
+
+Client journal activation remains deferred until inserts, deletes, index changes,
+and blobs are all covered. There is no opt-in record-only transaction mode.
+
+### Descriptor identity before transaction writes
+
+`dm_tx_write_fd` and `dm_undo_write_fd` accept an existing descriptor alongside
+its root-relative path. Before capturing undo or changing data, the journal
+opens the path beneath its recorded root without symlink traversal and checks
+that its device/inode match the descriptor. A mismatch rejects the write and
+makes the transaction abort-only. The descriptor must be read/write without
+append mode; its ownership and current position stay with the caller.
+
+The record and index mutation paths now reach this API through the storage
+router, but client transaction commands do not activate it yet. The caller must
+still exclude concurrent namespace changes and descriptor close/reuse. File
+identity checks do not supply transaction isolation. Dispatch routing, complete
+blob mutation coverage, and cached-state restoration remain required.
+
+### Scoped mutation routing
+
+`dm_tx_configure` installs the process-wide storage mutation router before
+workers start. Standalone tools that do not install a router retain direct I/O.
+Journal append, data application, and recovery use the raw checked write helper
+so they cannot recursively enter the router.
+
+A transaction handler calls `dm_tx_enter` with its session and borrowed
+`dm_tx_target` bindings (descriptor plus root-relative path), then calls
+`dm_tx_leave` on every exit. The scope belongs to the current worker thread and
+transaction generation. It cannot be nested or reused for a later transaction.
+When a journal is active, unscoped writes are rejected; a missing descriptor
+binding or failed journal write makes the owner's transaction abort-only.
+Ordinary writes remain concurrent. Begin returns `ENOLOCK` if a previously
+admitted ordinary write is still running.
+
+These checks cover routed byte writes, not reads, blob namespace operations,
+maintenance, or cached index state. They are not a substitute for dispatch
+isolation. Client journal activation remains disabled until those requirements
+are met. Handler failures must cause rollback even if all preceding byte writes
+succeeded.
+
+### Ordinary dispatch admission
+
+Every ordinary `dbfunc` handler now enters the transaction manager's request
+gate, including read and maintenance commands. Multiple ordinary handlers may
+run concurrently. Beginning a journal returns `ENOLOCK` until all admitted
+handlers and direct writes finish; while a journal owns the server, ordinary
+handler admission returns `ENOLOCK`. Recovery-blocked admission returns
+`EROLLBACK`. No transaction mutex is held across a handler, avoiding inversion
+with file and session-root locks.
+
+Dispatch admits a handler after receiving any request payload and releases
+admission immediately after the handler returns, before sending its response.
+Thus rejection does not strand the connection partway through sending a record,
+and a slow response consumer does not hold database admission. Internal session
+close notifications retain their separate cleanup path.
+
+This gate deliberately also rejects the owner's ordinary commands while a
+journal is active. Transaction-aware owner dispatch, descriptor bindings, blob
+coverage, and cached-state restoration are still required before enabling
+client journal execution. The gate covers this server's handlers, not external
+utilities accessing the same files.

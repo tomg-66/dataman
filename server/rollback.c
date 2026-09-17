@@ -57,7 +57,7 @@ extern xact_t *xact_curr;			/* the instruction that failed */
 extern int64_t *inserts;
 
 extern bool send_to_server(context_t *, char *, char *, int, int);
-extern bool recv_from_server(context_t *, MSG *, char **, int *, int *);
+extern bool recv_from_server(context_t *, MSG *, char **, int *, size_t *);
 extern int64_t get_ll(char *);
 extern void put_ll(char *, int64_t);
 
@@ -69,6 +69,8 @@ int rollback(context_t *ctxt)
 	int fno;
 	int fmt;
 	int i_count;					/* insert count */
+
+	size_t msglen;
 
 	int64_t recno;
 
@@ -168,7 +170,12 @@ int rollback(context_t *ctxt)
 			return(FALSE);
 		cptr = NULL;
 		i = 0;
-		if (!recv_from_server(ctxt, &msgbuf, &cptr, &i, &j))
+		if (!recv_from_server(ctxt, &msgbuf, &cptr, &i, &msglen)) {
+			free(cptr);
+			return(FALSE);
+		}
+		free(cptr);
+		if (i < 0)
 			return(FALSE);
 
 /*

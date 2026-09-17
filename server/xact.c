@@ -164,9 +164,6 @@ void xact_del_list()
 {
 	xact_t *ptr;
 
-	if (!xact_list)
-		return;
-	
 	while(xact_list) {
 		ptr = xact_list->next;
 		if (xact_list->data)
@@ -177,6 +174,7 @@ void xact_del_list()
 	xact_curr = NULL;
 	if (inserts)
 		free(inserts);
+	inserts = NULL;
 	n_inserts = 0;
 }
 

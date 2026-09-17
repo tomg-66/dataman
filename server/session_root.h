@@ -10,6 +10,20 @@ int mkidx_session(char *command, int offset, char **data);
  * identifier includes the kernel's IPC generation; it is not merely a PID.
  */
 char *session_root_copy(int shmid);
+/*
+ * Run an operation while metadata is pinned against disconnect/reaping. The
+ * callback must not call session_root APIs. Returns ENOCONN for a missing or
+ * replaced root, or the callback's Dataman result. Lock order: root then tx.
+ */
+int session_root_use(int shmid, int (*operation)(const char *, void *), void *context);
+/*
+ * Abort an owned journal before removing metadata. Idempotent on absent IDs.
+ */
+int session_root_close(int shmid);
+/*
+ * Periodic cleanup, including orphaned segments with no attached connection.
+ */
+int session_root_reap(void);
 
 #endif
 

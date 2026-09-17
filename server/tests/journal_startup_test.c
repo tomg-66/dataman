@@ -79,6 +79,9 @@ static int test_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 #undef verify_pid
 
 void *dispatch(void *arg) { return arg; }
+int dm_tx_configure(const char *path) { CHECK(!strcmp(path, journal_path)); return 0; }
+int dm_tx_blocked(void) { return 0; }
+int session_root_reap(void) { return 0; }
 void print_version(char *name) { (void)name; exit(0); }
 void err_sys(char *format, char *arg) { fprintf(stderr, format, arg); exit(98); }
 

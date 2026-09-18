@@ -23,4 +23,7 @@ javac -Xlint:all -d "$build_dir" \
 java -cp "$build_dir" BuildOneRecordIndex "$database_root" "$server_host"
 java -cp "$build_dir" OneRecordIntegrationTest "$database_root" "$server_host"
 
+java -cp "$build_dir" TransactionIntegrationTest "$database_root" "$server_host"
+python3 "$this_dir/transaction_protocol_test.py" "$database_root" "$server_host"
+
 echo "java integration tests: PASS"

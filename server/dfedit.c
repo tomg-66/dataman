@@ -1,3 +1,18 @@
+/* ***************************************************************
+ *
+ * PROCEDURE:	dfedit.c
+ *
+ * PROJECT:		dataman utility
+ * 
+ * DATE:		legacy, originally written in 1988
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ *
+ * MODIFICATION HISTORY:
+ *
+ ************************************************************* */
 /*
  * this is an analyzer and editor for database files
  */

@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include "srv_index.h"
 #include "misc.h"
+#include "errors.h"
 #include "storage_io.h"
 
 int idx_cnt = 1;
@@ -27,9 +28,10 @@ int fl_lock(P_LOCK *lock, int type)
 	return(0);
 }
 
-void blob_ctl(char *root, char *name, int fmt, int64_t recno, int mode)
+int blob_ctl(char *root, char *name, int fmt, int64_t recno, int mode)
 {
 	(void)root; (void)name; (void)fmt; (void)recno; (void)mode;
+	return 0;
 }
 
 int get_blobs(FILES *file, int fmt, int64_t recno, char **data, int *len)
@@ -120,6 +122,11 @@ int main(void)
 	check_record(fd, added, 1, 0, middle);
 	check_record(fd, middle, 1, added, 64);
 	check_record(fd, 64, 1, middle, 0);
+	/* Reject a deleted record with an invalid format before indexing its descriptor. */
+	unsigned char bad_format = 0202;
+	assert(dm_storage_write_at(fd, &bad_format, 1, 64) == 0);
+	strcpy(cmd, "0|0|64|");
+	assert(undelete(cmd, 0, &data) == EBADFMT && !locked && !data);
 	assert(close(fd) == 0);
 	return(0);
 }

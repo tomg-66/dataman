@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	get_datafile_desc
+ * PROCEDURE:	get_datafile_desc.c
  *
  * PROJECT:		dataman server side
  * 

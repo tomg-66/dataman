@@ -57,15 +57,12 @@ ownership failures, or synchronization errors cause a nonzero exit before any
 worker can execute a database request. The supervisor may restart the child;
 resolve the reported problem rather than deleting the recovery journal.
 
-Startup recovery is connected, but live transaction execution still uses the
-existing connection-server implementation and does not produce these journals
-yet. This step does not add ACID guarantees to client operations.
-
-The server-side journal owner manager is configured after recovery. Session-close
-notifications and a periodic dead-session sweep abort any journal owned by that
-session before dropping its metadata. Cleanup failures block new requests and
-exit the storage server for restart recovery. The legacy transaction queue does
-not yet call the journal owner's begin/write/commit APIs.
+Live record/index/blob operations now use the server-owned undo journal.
+Explicit transactions retain exclusive server admission until commit or rollback;
+standalone operations use implicit transactions. Session-close notifications and
+a periodic dead-session sweep abort abandoned transactions. Cleanup failure stops
+service for restart recovery. See [Transactions](transactions.md) for supported
+operations, maintenance restrictions, and unknown commit outcomes.
 
 - Keep `files/`, `index/`, and `blobs/` beneath one controlled database root.
 - Do not copy live database files as an assumed consistent backup.

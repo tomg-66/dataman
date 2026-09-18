@@ -28,6 +28,8 @@
 
 #include "file_desc.h"
 #include "errors.h"
+#include "storage_io.h"
+#include "undo_journal.h"
 
 extern int dbgsw;
 
@@ -39,6 +41,7 @@ int put_blobs (FILES *fptr, int fmt, int64_t recno, char *rptr)
 	int i, j;					/* standard loop counters */
 	int offs;
 	int chan;
+	int result = 0;
 
 	long len;					/* the final total length returned */
 
@@ -57,36 +60,59 @@ int put_blobs (FILES *fptr, int fmt, int64_t recno, char *rptr)
 	rf_ptr = fptr->_filedesc->record_desc+(fmt-1);
 	offs = len = rf_ptr->rf_len;
 
+	if (strlen(fptr->_fname) >= sizeof(file_name))
+		return(ENOBLOB);
 	strcpy(file_name, fptr->_fname);
 	path_name = dirname(file_name);
-	strcpy(file_name, path_name);
-	path_name = strdup(dirname(file_name));
+	path_name = strdup(dirname(path_name));
 	strcpy(file_name, fptr->_fname);
 	data_name = strdup(basename(file_name));
 
+	if (!path_name || !data_name) {
+		result = ENOALLOC;
+		goto done;
+	}
 	for (i = 0, j = 0; i < rf_ptr->has_blob; j++) {
 		if (rf_ptr->field_sizes[j] == 0) {
 			i++;
 			len = get_long(rptr+offs);
 			offs += sizeof(int32_t);
 			if (len >= 0) {
-				sprintf(file_name, "%s/blobs/%s.%d.%"PRId64".%d", path_name,
-							data_name, fmt, recno, j);
+				if (snprintf(file_name, sizeof(file_name), "%s/blobs/%s.%d.%"PRId64".%d",
+						path_name, data_name, fmt, recno, j) >= (int)sizeof(file_name)) {
+					result = ENOBLOB;
+					goto done;
+				}
+				int routed = dm_storage_blob_route(DM_BLOB_REPLACE, file_name, NULL, rptr+offs, len);
+				if (routed < 0 || (!routed && dm_storage_namespace_check() < 0)) {
+					result = EBLOBWRT;
+					goto done;
+				}
+				if (routed) {
+					offs += len;
+					continue;
+				}
 				if ((chan = open(file_name, O_CREAT|O_TRUNC|O_RDWR, 0666)) < 0) {
-					return(ENOBLOB);
+					result = ENOBLOB;
+					goto done;
 				}
-				if (write(chan, rptr+offs, len) < len) {
+				if (dm_storage_mutate_at(chan, rptr+offs, len, 0) < 0) {
 					close(chan);
-					return(EBLOBWRT);
+					result = EBLOBWRT;
+					goto done;
 				}
-				close(chan);
+				if (close(chan) < 0) {
+					result = EBLOBWRT;
+					goto done;
+				}
 				offs += len;
 			}
 		}
 	}
+done:
 	free(path_name);
 	free(data_name);
-	return(0);				/* return everthing worked */
+	return(result);
 }
 
 /*

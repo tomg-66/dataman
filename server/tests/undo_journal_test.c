@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "storage_io.h"
@@ -490,9 +491,255 @@ static void descriptor_cases(void)
 	CHECK(close(fd) == 0); cleanup();
 }
 
+static void blob_setup(void)
+{
+	setup();
+	int dir = open(directory, O_RDONLY | O_DIRECTORY); CHECK(dir >= 0);
+	CHECK(mkdirat(dir, "blobs", 0700) == 0 && close(dir) == 0);
+	int fd = file("blobs/a", O_CREAT | O_EXCL | O_RDWR);
+	CHECK(fd >= 0 && write(fd, "abcdefgh", 8) == 8 && fchmod(fd, 0640) == 0);
+	CHECK(fsync(fd) == 0 && close(fd) == 0);
+	fd = file("blobs/b", O_CREAT | O_EXCL | O_RDWR);
+	CHECK(fd >= 0 && write(fd, "12345678", 8) == 8 && fsync(fd) == 0 && close(fd) == 0);
+}
+
+static void blob_original(void)
+{
+	expect("blobs/a", "abcdefgh", 8); expect("blobs/b", "12345678", 8);
+	struct stat st; int fd = file("blobs/a", O_RDONLY);
+	CHECK(fd >= 0 && fstat(fd, &st) == 0 && (st.st_mode & 0777) == 0640 && close(fd) == 0);
+	fd = file("blobs/c", O_RDONLY); CHECK(fd == -1 && errno == ENOENT);
+}
+
+static void blob_cleanup(void)
+{
+	int dir = open(directory, O_RDONLY | O_DIRECTORY); CHECK(dir >= 0);
+	const char *names[] = {"blobs/a", "blobs/b", "blobs/c", "blobs/link"};
+	for (size_t i = 0; i < sizeof(names)/sizeof(names[0]); i++)
+		CHECK(unlinkat(dir, names[i], 0) == 0 || errno == ENOENT);
+	CHECK(unlinkat(dir, "blobs", AT_REMOVEDIR) == 0 && close(dir) == 0);
+	cleanup();
+}
+
+static void blob_cases(void)
+{
+	dm_undo *tx;
+	blob_setup();
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, "X", 1) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_RENAME, "blobs/a", "blobs/c", NULL, 0) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/c", NULL, NULL, 0) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_RENAME, "blobs/b", "blobs/a", NULL, 0) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/b", NULL, "new", 3) == 0);
+	CHECK(tx->sequence == 3); /* Capture original state only once per path. */
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx); blob_original();
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, NULL, 0) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/b", NULL, NULL, 0) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/c", NULL, "new", 3) == 0);
+	CHECK(dm_undo_commit(tx) == 0); dm_undo_close(tx);
+	CHECK(dm_undo_recover(journal_directory) == 0);
+	expect("blobs/a", "", 0); expect("blobs/c", "new", 3);
+	CHECK(file("blobs/b", O_RDONLY) < 0 && errno == ENOENT); blob_cleanup();
+
+	const char *points[] = {"journal-written", "journal-synced", "blob-mutated"};
+	for (int op = DM_BLOB_REPLACE; op <= DM_BLOB_RENAME; op++) {
+		for (size_t i = 0; i < sizeof(points)/sizeof(points[0]); i++) {
+			blob_setup(); pid_t pid = fork(); CHECK(pid >= 0);
+			if (!pid) {
+				CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+				crash_point = points[i]; crash_occurrence = 1;
+				CHECK(dm_undo_blob(tx, op, "blobs/a", op == DM_BLOB_RENAME ? "blobs/b" : NULL, "new", 3) == 0);
+				_exit(99);
+			}
+			wait_crash(pid); CHECK(dm_undo_recover(journal_directory) == 0);
+			CHECK(dm_undo_recover(journal_directory) == 0); blob_original(); blob_cleanup();
+		}
+	}
+	const char *create_points[] = {"blob-created", "blob-written", "blob-mutated"};
+	for (size_t i = 0; i < sizeof(create_points)/sizeof(create_points[0]); i++) {
+		blob_setup(); pid_t pid = fork(); CHECK(pid >= 0);
+		if (!pid) {
+			CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+			crash_point = create_points[i]; crash_occurrence = 1;
+			CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/c", NULL, "new", 3) == 0);
+			_exit(99);
+		}
+		wait_crash(pid); CHECK(dm_undo_recover(journal_directory) == 0); blob_original(); blob_cleanup();
+	}
+	const char *undo_points[] = {"blob-undo-created", "blob-undo-chunk", "blob-undo-written", "blob-undo-restored", "blob-synced"};
+	for (size_t i = 0; i < sizeof(undo_points)/sizeof(undo_points[0]); i++) {
+		blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == 0);
+		dm_undo_close(tx);
+		pid_t pid = fork(); CHECK(pid >= 0);
+		if (!pid) {
+			crash_point = undo_points[i]; crash_occurrence = 1;
+			CHECK(dm_undo_recover(journal_directory) == 0); _exit(99);
+		}
+		wait_crash(pid); CHECK(dm_undo_recover(journal_directory) == 0); blob_original(); blob_cleanup();
+	}
+
+	blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	fail_sync = sync_calls + 1;
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, "new", 3) == -1);
+	fail_sync = 0; blob_original(); CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx); blob_cleanup();
+
+	blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, "new", 3) == 0);
+	fail_sync = sync_calls + 1; CHECK(dm_undo_commit(tx) == -1);
+	fail_sync = 0; dm_undo_close(tx); CHECK(dm_undo_recover(journal_directory) == 0);
+	blob_original(); blob_cleanup();
+
+	blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	fail_write = write_calls + 4; partial_bytes = 1;
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, "new", 3) == -1);
+	fail_write = 0; partial_bytes = 0;
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx); blob_original(); blob_cleanup();
+
+	const char *commit_points[] = {"blob-synced", "resolved", "unlinked"};
+	for (size_t i = 0; i < sizeof(commit_points)/sizeof(commit_points[0]); i++) {
+		blob_setup(); pid_t pid = fork(); CHECK(pid >= 0);
+		if (!pid) {
+			CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+			CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, "new", 3) == 0);
+			crash_point = commit_points[i]; crash_occurrence = 1;
+			CHECK(dm_undo_commit(tx) == 0); _exit(99);
+		}
+		wait_crash(pid); CHECK(dm_undo_recover(journal_directory) == 0);
+		if (!i) blob_original(); else expect("blobs/a", "new", 3);
+		blob_cleanup();
+	}
+
+	/* Complete corrupt blob records fail before restoring any file. */
+	blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, "new", 3) == 0);
+	dm_undo_close(tx);
+	int journalfd = file(JOURNAL, O_RDWR); CHECK(journalfd >= 0);
+	unsigned char byte;
+	int64_t at = journal_start() + RECORD + strlen("blobs/a") + BLOB_META;
+	CHECK(pread(journalfd, &byte, 1, at) == 1); byte ^= 1;
+	CHECK(pwrite(journalfd, &byte, 1, at) == 1);
+	CHECK(dm_undo_recover(journal_directory) == -1); expect("blobs/a", "new", 3);
+	byte ^= 1; CHECK(pwrite(journalfd, &byte, 1, at) == 1 && close(journalfd) == 0);
+	CHECK(dm_undo_recover(journal_directory) == 0); blob_original(); blob_cleanup();
+
+	blob_setup(); int oversized = file("blobs/a", O_RDWR); CHECK(oversized >= 0);
+	uint64_t large_size = MAX_JOURNAL + 4096;
+	CHECK(ftruncate(oversized, large_size) == 0 && close(oversized) == 0);
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == 0);
+	CHECK(tx->end > MAX_JOURNAL);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+	oversized = file("blobs/a", O_RDONLY); CHECK(oversized >= 0);
+	struct stat large; char restored[8];
+	CHECK(fstat(oversized, &large) == 0 && (uint64_t)large.st_size == large_size);
+	CHECK(pread(oversized, restored, 8, 0) == 8 && !memcmp(restored, "abcdefgh", 8));
+	CHECK(pread(oversized, restored, 8, large_size - 8) == 8);
+	for (size_t i = 0; i < sizeof(restored); i++) CHECK(!restored[i]);
+	CHECK(close(oversized) == 0); blob_cleanup();
+
+	/* Torn snapshot records never authorize a mutation. */
+	for (int tail = 0; tail < 2; tail++) {
+		blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		fail_write = write_calls + 1; partial_bytes = tail ? RECORD : 1;
+		CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/c", NULL, "new", 3) == -1);
+		fail_write = 0; partial_bytes = 0; dm_undo_close(tx);
+		CHECK(dm_undo_recover(journal_directory) == 0); blob_original(); blob_cleanup();
+	}
+	/* Retry after either restored-file sync or directory sync fails. */
+	for (int boundary = 1; boundary <= 2; boundary++) {
+		blob_setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == 0);
+		fail_sync = sync_calls + boundary;
+		CHECK(dm_undo_abort(tx) == -1); fail_sync = 0; dm_undo_close(tx);
+		CHECK(dm_undo_recover(journal_directory) == 0); blob_original(); blob_cleanup();
+	}
+	blob_setup(); int attributed = file("blobs/a", O_RDWR); CHECK(attributed >= 0);
+	if (fsetxattr(attributed, "user.dataman-test", "value", 5, 0) == 0) {
+		CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == -1 && errno == ENOTSUP);
+		CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+		CHECK(fremovexattr(attributed, "user.dataman-test") == 0);
+	} else CHECK(errno == ENOTSUP || errno == EOPNOTSUPP);
+	CHECK(close(attributed) == 0); blob_original(); blob_cleanup();
+
+	/* Version-2 byte journals remain recoverable after the format upgrade. */
+	setup(); CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_write(tx, "a", "new", 3, 0) == 0); dm_undo_close(tx);
+	journalfd = file(JOURNAL, O_RDWR); CHECK(journalfd >= 0);
+	unsigned char old_header[HEADER];
+	CHECK(pread(journalfd, old_header, HEADER, 0) == HEADER);
+	memcpy(old_header, "DMUNDO02", 8); put32(old_header + 48, crc(old_header, 48));
+	CHECK(pwrite(journalfd, old_header, HEADER, 0) == HEADER && close(journalfd) == 0);
+	CHECK(dm_undo_recover(journal_directory) == 0); original(); cleanup();
+
+	blob_setup(); int dir = open(directory, O_RDONLY | O_DIRECTORY); CHECK(dir >= 0);
+	CHECK(linkat(dir, "blobs/a", dir, "blobs/link", 0) == 0);
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == -1);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+	CHECK(unlinkat(dir, "blobs/link", 0) == 0 && close(dir) == 0); blob_original(); blob_cleanup();
+}
+
+static void stream_and_record_limits(void)
+{
+	/* Many writes to one file must not require one open descriptor per record. */
+	setup();
+	pid_t child = fork(); CHECK(child >= 0);
+	if (!child) {
+		struct rlimit limit = {64, 64};
+		CHECK(setrlimit(RLIMIT_NOFILE, &limit) == 0);
+		dm_undo *tx;
+		CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		for (int i = 0; i < 300; i++)
+			CHECK(dm_undo_write(tx, "a", "X", 1, 0) == 0);
+		CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+		_exit(77);
+	}
+	wait_crash(child); expect("a", "abcdefgh", 8); cleanup();
+
+	/* New replacement payloads also exceed the old per-blob limit. */
+	blob_setup();
+	size_t length = MAX_WRITE + 123;
+	char *replacement = malloc(length); CHECK(replacement);
+	memset(replacement, 'Z', length);
+	dm_undo *tx;
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REPLACE, "blobs/a", NULL, replacement, length) == 0);
+	CHECK(dm_undo_commit(tx) == 0); dm_undo_close(tx);
+	CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+	CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == 0);
+	CHECK(dm_undo_abort(tx) == 0); dm_undo_close(tx);
+	int restored = file("blobs/a", O_RDONLY); CHECK(restored >= 0);
+	CHECK(dm_storage_read_at(restored, replacement, length, 0) == 0);
+	for (size_t i = 0; i < length; i++) CHECK(replacement[i] == 'Z');
+	CHECK(close(restored) == 0); free(replacement); blob_cleanup();
+
+	/* A crash partway through a multi-chunk snapshot leaves the original intact. */
+	blob_setup();
+	int fd = file("blobs/a", O_RDWR); CHECK(fd >= 0);
+	CHECK(ftruncate(fd, BLOB_CHUNK * 2 + 17) == 0 && fsync(fd) == 0 && close(fd) == 0);
+	child = fork(); CHECK(child >= 0);
+	if (!child) {
+		dm_undo *tx;
+		CHECK(dm_undo_begin(journal_directory, directory, &tx) == 0);
+		crash_point = "blob-snapshot-chunk"; crash_occurrence = 1;
+		CHECK(dm_undo_blob(tx, DM_BLOB_REMOVE, "blobs/a", NULL, NULL, 0) == 0);
+		_exit(99);
+	}
+	wait_crash(child); CHECK(dm_undo_recover(journal_directory) == 0);
+	fd = file("blobs/a", O_RDONLY); CHECK(fd >= 0);
+	struct stat status; char bytes[8];
+	CHECK(fstat(fd, &status) == 0 && status.st_size == BLOB_CHUNK * 2 + 17);
+	CHECK(read(fd, bytes, 8) == 8 && !memcmp(bytes, "abcdefgh", 8) && close(fd) == 0);
+	blob_cleanup();
+}
+
 int main(void)
 {
+	stream_and_record_limits();
 	normal_cases(); crash_cases(); damaged_cases(); identity_cases(); failure_cases();
-	root_cases(); nested_cases(); descriptor_cases();
+	root_cases(); nested_cases(); descriptor_cases(); blob_cases();
 	return 0;
 }

@@ -26,8 +26,8 @@ The journal and database use separate temporary directories. Root-discovery
 tests recover abandoned work without client state, reject missing/replaced roots
 and corrupt root paths, and exercise nested targets without following symlinks.
 
-Live transaction writes are not journaled yet. These tests do not establish
-live-server ACID guarantees or emulate power loss in a storage device.
+Live transaction writes now use the journal. Standalone tests do not emulate
+power loss in a storage device; Java/protocol tests exercise the live server.
 
 `session_root_test` checks `DEF_ROOT`, `INIT_DAT`, and `MKIDX` root registration
 with substituted IPC, work-file initialization, and index creation. It covers
@@ -119,9 +119,48 @@ delete, undelete, and v2 index insert/remove paths through the mutation router.
 It checks byte-for-byte rollback and original file lengths after record and
 index growth, committed record contents, recovery after process exit, rejection
 of writes from an unscoped worker, missing descriptor bindings, and stale scopes.
-Blob processing is excluded; these tests do not claim full client isolation.
+Production blob processing is included in the owner-dispatch and wire-dispatch
+cases; separate live tests exercise the TCP connection path.
 
 Transaction-session admission tests use two synchronized worker threads to
 verify concurrent ordinary requests, exclusion of journal begin until both
 requests finish, rejection during an active journal, safe duplicate leave,
 and admission reopening after abort. Recovery-blocked admission is also checked.
+
+Owner-dispatch tests derive bindings from absolute paths, reject paths outside
+the registered root and traversal components, exercise production flush through
+the wrapper, and check abort-only propagation from a handler failure. A second
+worker verifies that owner scopes serialize and journal completion is blocked
+until the active scope returns. Read-only scopes require no descriptor bindings.
+
+`blob_io_test` uses temporary blob files and injected write, close, rename, and
+unlink failures. It covers replacement, hide/unhide, hidden cleanup, deletion,
+missing directories, and rejection before truncation by the namespace guard.
+The transaction-session suite verifies that rejected owner namespace operations
+make the transaction abort-only.
+
+Blob journal tests cover replacement/truncation, creation, deletion, rename over
+an existing destination, repeated changes to the same names, empty blobs, and
+mode restoration. Forked tests interrupt journal append, blob mutation, commit,
+and recovery itself. Failure tests cover partial writes, failed file/directory
+sync, torn tails, corruption, hardlinks, extended metadata, and sizes beyond the former limits. A
+version-2 byte journal recovery test covers the format transition. Production
+flush and blob-control handlers are tested together through owner dispatch for
+record-plus-blob abort, commit, and recovery after process exit.
+
+Index cache tests cover rollback after page splits, duplicate/alias tracking,
+commit refresh, and disconnect undo through the production remove-key handler.
+A closed tracked descriptor causes completion to block admission without
+publishing cache values. Tests compare the cache with the durable v2 header.
+
+## Live transaction checks
+
+`run_java_tests.sh` also runs `TransactionIntegrationTest` and
+`transaction_protocol_test.py` against the disposable Java fixture. They check
+read-your-writes, commit, rollback of inserts/deletes, client buffer discard,
+contention between connections, and undo after disconnect. These tests modify the
+fixture and require the development server; do not point them at production data.
+
+The journal suite additionally restores a blob larger than the former 64 MiB
+journal cap and interrupts streamed replay. Blob snapshot memory is bounded by
+chunk size; the existing client transport still uses signed 32-bit lengths.

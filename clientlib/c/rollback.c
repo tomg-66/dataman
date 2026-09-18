@@ -46,6 +46,8 @@
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "visibility.h"
+#include "m_params.h"
+#include "w_params.h"
 
 #define TRUE    1
 #define FALSE   0
@@ -82,6 +84,18 @@ DATAMAN_API int rollback(void)
 	free(buff);
 
 	if (i > 0) {
+		/* Discard cached edits so a later navigation cannot flush rolled-back data. */
+		if (mfld) {
+			for (int field = 1; mfld[field]; field++) free(mfld[field]);
+			free(mfld); mfld = NULL;
+		}
+		if (wfld) {
+			for (int field = 1; wfld[field]; field++) free(wfld[field]);
+			free(wfld); wfld = NULL;
+		}
+		free(m_blob_lengths); m_blob_lengths = NULL;
+		free(w_blob_lengths); w_blob_lengths = NULL;
+		m_fmt = w_fmt = 0;
 		in_xact = FALSE;
 		return TRUE;
 	}

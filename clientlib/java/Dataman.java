@@ -102,7 +102,7 @@ public class Dataman{
 		is_sort = false;
 		in_xact = false;
 		_progname = ClassName;
-		boolean traditional = false;
+		boolean traditional = true;
 
 		String cmd;
 		String host = "";
@@ -124,9 +124,9 @@ public class Dataman{
 						j = argv[i].length() + 1;
 						break;
 					case 'n':
-						if (traditional)
+						if (!traditional)
 							useage();
-						traditional = true;
+						traditional = false;
 						break;
 					case 'r': 
 						if (_root.length() > 0) 
@@ -396,14 +396,19 @@ public class Dataman{
 		} catch (IOException e) {
 			throw transportError("ROLLBACK", e);
 		}
+		master.field = null;
+		master.setdirty(false);
+		master.setfmt((short)0);
+		workfile.field = null;
+		workfile.setdirty(false);
+		workfile.setfmt((short)0);
 		in_xact = false;
 	}
 
 /**
  * Commit a transaction.  This command terminates a transaction and
- * commits the transaction to the database.  It is atomic.  If any
- * part of the transaction fails, all parts fail and it is as if a
- * rollback were called.
+ * commits the transaction to the database. A rejected transaction must be
+ * rolled back explicitly. A lost response leaves the commit outcome unknown.
  * @return true if the commit was successful, else false.
  * @throws DatamanRuntimeException
  */
@@ -414,6 +419,7 @@ public class Dataman{
 		ByteBuffer buff;
 		int i;
 
+		if (!in_xact) throw new DatamanRuntimeException("No transaction to commit");
 		if (cur_index != null && cur_index.get_wrmode() == DatamanIndex.UPDATE)
 			master.out_rec();
 

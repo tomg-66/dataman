@@ -28,7 +28,7 @@ dataman_server_program(dataman_srv
 	substr.c upd_idx.c verify_pid.c get_desc.c init_dataman.c release.c
 	mkidx.c sort.c restore.c get_datafile_desc.c version.c get_blobs.c
 	put_blobs.c get_ll.c put_ll.c get_rec.c blob_ctl.c undelete.c index_v2.c
-	storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c)
+	storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c transaction_dispatch.c transaction_wire.c)
 target_link_libraries(dataman_srv PRIVATE Threads::Threads)
 
 if(BUILD_TESTING)
@@ -53,7 +53,7 @@ if(BUILD_TESTING)
 	add_executable(verify_pid_test tests/verify_pid_test.c verify_pid.c)
 	add_test(NAME pid-ownership COMMAND verify_pid_test)
 	add_executable(transaction_session_test tests/transaction_session_test.c
-		transaction_session.c undo_journal.c storage_io.c flush.c index_v2.c
+		transaction_session.c transaction_dispatch.c transaction_wire.c undo_journal.c storage_io.c flush.c index_v2.c put_blobs.c blob_ctl.c get_long.c remove.c
 		insert.c delete.c undelete.c get_ll.c put_ll.c)
 	target_include_directories(transaction_session_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 	target_link_libraries(transaction_session_test PRIVATE Threads::Threads)
@@ -65,6 +65,9 @@ if(BUILD_TESTING)
 		insert.c delete.c undelete.c storage_io.c get_ll.c put_ll.c)
 	target_include_directories(record_mutation_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 	add_test(NAME record-mutation COMMAND record_mutation_test)
+	add_executable(blob_io_test tests/blob_io_test.c storage_io.c get_long.c)
+	target_include_directories(blob_io_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME blob-io COMMAND blob_io_test)
 endif()
 
 dataman_server_program(mkdf

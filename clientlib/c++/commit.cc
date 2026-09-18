@@ -49,6 +49,7 @@
 
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
+#include "../../server/errors.h"
 
 #include <memory>
 
@@ -63,6 +64,7 @@ DATAMAN_API int commit(void)
 
 	char cmd[128];
 
+	if (!in_xact) throw makeError(ENOXACT, "%s: no transaction to commit", _progname);
 /*
  * if need be, flush the current record before the commit
  */
@@ -82,7 +84,6 @@ DATAMAN_API int commit(void)
 	i = atoi(buff.get());
 
 	if (i < 0) {
-		in_xact = FALSE;
 		throw makeError(i, "%s: Error during COMMIT", _progname);
 	}
 	in_xact = FALSE;

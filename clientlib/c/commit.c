@@ -69,6 +69,10 @@ DATAMAN_API int db_commit(void)
 	char *buff;
 	char *cptr;
 
+	if (!in_xact) {
+		db_err(ENOXACT, "%s: no transaction to commit", _progname);
+		return FALSE;
+	}
 /*
  * if need be, flush the current record before the commit
  */
@@ -99,7 +103,7 @@ DATAMAN_API int db_commit(void)
 		i = FALSE;
 	}
 	free(buff);
-	in_xact = FALSE;
+	if (i > 0) in_xact = FALSE;
 	return(i);
 }
 

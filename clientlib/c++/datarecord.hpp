@@ -100,6 +100,7 @@ class datarecord {
 		friend int commit(void);
 
 		DATAMAN_HIDDEN void init(void);
+		DATAMAN_HIDDEN void discard(void);
 		DATAMAN_HIDDEN void out_rec();
 		DATAMAN_HIDDEN int in_rec(char *, index *operatingIndex = NULL);
 

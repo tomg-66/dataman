@@ -1,4 +1,19 @@
-/* Return the entry following the client's generation-qualified v2 cursor. */
+/* ***************************************************************
+ *
+ * PROCEDURE:	get_next.c
+ *
+ * PROJECT:		dataman
+ * 
+ * DATE:		
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ ************************************************************* */
+/*
+ * Return the entry following the client's generation-qualified v2 cursor.
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,4 +101,10 @@ int get_next(char *cmd, int c_off, char **ret)
 	return(result);
 }
 
-/* vim: set noet sw=4 sts=4 ts=4 fdm=marker: */
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
+ */

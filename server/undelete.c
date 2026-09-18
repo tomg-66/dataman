@@ -64,7 +64,7 @@ extern int idx_cnt;
 extern INDEX *_indices;
 extern int64_t get_ll(void *);
 extern void put_ll(void *, int64_t);
-extern void blob_ctl(char *, char *, int, int64_t, int);
+extern int blob_ctl(char *, char *, int, int64_t, int);
 
 int undelete(char *cmd, int c_off, char **ret)
 {
@@ -121,7 +121,11 @@ int undelete(char *cmd, int c_off, char **ret)
 		i = ERHREAD;
 		goto done;
 	}
-	fmt = *buff & ~DEL;				/* strip off the DELETED bit */
+	fmt = (unsigned char)*buff & ~DEL;				/* strip off the DELETED bit */
+	if (fmt < 1 || fmt > fptr->_filedesc->n_rformats) {
+		i = EBADFMT;
+		goto done;
+	}
 	prev = get_ll(buff+OFFSET_TO_PREV);
 	next = get_ll(buff+OFFSET_TO_NEXT);
 /*
@@ -188,11 +192,15 @@ int undelete(char *cmd, int c_off, char **ret)
  * now we need to perhaps unhide any blobs that might have been
  * associated with this record.
  */
-	blob_ctl(iptr->_rootdir, fptr->_fname, fmt, recno, UNHIDE);
+	if (fptr->_filedesc->record_desc[fmt-1].has_blob &&
+			(i = blob_ctl(iptr->_rootdir, fptr->_fname, fmt, recno, UNHIDE)) < 0)
+		goto done;
 	i = 0;
 
 done:
 	fl_lock(&fptr->_lock, LOCK_UN);
+	if (i < 0)
+		return(i);
 	i = sprintf(cmd, "%d|", i);
 	return(i);
 }

@@ -1,4 +1,39 @@
-/* Root registration alongside the existing transaction path. GPL-2.0-or-later. */
+/* ***************************************************************
+ *
+ * PROCEDURE:	session_root.c
+ *
+ * PROJECT:		dataman server side
+ * 
+ * DATE:		Thu Sep 17 08:10:00 PM MDT 2026
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ *
+ * MODIFICATION HISTORY:
+ *
+ ************************************************************* */
+/*
+ * Root registration alongside the existing transaction path.
+ */
+/*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ * The GNU General Public License is contained in the file COPYING.
+ */
 #include "session_root.h"
 #include "transaction_session.h"
 #include <errno.h>
@@ -23,6 +58,7 @@ static struct root_entry {
 	dev_t device;
 	ino_t inode;
 } roots[MAX_CONNS];
+
 static pthread_mutex_t roots_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
@@ -44,6 +80,7 @@ static int close_slot(int i)
 static int reap(void)
 {
 	struct shmid_ds status;
+
 	for (int i = 0; i < MAX_CONNS; ++i) {
 		if (roots[i].path) {
 			int ret = shmctl(roots[i].shmid, IPC_STAT, &status);

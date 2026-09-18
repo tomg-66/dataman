@@ -99,7 +99,8 @@ check_PROGRAMS = storage_io_test$(EXEEXT) flush_io_test$(EXEEXT) \
 	undo_journal_test$(EXEEXT) session_root_test$(EXEEXT) \
 	journal_startup_test$(EXEEXT) verify_pid_test$(EXEEXT) \
 	transaction_session_test$(EXEEXT) \
-	legacy_transaction_test$(EXEEXT) record_mutation_test$(EXEEXT)
+	legacy_transaction_test$(EXEEXT) record_mutation_test$(EXEEXT) \
+	blob_io_test$(EXEEXT)
 subdir = server
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -113,14 +114,19 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(includedir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_dataman_OBJECTS = dataman.$(OBJEXT) err_sys.$(OBJEXT) \
-	verify_pid.$(OBJEXT) version.$(OBJEXT)
-dataman_OBJECTS = $(am_dataman_OBJECTS)
-dataman_LDADD = $(LDADD)
+am__dirstamp = $(am__leading_dot)dirstamp
+am_blob_io_test_OBJECTS = tests/blob_io_test.$(OBJEXT) \
+	storage_io.$(OBJEXT) get_long.$(OBJEXT)
+blob_io_test_OBJECTS = $(am_blob_io_test_OBJECTS)
+blob_io_test_LDADD = $(LDADD)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+am_dataman_OBJECTS = dataman.$(OBJEXT) err_sys.$(OBJEXT) \
+	verify_pid.$(OBJEXT) version.$(OBJEXT)
+dataman_OBJECTS = $(am_dataman_OBJECTS)
+dataman_LDADD = $(LDADD)
 am_dataman_con_OBJECTS = serial.$(OBJEXT) serial_service.$(OBJEXT) \
 	serial_setup.$(OBJEXT) serial_cleanup.$(OBJEXT) \
 	server_comm.$(OBJEXT) err_sys.$(OBJEXT) put_long.$(OBJEXT) \
@@ -147,7 +153,8 @@ am_dataman_srv_OBJECTS = dbserve.$(OBJEXT) back.$(OBJEXT) \
 	blob_ctl.$(OBJEXT) undelete.$(OBJEXT) index_v2.$(OBJEXT) \
 	storage_io.$(OBJEXT) session_root.$(OBJEXT) \
 	undo_journal.$(OBJEXT) journal_startup.$(OBJEXT) \
-	transaction_session.$(OBJEXT)
+	transaction_session.$(OBJEXT) transaction_dispatch.$(OBJEXT) \
+	transaction_wire.$(OBJEXT)
 dataman_srv_OBJECTS = $(am_dataman_srv_OBJECTS)
 dataman_srv_DEPENDENCIES =
 am_dbclean_OBJECTS = clean.$(OBJEXT) check_it.$(OBJEXT) \
@@ -179,7 +186,6 @@ am_dumpix_OBJECTS = dumpix.$(OBJEXT) substr.$(OBJEXT) \
 	index_v2.$(OBJEXT) storage_io.$(OBJEXT)
 dumpix_OBJECTS = $(am_dumpix_OBJECTS)
 dumpix_LDADD = $(LDADD)
-am__dirstamp = $(am__leading_dot)dirstamp
 am_flush_io_test_OBJECTS = tests/flush_io_test.$(OBJEXT) \
 	flush.$(OBJEXT)
 flush_io_test_OBJECTS = $(am_flush_io_test_OBJECTS)
@@ -213,10 +219,12 @@ storage_io_test_OBJECTS = $(am_storage_io_test_OBJECTS)
 storage_io_test_LDADD = $(LDADD)
 am_transaction_session_test_OBJECTS =  \
 	tests/transaction_session_test.$(OBJEXT) \
-	transaction_session.$(OBJEXT) undo_journal.$(OBJEXT) \
+	transaction_session.$(OBJEXT) transaction_dispatch.$(OBJEXT) \
+	transaction_wire.$(OBJEXT) undo_journal.$(OBJEXT) \
 	storage_io.$(OBJEXT) flush.$(OBJEXT) index_v2.$(OBJEXT) \
-	insert.$(OBJEXT) delete.$(OBJEXT) undelete.$(OBJEXT) \
-	get_ll.$(OBJEXT) put_ll.$(OBJEXT)
+	put_blobs.$(OBJEXT) blob_ctl.$(OBJEXT) get_long.$(OBJEXT) \
+	remove.$(OBJEXT) insert.$(OBJEXT) delete.$(OBJEXT) \
+	undelete.$(OBJEXT) get_ll.$(OBJEXT) put_ll.$(OBJEXT)
 transaction_session_test_OBJECTS =  \
 	$(am_transaction_session_test_OBJECTS)
 transaction_session_test_DEPENDENCIES =
@@ -273,10 +281,13 @@ am__depfiles_remade = ./$(DEPDIR)/back.Po ./$(DEPDIR)/blob_ctl.Po \
 	./$(DEPDIR)/serial_setup.Po ./$(DEPDIR)/server_comm.Po \
 	./$(DEPDIR)/session_root.Po ./$(DEPDIR)/sort.Po \
 	./$(DEPDIR)/storage_io.Po ./$(DEPDIR)/substr.Po \
-	./$(DEPDIR)/term_dbserve.Po ./$(DEPDIR)/transaction_session.Po \
-	./$(DEPDIR)/undelete.Po ./$(DEPDIR)/undo_journal.Po \
-	./$(DEPDIR)/upd_idx.Po ./$(DEPDIR)/verify_pid.Po \
-	./$(DEPDIR)/version.Po ./$(DEPDIR)/xact.Po \
+	./$(DEPDIR)/term_dbserve.Po \
+	./$(DEPDIR)/transaction_dispatch.Po \
+	./$(DEPDIR)/transaction_session.Po \
+	./$(DEPDIR)/transaction_wire.Po ./$(DEPDIR)/undelete.Po \
+	./$(DEPDIR)/undo_journal.Po ./$(DEPDIR)/upd_idx.Po \
+	./$(DEPDIR)/verify_pid.Po ./$(DEPDIR)/version.Po \
+	./$(DEPDIR)/xact.Po tests/$(DEPDIR)/blob_io_test.Po \
 	tests/$(DEPDIR)/flush_io_test.Po \
 	tests/$(DEPDIR)/journal_startup_test.Po \
 	tests/$(DEPDIR)/legacy_transaction_test.Po \
@@ -305,18 +316,20 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(dataman_SOURCES) $(dataman_con_SOURCES) \
-	$(dataman_srv_SOURCES) $(dbclean_SOURCES) $(dfedit_SOURCES) \
-	$(dnodes_SOURCES) $(dumpdf_SOURCES) $(dumpix_SOURCES) \
-	$(flush_io_test_SOURCES) $(journal_startup_test_SOURCES) \
+SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
+	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
+	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
+	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
+	$(journal_startup_test_SOURCES) \
 	$(legacy_transaction_test_SOURCES) $(mkdf_SOURCES) \
 	$(record_mutation_test_SOURCES) $(session_root_test_SOURCES) \
 	$(storage_io_test_SOURCES) $(transaction_session_test_SOURCES) \
 	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
-DIST_SOURCES = $(dataman_SOURCES) $(dataman_con_SOURCES) \
-	$(dataman_srv_SOURCES) $(dbclean_SOURCES) $(dfedit_SOURCES) \
-	$(dnodes_SOURCES) $(dumpdf_SOURCES) $(dumpix_SOURCES) \
-	$(flush_io_test_SOURCES) $(journal_startup_test_SOURCES) \
+DIST_SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
+	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
+	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
+	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
+	$(journal_startup_test_SOURCES) \
 	$(legacy_transaction_test_SOURCES) $(mkdf_SOURCES) \
 	$(record_mutation_test_SOURCES) $(session_root_test_SOURCES) \
 	$(storage_io_test_SOURCES) $(transaction_session_test_SOURCES) \
@@ -698,7 +711,7 @@ dataman_srv_SOURCES = dbserve.c back.c clear.c delete.c \
 	upd_idx.c verify_pid.c get_desc.c init_dataman.c \
 	release.c mkidx.c sort.c restore.c get_datafile_desc.c \
 	version.c get_blobs.c put_blobs.c get_ll.c put_ll.c get_rec.c \
-	blob_ctl.c undelete.c index_v2.c storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c
+	blob_ctl.c undelete.c index_v2.c storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c transaction_dispatch.c transaction_wire.c
 
 dataman_srv_LDADD = -lpthread
 dfedit_LDADD = $(top_builddir)/clientlib/c/libmini.la -lcurses
@@ -718,7 +731,7 @@ dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 				 put_ll.c
 
 noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
-				 file_desc.h index_v2.h misc.h xact.h storage_io.h undo_journal.h session_root.h journal_startup.h transaction_session.h
+				 file_desc.h index_v2.h misc.h xact.h storage_io.h undo_journal.h session_root.h journal_startup.h transaction_session.h transaction_dispatch.h transaction_wire.h
 
 TESTS = $(check_PROGRAMS)
 storage_io_test_SOURCES = tests/storage_io_test.c
@@ -729,12 +742,13 @@ session_root_test_LDADD = -lpthread
 journal_startup_test_SOURCES = tests/journal_startup_test.c journal_startup.c storage_io.c
 journal_startup_test_LDADD = -lpthread
 verify_pid_test_SOURCES = tests/verify_pid_test.c verify_pid.c
-transaction_session_test_SOURCES = tests/transaction_session_test.c transaction_session.c undo_journal.c storage_io.c flush.c index_v2.c \
+transaction_session_test_SOURCES = tests/transaction_session_test.c transaction_session.c transaction_dispatch.c transaction_wire.c undo_journal.c storage_io.c flush.c index_v2.c put_blobs.c blob_ctl.c get_long.c remove.c \
 	insert.c delete.c undelete.c get_ll.c put_ll.c
 
 transaction_session_test_LDADD = -lpthread
 legacy_transaction_test_SOURCES = tests/legacy_transaction_test.c get_ll.c put_ll.c
 record_mutation_test_SOURCES = tests/record_mutation_test.c insert.c delete.c undelete.c storage_io.c get_ll.c put_ll.c
+blob_io_test_SOURCES = tests/blob_io_test.c storage_io.c get_long.c
 AM_CPPFLAGS = -I$(srcdir)
 include_HEADERS = datafile_header.h
 all: all-am
@@ -818,6 +832,18 @@ clean-binPROGRAMS:
 clean-checkPROGRAMS:
 	$(am__rm_f) $(check_PROGRAMS)
 	test -z "$(EXEEXT)" || $(am__rm_f) $(check_PROGRAMS:$(EXEEXT)=)
+tests/$(am__dirstamp):
+	@$(MKDIR_P) tests
+	@: >>tests/$(am__dirstamp)
+tests/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tests/$(DEPDIR)
+	@: >>tests/$(DEPDIR)/$(am__dirstamp)
+tests/blob_io_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+blob_io_test$(EXEEXT): $(blob_io_test_OBJECTS) $(blob_io_test_DEPENDENCIES) $(EXTRA_blob_io_test_DEPENDENCIES)
+	@rm -f blob_io_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(blob_io_test_OBJECTS) $(blob_io_test_LDADD) $(LIBS)
 
 dataman$(EXEEXT): $(dataman_OBJECTS) $(dataman_DEPENDENCIES) $(EXTRA_dataman_DEPENDENCIES) 
 	@rm -f dataman$(EXEEXT)
@@ -850,12 +876,6 @@ dumpdf$(EXEEXT): $(dumpdf_OBJECTS) $(dumpdf_DEPENDENCIES) $(EXTRA_dumpdf_DEPENDE
 dumpix$(EXEEXT): $(dumpix_OBJECTS) $(dumpix_DEPENDENCIES) $(EXTRA_dumpix_DEPENDENCIES) 
 	@rm -f dumpix$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(dumpix_OBJECTS) $(dumpix_LDADD) $(LIBS)
-tests/$(am__dirstamp):
-	@$(MKDIR_P) tests
-	@: >>tests/$(am__dirstamp)
-tests/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) tests/$(DEPDIR)
-	@: >>tests/$(DEPDIR)/$(am__dirstamp)
 tests/flush_io_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
@@ -984,13 +1004,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/storage_io.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/substr.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/term_dbserve.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction_dispatch.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction_session.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction_wire.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undelete.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undo_journal.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/upd_idx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/verify_pid.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/version.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xact.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/blob_io_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/flush_io_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/journal_startup_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/legacy_transaction_test.Po@am__quote@ # am--include-marker
@@ -1339,6 +1362,13 @@ record_mutation_test.log: record_mutation_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+blob_io_test.log: blob_io_test$(EXEEXT)
+	@p='blob_io_test$(EXEEXT)'; \
+	b='blob_io_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .test.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -1498,13 +1528,16 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/storage_io.Po
 	-rm -f ./$(DEPDIR)/substr.Po
 	-rm -f ./$(DEPDIR)/term_dbserve.Po
+	-rm -f ./$(DEPDIR)/transaction_dispatch.Po
 	-rm -f ./$(DEPDIR)/transaction_session.Po
+	-rm -f ./$(DEPDIR)/transaction_wire.Po
 	-rm -f ./$(DEPDIR)/undelete.Po
 	-rm -f ./$(DEPDIR)/undo_journal.Po
 	-rm -f ./$(DEPDIR)/upd_idx.Po
 	-rm -f ./$(DEPDIR)/verify_pid.Po
 	-rm -f ./$(DEPDIR)/version.Po
 	-rm -f ./$(DEPDIR)/xact.Po
+	-rm -f tests/$(DEPDIR)/blob_io_test.Po
 	-rm -f tests/$(DEPDIR)/flush_io_test.Po
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
 	-rm -f tests/$(DEPDIR)/legacy_transaction_test.Po
@@ -1621,13 +1654,16 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/storage_io.Po
 	-rm -f ./$(DEPDIR)/substr.Po
 	-rm -f ./$(DEPDIR)/term_dbserve.Po
+	-rm -f ./$(DEPDIR)/transaction_dispatch.Po
 	-rm -f ./$(DEPDIR)/transaction_session.Po
+	-rm -f ./$(DEPDIR)/transaction_wire.Po
 	-rm -f ./$(DEPDIR)/undelete.Po
 	-rm -f ./$(DEPDIR)/undo_journal.Po
 	-rm -f ./$(DEPDIR)/upd_idx.Po
 	-rm -f ./$(DEPDIR)/verify_pid.Po
 	-rm -f ./$(DEPDIR)/version.Po
 	-rm -f ./$(DEPDIR)/xact.Po
+	-rm -f tests/$(DEPDIR)/blob_io_test.Po
 	-rm -f tests/$(DEPDIR)/flush_io_test.Po
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
 	-rm -f tests/$(DEPDIR)/legacy_transaction_test.Po

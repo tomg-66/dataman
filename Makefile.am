@@ -82,6 +82,8 @@ TEST_DIST = \
 	tests/cpp/datafield_test.cc \
 	tests/java/BuildOneRecordIndex.java \
 	tests/java/OneRecordIntegrationTest.java \
+	tests/java/TransactionIntegrationTest.java \
+	tests/transaction_protocol_test.py \
 	tests/run_java_tests.sh \
 	tests/setup_test.sh
 

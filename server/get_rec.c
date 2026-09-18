@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	get_rec
+ * PROCEDURE:	get_rec.c
  *
  * PROJECT:		dataman server side
  * 

@@ -62,3 +62,5 @@ tests/java/index/one_rec_idx
 
 /server/legacy_transaction_test
 /server/record_mutation_test
+
+/server/blob_io_test

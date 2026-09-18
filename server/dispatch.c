@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	dispatch
+ * PROCEDURE:	dispatch.c
  *
  * PROJECT:		dataman server side
  * 
@@ -93,6 +93,7 @@ union semun {
 #include "errors.h"
 #include "session_root.h"
 #include "transaction_session.h"
+#include "transaction_wire.h"
 
 extern int dbgsw;				/* debugging on? */
 extern int shmsiz;				/* size of shared mem seg */
@@ -147,6 +148,7 @@ void *dispatch(void *dummy)
 	int len;				/* length of this message */
 	int i;
 	int offs;
+	size_t payload;
 
 	char msg[MAXSIZ];		/* message to operate on */
 	char *ptr;				/* parsing pointers */
@@ -183,6 +185,7 @@ void *dispatch(void *dummy)
 	while (1) {
 		shptr = NULL;
 		ptr = NULL;
+		payload = 0;
 		memset((void *)&msgbuf, '\0', sizeof(MSG));
 		if ((i = msgrcv(msgid, &msgbuf, MAXSIZ, MSG_SRV, 0)) < 0) {
 			switch(errno) {
@@ -212,9 +215,8 @@ void *dispatch(void *dummy)
 		pid = atoi(msgbuf.txt);
 		sptr = strchr(msgbuf.txt, '|') + 1;		/* point past pid */
 		cmd = atoi(sptr);
-		/* Transaction execution remains in the connection process. DISCON is
-		 * an internal session-close notification and never indexes dbfunc. */
-		if (cmd < 0 || cmd > DISCON) {
+		/* Negative transaction controls and DISCON never index dbfunc. */
+		if (cmd < ROLLBACK || cmd > DISCON) {
 			ret = EINVMSG;
 			goto err_jump;
 		}
@@ -264,6 +266,7 @@ void *dispatch(void *dummy)
 				goto err_jump;
 			}
 			offs = 0;
+			payload = (size_t)len;
 /*
  * get the semaphore id, then the shared memory segment.  len tells us
  * how much data we need to get out of the shared memory.  since the
@@ -330,11 +333,9 @@ void *dispatch(void *dummy)
 		/* Drain incoming payload before rejecting admission, so the connection
 		 * server cannot be left waiting to finish a shared-memory send.
 		 * Release admission before response IPC; the handler owns its result. */
-		ret = dm_tx_request_enter();
-		if (ret < 0)
-			goto err_jump;
-		ret = dbfunc[cmd](msgbuf.txt, i, &ptr);
-		dm_tx_request_leave();
+		shmid = shmget((key_t)pid, 0, 0);
+		ret = dm_tx_wire(shmid, cmd, msgbuf.txt, i, &ptr, payload,
+				cmd < 0 ? NULL : dbfunc[cmd]);
 
 		if (dbgsw) {
 			fprintf(stderr, "dbfunc[%d] returns %d - ", cmd, ret);

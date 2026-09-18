@@ -69,6 +69,7 @@
 #include <inttypes.h>
 
 #include "index_v2.h"
+#include "transaction_session.h"
 #include "srv_index.h"					/* index description */
 #include "lock.h"
 #include "errors.h"
@@ -215,6 +216,8 @@ int include(char *cmd, int c_off, char **ret)
 	INDEX_V2_CURSOR cursor = {0};
 	uint64_t rootpos;
 
+	if ((i = dm_tx_track_index(idx)) < 0)
+		goto done;
 	if (!index_v2_insert(idx->_idxchan, ikey, fileno, rptr, &cursor, &rootpos)) {
 		i = ENODWRT;
 		goto done;

@@ -1,4 +1,23 @@
-/* Connection root metadata; GPL-2.0-or-later. */
+/* ***************************************************************
+ *
+ * PROCEDURE:	session_root.h
+ *
+ * PROJECT:		dataman server side
+ * 
+ * DATE:		Thu Sep 17 08:36:31 PM MDT 2026
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ *
+ * MODIFICATION HISTORY:
+ *
+ ************************************************************* */
+
+/*
+ * Connection root metadata; GPL-2.0-or-later.
+ */
+
 #ifndef DATAMAN_SESSION_ROOT_H
 #define DATAMAN_SESSION_ROOT_H
 

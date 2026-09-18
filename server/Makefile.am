@@ -21,7 +21,7 @@ dataman_srv_SOURCES = dbserve.c back.c clear.c delete.c \
 	upd_idx.c verify_pid.c get_desc.c init_dataman.c \
 	release.c mkidx.c sort.c restore.c get_datafile_desc.c \
 	version.c get_blobs.c put_blobs.c get_ll.c put_ll.c get_rec.c \
-	blob_ctl.c undelete.c index_v2.c storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c
+	blob_ctl.c undelete.c index_v2.c storage_io.c session_root.c undo_journal.c journal_startup.c transaction_session.c transaction_dispatch.c transaction_wire.c
 
 dataman_srv_LDADD = -lpthread
 
@@ -48,9 +48,9 @@ dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 				 put_ll.c
 
 noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
-				 file_desc.h index_v2.h misc.h xact.h storage_io.h undo_journal.h session_root.h journal_startup.h transaction_session.h
+				 file_desc.h index_v2.h misc.h xact.h storage_io.h undo_journal.h session_root.h journal_startup.h transaction_session.h transaction_dispatch.h transaction_wire.h
 
-check_PROGRAMS = storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test transaction_session_test legacy_transaction_test record_mutation_test
+check_PROGRAMS = storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test transaction_session_test legacy_transaction_test record_mutation_test blob_io_test
 TESTS = $(check_PROGRAMS)
 storage_io_test_SOURCES = tests/storage_io_test.c
 flush_io_test_SOURCES = tests/flush_io_test.c flush.c
@@ -60,11 +60,12 @@ session_root_test_LDADD = -lpthread
 journal_startup_test_SOURCES = tests/journal_startup_test.c journal_startup.c storage_io.c
 journal_startup_test_LDADD = -lpthread
 verify_pid_test_SOURCES = tests/verify_pid_test.c verify_pid.c
-transaction_session_test_SOURCES = tests/transaction_session_test.c transaction_session.c undo_journal.c storage_io.c flush.c index_v2.c \
+transaction_session_test_SOURCES = tests/transaction_session_test.c transaction_session.c transaction_dispatch.c transaction_wire.c undo_journal.c storage_io.c flush.c index_v2.c put_blobs.c blob_ctl.c get_long.c remove.c \
 	insert.c delete.c undelete.c get_ll.c put_ll.c
 transaction_session_test_LDADD = -lpthread
 legacy_transaction_test_SOURCES = tests/legacy_transaction_test.c get_ll.c put_ll.c
 record_mutation_test_SOURCES = tests/record_mutation_test.c insert.c delete.c undelete.c storage_io.c get_ll.c put_ll.c
+blob_io_test_SOURCES = tests/blob_io_test.c storage_io.c get_long.c
 AM_CPPFLAGS = -I$(srcdir)
 
 include_HEADERS = datafile_header.h

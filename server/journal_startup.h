@@ -1,4 +1,20 @@
+/* ***************************************************************
+ *
+ * PROCEDURE:	journal_startup.h
+ *
+ * PROJECT:		dataman server side
+ * 
+ * DATE:		Thu Sep 17 08:35:43 PM MDT 2026
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ *
+ * MODIFICATION HISTORY:
+ *
+ ************************************************************* */
 /* Persistent journal ownership and startup recovery. GPL-2.0-or-later. */
+
 #ifndef DATAMAN_JOURNAL_STARTUP_H
 #define DATAMAN_JOURNAL_STARTUP_H
 

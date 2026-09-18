@@ -50,6 +50,13 @@ datarecord::datarecord(int t) {
 	_fields = NULL;
 }
 
+void datarecord::discard(void) {
+	delete[] _fields;
+	_fields = NULL;
+	fmt = 0;
+	_dirty = false;
+}
+
 void datarecord::init(void) {
 	if (_fields) {
 		delete[] _fields;

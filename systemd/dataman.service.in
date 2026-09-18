@@ -1,0 +1,20 @@
+[Unit]
+Description=Dataman database server
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=dataman
+Group=dataman
+Environment="PATH=@DATAMAN_BINDIR@:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment=DATAMAN_JOURNAL_DIR=/var/lib/dataman/journal
+ExecStart="@DATAMAN_BINDIR@/dataman" -f
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

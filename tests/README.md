@@ -164,3 +164,23 @@ fixture and require the development server; do not point them at production data
 The journal suite additionally restores a blob larger than the former 64 MiB
 journal cap and interrupts streamed replay. Blob snapshot memory is bounded by
 chunk size; the existing client transport still uses signed 32-bit lengths.
+
+## Host provisioning
+
+Run `python3 tests/system_setup_test.py` to check account creation, idempotent
+service registration, conflict detection, and staged/non-root install behavior.
+The test uses temporary files and mocked account commands; it does not modify
+host users, `/etc/services`, or `/var/lib/dataman`.
+
+`serial_prefix_test` exercises the production connection frame parser using pipes.
+It accepts both legacy `26` and delimited `26|` disconnects, index/work-file close
+commands, and transaction controls; malformed prefixes and mismatched FLUSH
+payload lengths remain rejected. It runs under CTest and `make check`.
+
+## Foreground supervisor
+
+Run `python3 tests/supervisor_foreground_test.py /path/to/built/dataman`. It uses
+a uniquely named supervisor and fake child processes, checking foreground PID
+ownership, duplicate-start rejection, and child shutdown without a database.
+The generated systemd unit can also be checked on a systemd host with
+`systemd-analyze verify /path/to/dataman.service` after installing its binaries.

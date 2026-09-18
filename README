@@ -61,19 +61,13 @@ in the place your configure command specified.  The default location is
 /usr/local.  There will be dataman commands installed in <default_dir>/bin,
 libraries in <default_dir>/lib, include files in
 <default_dir>/include/dataman, and the Java classlibs will be in
-<default_dir>/java/Dataman.  It might be advisable to add the following lines
-to your /etc/services files
-
-dataman	8758/tcp	# dataman database server
-dataman	8758/udp	# dataman database server
-
-Oh, and another thing... there should be either a dataman user or an alias
-for your mailer, because when the main executive catches an abnormal term
-of either of the servers it sends a notification to the 'dataman' mail
-account.
+<default_dir>/java/Dataman.  Direct root installs on Linux provision a non-login dataman service account,
+private /var/lib/dataman/journal storage, and dataman 8758/tcp in /etc/services.
+Staged and non-root installs skip these host changes; run the installed
+sbin/dataman-system-setup as root on the target host. See docs/server.md.
 
 To start the server execute the command (either from the command line, or an
-rc script)
+rc script), as the dataman service account
 
 dataman
 

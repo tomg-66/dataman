@@ -39,3 +39,19 @@ endif()
 
 install(FILES Cleanfile sample_rc_script
 	DESTINATION "${CMAKE_INSTALL_DOCDIR}/examples")
+
+install(PROGRAMS scripts/dataman-system-setup DESTINATION "${CMAKE_INSTALL_SBINDIR}")
+install(CODE "
+    execute_process(COMMAND sh \"${CMAKE_CURRENT_SOURCE_DIR}/scripts/dataman-system-setup\"
+        RESULT_VARIABLE setup_result)
+    if(NOT setup_result EQUAL 0)
+        message(FATAL_ERROR \"Dataman host provisioning failed\")
+    endif()
+")
+
+set(DATAMAN_SYSTEMD_UNIT_DIR "lib/systemd/system" CACHE STRING
+    "systemd unit installation directory (relative to prefix or absolute)")
+set(DATAMAN_BINDIR "${CMAKE_INSTALL_FULL_BINDIR}")
+configure_file(systemd/dataman.service.in dataman.service @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/dataman.service"
+    DESTINATION "${DATAMAN_SYSTEMD_UNIT_DIR}")

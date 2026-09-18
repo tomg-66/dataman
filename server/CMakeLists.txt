@@ -32,6 +32,12 @@ dataman_server_program(dataman_srv
 target_link_libraries(dataman_srv PRIVATE Threads::Threads)
 
 if(BUILD_TESTING)
+	add_executable(serial_prefix_test tests/serial_prefix_test.c)
+	target_include_directories(serial_prefix_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	target_compile_options(serial_prefix_test PRIVATE -ffunction-sections -fdata-sections)
+	target_link_options(serial_prefix_test PRIVATE -Wl,--gc-sections)
+	add_test(NAME serial-prefix COMMAND serial_prefix_test)
+
 	add_executable(storage_io_test tests/storage_io_test.c)
 	target_include_directories(storage_io_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 	add_test(NAME storage-io COMMAND storage_io_test)

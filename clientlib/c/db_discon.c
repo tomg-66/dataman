@@ -115,7 +115,7 @@ DATAMAN_HIDDEN void db_discon(void)
 				free(buff);
 		}
 	}
-	sprintf(msg, "%d", DISCON);
+	sprintf(msg, "%d|", DISCON);
 	buff = db_send(msg, strlen(msg), __FILE__);
 	if (dbgsw && buff)
 		fprintf(stderr, "discon response was ->%s<-\n", buff);

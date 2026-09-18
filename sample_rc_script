@@ -13,6 +13,12 @@
 . /etc/rc.d/init.d/functions
 PATH=$PATH:/usr/local/bin
 
+# Run the supervisor and its children as the journal-directory owner.
+DATAMAN_BIN=$(command -v dataman) || exit 1
+dataman() {
+    runuser -u dataman -- "$DATAMAN_BIN" "$@"
+}
+
 RETVAL=0
 
 case $1 in 

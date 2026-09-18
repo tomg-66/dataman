@@ -95,10 +95,10 @@ bin_PROGRAMS = dataman$(EXEEXT) dataman_con$(EXEEXT) \
 	dataman_srv$(EXEEXT) mkdf$(EXEEXT) dumpdf$(EXEEXT) \
 	dumpix$(EXEEXT) dnodes$(EXEEXT) dbclean$(EXEEXT) \
 	dfedit$(EXEEXT)
-check_PROGRAMS = storage_io_test$(EXEEXT) flush_io_test$(EXEEXT) \
-	undo_journal_test$(EXEEXT) session_root_test$(EXEEXT) \
-	journal_startup_test$(EXEEXT) verify_pid_test$(EXEEXT) \
-	transaction_session_test$(EXEEXT) \
+check_PROGRAMS = serial_prefix_test$(EXEEXT) storage_io_test$(EXEEXT) \
+	flush_io_test$(EXEEXT) undo_journal_test$(EXEEXT) \
+	session_root_test$(EXEEXT) journal_startup_test$(EXEEXT) \
+	verify_pid_test$(EXEEXT) transaction_session_test$(EXEEXT) \
 	legacy_transaction_test$(EXEEXT) record_mutation_test$(EXEEXT) \
 	blob_io_test$(EXEEXT)
 subdir = server
@@ -211,6 +211,14 @@ am_record_mutation_test_OBJECTS =  \
 	get_ll.$(OBJEXT) put_ll.$(OBJEXT)
 record_mutation_test_OBJECTS = $(am_record_mutation_test_OBJECTS)
 record_mutation_test_LDADD = $(LDADD)
+am_serial_prefix_test_OBJECTS =  \
+	tests/serial_prefix_test-serial_prefix_test.$(OBJEXT)
+serial_prefix_test_OBJECTS = $(am_serial_prefix_test_OBJECTS)
+serial_prefix_test_LDADD = $(LDADD)
+serial_prefix_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(serial_prefix_test_CFLAGS) $(CFLAGS) \
+	$(serial_prefix_test_LDFLAGS) $(LDFLAGS) -o $@
 am_session_root_test_OBJECTS = tests/session_root_test.$(OBJEXT)
 session_root_test_OBJECTS = $(am_session_root_test_OBJECTS)
 session_root_test_DEPENDENCIES =
@@ -292,6 +300,7 @@ am__depfiles_remade = ./$(DEPDIR)/back.Po ./$(DEPDIR)/blob_ctl.Po \
 	tests/$(DEPDIR)/journal_startup_test.Po \
 	tests/$(DEPDIR)/legacy_transaction_test.Po \
 	tests/$(DEPDIR)/record_mutation_test.Po \
+	tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po \
 	tests/$(DEPDIR)/session_root_test.Po \
 	tests/$(DEPDIR)/storage_io_test.Po \
 	tests/$(DEPDIR)/transaction_session_test.Po \
@@ -322,8 +331,9 @@ SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
 	$(journal_startup_test_SOURCES) \
 	$(legacy_transaction_test_SOURCES) $(mkdf_SOURCES) \
-	$(record_mutation_test_SOURCES) $(session_root_test_SOURCES) \
-	$(storage_io_test_SOURCES) $(transaction_session_test_SOURCES) \
+	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
+	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
+	$(transaction_session_test_SOURCES) \
 	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
 DIST_SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
@@ -331,8 +341,9 @@ DIST_SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
 	$(journal_startup_test_SOURCES) \
 	$(legacy_transaction_test_SOURCES) $(mkdf_SOURCES) \
-	$(record_mutation_test_SOURCES) $(session_root_test_SOURCES) \
-	$(storage_io_test_SOURCES) $(transaction_session_test_SOURCES) \
+	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
+	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
+	$(transaction_session_test_SOURCES) \
 	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -751,6 +762,9 @@ record_mutation_test_SOURCES = tests/record_mutation_test.c insert.c delete.c un
 blob_io_test_SOURCES = tests/blob_io_test.c storage_io.c get_long.c
 AM_CPPFLAGS = -I$(srcdir)
 include_HEADERS = datafile_header.h
+serial_prefix_test_SOURCES = tests/serial_prefix_test.c
+serial_prefix_test_CFLAGS = $(AM_CFLAGS) -ffunction-sections -fdata-sections
+serial_prefix_test_LDFLAGS = -Wl,--gc-sections
 all: all-am
 
 .SUFFIXES:
@@ -904,6 +918,12 @@ tests/record_mutation_test.$(OBJEXT): tests/$(am__dirstamp) \
 record_mutation_test$(EXEEXT): $(record_mutation_test_OBJECTS) $(record_mutation_test_DEPENDENCIES) $(EXTRA_record_mutation_test_DEPENDENCIES)
 	@rm -f record_mutation_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(record_mutation_test_OBJECTS) $(record_mutation_test_LDADD) $(LIBS)
+tests/serial_prefix_test-serial_prefix_test.$(OBJEXT):  \
+	tests/$(am__dirstamp) tests/$(DEPDIR)/$(am__dirstamp)
+
+serial_prefix_test$(EXEEXT): $(serial_prefix_test_OBJECTS) $(serial_prefix_test_DEPENDENCIES) $(EXTRA_serial_prefix_test_DEPENDENCIES)
+	@rm -f serial_prefix_test$(EXEEXT)
+	$(AM_V_CCLD)$(serial_prefix_test_LINK) $(serial_prefix_test_OBJECTS) $(serial_prefix_test_LDADD) $(LIBS)
 tests/session_root_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
@@ -1018,6 +1038,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/journal_startup_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/legacy_transaction_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/record_mutation_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/session_root_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/storage_io_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/transaction_session_test.Po@am__quote@ # am--include-marker
@@ -1053,6 +1074,20 @@ am--depfiles: $(am__depfiles_remade)
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+tests/serial_prefix_test-serial_prefix_test.o: tests/serial_prefix_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -MT tests/serial_prefix_test-serial_prefix_test.o -MD -MP -MF tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo -c -o tests/serial_prefix_test-serial_prefix_test.o `test -f 'tests/serial_prefix_test.c' || echo '$(srcdir)/'`tests/serial_prefix_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/serial_prefix_test.c' object='tests/serial_prefix_test-serial_prefix_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -c -o tests/serial_prefix_test-serial_prefix_test.o `test -f 'tests/serial_prefix_test.c' || echo '$(srcdir)/'`tests/serial_prefix_test.c
+
+tests/serial_prefix_test-serial_prefix_test.obj: tests/serial_prefix_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -MT tests/serial_prefix_test-serial_prefix_test.obj -MD -MP -MF tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo -c -o tests/serial_prefix_test-serial_prefix_test.obj `if test -f 'tests/serial_prefix_test.c'; then $(CYGPATH_W) 'tests/serial_prefix_test.c'; else $(CYGPATH_W) '$(srcdir)/tests/serial_prefix_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/serial_prefix_test.c' object='tests/serial_prefix_test-serial_prefix_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -c -o tests/serial_prefix_test-serial_prefix_test.obj `if test -f 'tests/serial_prefix_test.c'; then $(CYGPATH_W) 'tests/serial_prefix_test.c'; else $(CYGPATH_W) '$(srcdir)/tests/serial_prefix_test.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1299,6 +1334,13 @@ recheck: all $(check_PROGRAMS)
 	        am__force_recheck=am--force-recheck \
 	        TEST_LOGS="$$log_list"; \
 	exit $$?
+serial_prefix_test.log: serial_prefix_test$(EXEEXT)
+	@p='serial_prefix_test$(EXEEXT)'; \
+	b='serial_prefix_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 storage_io_test.log: storage_io_test$(EXEEXT)
 	@p='storage_io_test$(EXEEXT)'; \
 	b='storage_io_test'; \
@@ -1542,6 +1584,7 @@ distclean: distclean-am
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
 	-rm -f tests/$(DEPDIR)/legacy_transaction_test.Po
 	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
+	-rm -f tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
 	-rm -f tests/$(DEPDIR)/session_root_test.Po
 	-rm -f tests/$(DEPDIR)/storage_io_test.Po
 	-rm -f tests/$(DEPDIR)/transaction_session_test.Po
@@ -1668,6 +1711,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
 	-rm -f tests/$(DEPDIR)/legacy_transaction_test.Po
 	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
+	-rm -f tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
 	-rm -f tests/$(DEPDIR)/session_root_test.Po
 	-rm -f tests/$(DEPDIR)/storage_io_test.Po
 	-rm -f tests/$(DEPDIR)/transaction_session_test.Po

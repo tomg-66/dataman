@@ -50,7 +50,7 @@ dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
 				 file_desc.h index_v2.h misc.h xact.h storage_io.h undo_journal.h session_root.h journal_startup.h transaction_session.h transaction_dispatch.h transaction_wire.h
 
-check_PROGRAMS = storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test transaction_session_test legacy_transaction_test record_mutation_test blob_io_test
+check_PROGRAMS = serial_prefix_test storage_io_test flush_io_test undo_journal_test session_root_test journal_startup_test verify_pid_test transaction_session_test legacy_transaction_test record_mutation_test blob_io_test
 TESTS = $(check_PROGRAMS)
 storage_io_test_SOURCES = tests/storage_io_test.c
 flush_io_test_SOURCES = tests/flush_io_test.c flush.c
@@ -69,3 +69,7 @@ blob_io_test_SOURCES = tests/blob_io_test.c storage_io.c get_long.c
 AM_CPPFLAGS = -I$(srcdir)
 
 include_HEADERS = datafile_header.h
+
+serial_prefix_test_SOURCES = tests/serial_prefix_test.c
+serial_prefix_test_CFLAGS = $(AM_CFLAGS) -ffunction-sections -fdata-sections
+serial_prefix_test_LDFLAGS = -Wl,--gc-sections

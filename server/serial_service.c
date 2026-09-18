@@ -300,6 +300,13 @@ static int read_command_prefix(int fd, char *buf, int frame_len, int *cmd,
 	char ch;
 
 	while (fields < 6) {
+		/* Older C clients send bare DISCON with no separator or arguments.
+		 * Accept that exact legacy frame, retaining all other framing checks. */
+		if (len == frame_len && len == 2 && !memcmp(buf, "26", 2)) {
+			*cmd = DISCON;
+			*prefix_len = len;
+			return(0);
+		}
 		if (len >= MAXSIZ || len >= frame_len || !read_exact(fd, &ch, 1))
 			return(-1);
 		buf[len++] = ch;

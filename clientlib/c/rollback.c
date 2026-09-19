@@ -15,8 +15,8 @@
  ************************************************************* */
 /*
  * this routine rolls back a transaction.  it has to end a block
- * that began with a start_transaction.  it makes sure nothing
- * since the start_transaction call has been commited.
+ * that began with a db_start_xact.  it makes sure nothing
+ * since the db_start_xact call has been commited.
  */
 /*
  * This program is free software; you can redistribute it and/or
@@ -59,14 +59,13 @@ DATAMAN_HIDDEN extern int in_xact;
 
 DATAMAN_HIDDEN extern char *_progname;
 
-DATAMAN_API int rollback(void)
+DATAMAN_API int db_rollback(void)
 {
     int i;								/* temporary */
 
 	char cmd[128];
 	char *buff;
 	char *cptr;
-
 
 	i = sprintf(cmd, "%d|", ROLLBACK);
 /*

@@ -15,7 +15,7 @@
  ************************************************************* */
 /*
  * this routine commits a transaction.  it has to end a block
- * that began with a start_transaction.
+ * that began with a db_start_xact.
  */
 /*
  * This program is free software; you can redistribute it and/or

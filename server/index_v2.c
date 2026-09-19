@@ -1380,6 +1380,7 @@ static bool v2_find_entry(V2_INSERT_CONTEXT *context, uint64_t offset,
 	unsigned char *entries;
 	unsigned char *entry;
 	uint64_t *children;
+	uint64_t next_subtree = 0;
 
 	for (;;) {
 		if (!v2_load_node(context, offset, &leaf, &count, &entries, &children))
@@ -1394,6 +1395,11 @@ static bool v2_find_entry(V2_INSERT_CONTEXT *context, uint64_t offset,
 		}
 
 		if (!leaf) {
+			/* Keep the nearest right subtree in case the lower bound
+			 * falls between leaves. A zero-padded prefix can sort before
+			 * its matching separator and descend into the left child. */
+			if (!exact && position < count)
+				next_subtree = children[position + 1];
 			offset = children[position];
 			free(entries);
 			free(children);
@@ -1403,6 +1409,11 @@ static bool v2_find_entry(V2_INSERT_CONTEXT *context, uint64_t offset,
 
 		if (position == count) {
 			free(entries);
+			if (next_subtree != 0) {
+				offset = next_subtree;
+				next_subtree = 0;
+				continue;
+			}
 			return(false);
 		}
 		entry = entries + (size_t)position * context->entry_size;

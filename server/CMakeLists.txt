@@ -10,6 +10,10 @@ endfunction()
 dataman_server_program(dataman
 	dataman.c err_sys.c verify_pid.c version.c)
 if(BUILD_TESTING)
+	add_executable(index_find_test tests/index_find_test.c index_v2.c storage_io.c)
+	target_include_directories(index_find_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME index-find COMMAND index_find_test)
+
 	add_test(NAME server-version COMMAND dataman -v)
 	set_tests_properties(server-version PROPERTIES
 		PASS_REGULAR_EXPRESSION "version ${PROJECT_VERSION}")

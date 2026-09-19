@@ -44,6 +44,7 @@ server/rebuild
 server/term_dbserve
 
 # Standalone storage tests
+server/index_find_test
 server/storage_io_test
 server/flush_io_test
 server/undo_journal_test

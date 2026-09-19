@@ -11,6 +11,11 @@ ctest --test-dir /tmp/dataman-build -R '^(storage-io|flush-io|undo-journal|sessi
 ```
 
 They also run through Automake's `make check` after building the project.
+`index_find_test` (CTest: `index-find`) checks prefix and full-key searches
+across leaf and internal-subtree boundaries, including `#9999` finding
+`#99999`, duplicate keys, exact record searches, and absent keys. It creates
+temporary indexes using both normal insertion and the bulk-build API.
+
 `storage_io_test` exercises real temporary files with injected interrupted,
 short, zero-progress, and failed system calls. It checks EOF handling, range
 validation, and preservation of the descriptor position. `flush_io_test`

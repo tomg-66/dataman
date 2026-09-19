@@ -95,10 +95,11 @@ bin_PROGRAMS = dataman$(EXEEXT) dataman_con$(EXEEXT) \
 	dataman_srv$(EXEEXT) mkdf$(EXEEXT) dumpdf$(EXEEXT) \
 	dumpix$(EXEEXT) dnodes$(EXEEXT) dbclean$(EXEEXT) \
 	dfedit$(EXEEXT)
-check_PROGRAMS = serial_prefix_test$(EXEEXT) storage_io_test$(EXEEXT) \
-	flush_io_test$(EXEEXT) undo_journal_test$(EXEEXT) \
-	session_root_test$(EXEEXT) journal_startup_test$(EXEEXT) \
-	verify_pid_test$(EXEEXT) transaction_session_test$(EXEEXT) \
+check_PROGRAMS = index_find_test$(EXEEXT) serial_prefix_test$(EXEEXT) \
+	storage_io_test$(EXEEXT) flush_io_test$(EXEEXT) \
+	undo_journal_test$(EXEEXT) session_root_test$(EXEEXT) \
+	journal_startup_test$(EXEEXT) verify_pid_test$(EXEEXT) \
+	transaction_session_test$(EXEEXT) \
 	legacy_transaction_test$(EXEEXT) record_mutation_test$(EXEEXT) \
 	blob_io_test$(EXEEXT)
 subdir = server
@@ -190,6 +191,10 @@ am_flush_io_test_OBJECTS = tests/flush_io_test.$(OBJEXT) \
 	flush.$(OBJEXT)
 flush_io_test_OBJECTS = $(am_flush_io_test_OBJECTS)
 flush_io_test_LDADD = $(LDADD)
+am_index_find_test_OBJECTS = tests/index_find_test.$(OBJEXT) \
+	index_v2.$(OBJEXT) storage_io.$(OBJEXT)
+index_find_test_OBJECTS = $(am_index_find_test_OBJECTS)
+index_find_test_LDADD = $(LDADD)
 am_journal_startup_test_OBJECTS =  \
 	tests/journal_startup_test.$(OBJEXT) journal_startup.$(OBJEXT) \
 	storage_io.$(OBJEXT)
@@ -297,6 +302,7 @@ am__depfiles_remade = ./$(DEPDIR)/back.Po ./$(DEPDIR)/blob_ctl.Po \
 	./$(DEPDIR)/verify_pid.Po ./$(DEPDIR)/version.Po \
 	./$(DEPDIR)/xact.Po tests/$(DEPDIR)/blob_io_test.Po \
 	tests/$(DEPDIR)/flush_io_test.Po \
+	tests/$(DEPDIR)/index_find_test.Po \
 	tests/$(DEPDIR)/journal_startup_test.Po \
 	tests/$(DEPDIR)/legacy_transaction_test.Po \
 	tests/$(DEPDIR)/record_mutation_test.Po \
@@ -329,7 +335,7 @@ SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
 	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
 	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
-	$(journal_startup_test_SOURCES) \
+	$(index_find_test_SOURCES) $(journal_startup_test_SOURCES) \
 	$(legacy_transaction_test_SOURCES) $(mkdf_SOURCES) \
 	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
 	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
@@ -339,7 +345,7 @@ DIST_SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
 	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
 	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
-	$(journal_startup_test_SOURCES) \
+	$(index_find_test_SOURCES) $(journal_startup_test_SOURCES) \
 	$(legacy_transaction_test_SOURCES) $(mkdf_SOURCES) \
 	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
 	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
@@ -745,6 +751,7 @@ noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
 				 file_desc.h index_v2.h misc.h xact.h storage_io.h undo_journal.h session_root.h journal_startup.h transaction_session.h transaction_dispatch.h transaction_wire.h
 
 TESTS = $(check_PROGRAMS)
+index_find_test_SOURCES = tests/index_find_test.c index_v2.c storage_io.c
 storage_io_test_SOURCES = tests/storage_io_test.c
 flush_io_test_SOURCES = tests/flush_io_test.c flush.c
 undo_journal_test_SOURCES = tests/undo_journal_test.c storage_io.c
@@ -896,6 +903,12 @@ tests/flush_io_test.$(OBJEXT): tests/$(am__dirstamp) \
 flush_io_test$(EXEEXT): $(flush_io_test_OBJECTS) $(flush_io_test_DEPENDENCIES) $(EXTRA_flush_io_test_DEPENDENCIES)
 	@rm -f flush_io_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(flush_io_test_OBJECTS) $(flush_io_test_LDADD) $(LIBS)
+tests/index_find_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+index_find_test$(EXEEXT): $(index_find_test_OBJECTS) $(index_find_test_DEPENDENCIES) $(EXTRA_index_find_test_DEPENDENCIES)
+	@rm -f index_find_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(index_find_test_OBJECTS) $(index_find_test_LDADD) $(LIBS)
 tests/journal_startup_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
@@ -1035,6 +1048,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xact.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/blob_io_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/flush_io_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/index_find_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/journal_startup_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/legacy_transaction_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/record_mutation_test.Po@am__quote@ # am--include-marker
@@ -1334,6 +1348,13 @@ recheck: all $(check_PROGRAMS)
 	        am__force_recheck=am--force-recheck \
 	        TEST_LOGS="$$log_list"; \
 	exit $$?
+index_find_test.log: index_find_test$(EXEEXT)
+	@p='index_find_test$(EXEEXT)'; \
+	b='index_find_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 serial_prefix_test.log: serial_prefix_test$(EXEEXT)
 	@p='serial_prefix_test$(EXEEXT)'; \
 	b='serial_prefix_test'; \
@@ -1581,6 +1602,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/xact.Po
 	-rm -f tests/$(DEPDIR)/blob_io_test.Po
 	-rm -f tests/$(DEPDIR)/flush_io_test.Po
+	-rm -f tests/$(DEPDIR)/index_find_test.Po
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
 	-rm -f tests/$(DEPDIR)/legacy_transaction_test.Po
 	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
@@ -1708,6 +1730,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/xact.Po
 	-rm -f tests/$(DEPDIR)/blob_io_test.Po
 	-rm -f tests/$(DEPDIR)/flush_io_test.Po
+	-rm -f tests/$(DEPDIR)/index_find_test.Po
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
 	-rm -f tests/$(DEPDIR)/legacy_transaction_test.Po
 	-rm -f tests/$(DEPDIR)/record_mutation_test.Po

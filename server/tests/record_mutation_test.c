@@ -1,4 +1,5 @@
 /* Check on-disk links through production record mutations, without IPC. */
+#undef NDEBUG
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,7 +17,6 @@ INDEX *_indices;
 static int locked;
 extern int insert(char *, int, char **);
 extern int delete(char *, int, char **);
-extern int undelete(char *, int, char **);
 extern void put_ll(void *, int64_t);
 extern int64_t get_ll(void *);
 
@@ -91,20 +91,6 @@ int main(void)
 	assert(dm_storage_read_at(fd, ptr, sizeof(ptr), 18) == 0);
 	assert(get_ll(ptr) == added);
 
-	sprintf(cmd, "0|0|%lld|%d|", (long long)added, INCOMMIT);
-	assert(delete(cmd, 0, &data) == 0 && !locked && !data);
-	check_record(fd, added, 0201, 0, 64);
-	check_record(fd, 64, 1, 0, 0);
-	assert(dm_storage_read_at(fd, ptr, sizeof(ptr), 18) == 0);
-	assert(get_ll(ptr) == 64);
-
-	sprintf(cmd, "0|0|%lld|", (long long)added);
-	assert(undelete(cmd, 0, &data) > 0 && !locked && !data);
-	assert(strcmp(cmd, "0|") == 0);
-	check_record(fd, added, 1, 0, 64);
-	check_record(fd, 64, 1, added, 0);
-	assert(dm_storage_read_at(fd, ptr, sizeof(ptr), 18) == 0);
-	assert(get_ll(ptr) == added);
 	/* Insert into the middle to exercise both neighboring pointer writes. */
 	sprintf(cmd, "1|1|0|0|%lld|", (long long)added);
 	assert(insert(cmd, 0, &data) > 0 && !locked && !data);
@@ -112,21 +98,24 @@ int main(void)
 	check_record(fd, added, 1, 0, middle);
 	check_record(fd, middle, 1, added, 64);
 	check_record(fd, 64, 1, middle, 0);
-	sprintf(cmd, "0|0|%lld|%d|", (long long)middle, INCOMMIT);
-	assert(delete(cmd, 0, &data) == 0 && !locked && !data);
+	sprintf(cmd, "0|0|%lld|%d|", (long long)middle, NOXACT);
+	assert(delete(cmd, 0, &data) > 0 && !locked && data);
+	free(data); data = NULL;
+	check_record(fd, middle, 0201, added, 64);
 	check_record(fd, added, 1, 0, 64);
 	check_record(fd, 64, 1, added, 0);
-	sprintf(cmd, "0|0|%lld|", (long long)middle);
-	assert(undelete(cmd, 0, &data) > 0 && !locked && !data);
-	assert(strcmp(cmd, "0|") == 0);
-	check_record(fd, added, 1, 0, middle);
-	check_record(fd, middle, 1, added, 64);
-	check_record(fd, 64, 1, middle, 0);
-	/* Reject a deleted record with an invalid format before indexing its descriptor. */
-	unsigned char bad_format = 0202;
-	assert(dm_storage_write_at(fd, &bad_format, 1, 64) == 0);
-	strcpy(cmd, "0|0|64|");
-	assert(undelete(cmd, 0, &data) == EBADFMT && !locked && !data);
+	/* Delete the head; the first pointer must return to the original record. */
+	sprintf(cmd, "0|0|%lld|%d|", (long long)added, NOXACT);
+	assert(delete(cmd, 0, &data) > 0 && !locked && data);
+	free(data); data = NULL;
+	check_record(fd, added, 0201, 0, 64);
+	check_record(fd, 64, 1, 0, 0);
+	assert(dm_storage_read_at(fd, ptr, sizeof(ptr), 18) == 0);
+	assert(get_ll(ptr) == 64);
+	/* Repeated deletion must not damage the surviving record chain. */
+	sprintf(cmd, "0|0|%lld|%d|", (long long)added, NOXACT);
+	assert(delete(cmd, 0, &data) == ENOREC && !locked && !data);
+	check_record(fd, 64, 1, 0, 0);
 	assert(close(fd) == 0);
 	return(0);
 }

@@ -182,7 +182,7 @@ err:
 /*
  * set the socket sommunication option to turn off Nagle's algorythm.
  */
-int soc_setup(int sock, pid_t mypid)
+int sock_setup(int sock, pid_t mypid)
 {
 	int i;
 	char errbuf[32];

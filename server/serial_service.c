@@ -156,15 +156,11 @@ union semun {
 
 extern void put_long (void *, int32_t);
 
-extern void store_ix(char *, int);
 extern void do_iclose(char *, int);
 extern void store_prot(char *);
 extern void do_clear(char *, key_t);
-extern int soc_setup(int, pid_t);
-extern int rollback(context_t *);
-extern int commit(context_t *);
-extern void xact_del_list(void);
-extern int store_xact(context_t *, char **, int, MSG *, char **, int *, size_t *);
+extern void store_ix(char *cmd, int type);
+extern int sock_setup(int, pid_t);
 extern int msg_setup(int , pid_t);
 extern int sem_setup(int, pid_t);
 extern int shm_setup(int, pid_t, char **);
@@ -300,9 +296,8 @@ static int read_command_prefix(int fd, char *buf, int frame_len, int *cmd,
 	char ch;
 
 	while (fields < 6) {
-		/* Older C clients send bare DISCON with no separator or arguments.
-		 * Accept that exact legacy frame, retaining all other framing checks. */
-		if (len == frame_len && len == 2 && !memcmp(buf, "26", 2)) {
+		/* Accept a bare current-protocol DISCON without a separator. */
+		if (len == frame_len && len == 2 && buf[0] == '0' + DISCON / 10 && buf[1] == '0' + DISCON % 10) {
 			*cmd = DISCON;
 			*prefix_len = len;
 			return(0);
@@ -378,7 +373,7 @@ void serial_service(int sock)
 	context.shmid = -1;					/* shared memory id returned by shmget() */
 	context.shptr = NULL;
 
-	if (!soc_setup(sock, context.mypid))
+	if (!sock_setup(sock, context.mypid))
 		goto done;
 
 	sndbuf = malloc(MAXSIZ);

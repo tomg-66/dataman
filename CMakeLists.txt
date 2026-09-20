@@ -9,6 +9,8 @@ option(DATAMAN_BUILD_JAVA "Build the Java client library" OFF)
 option(DATAMAN_BUILD_DFEDIT_STATIC "Link dfedit statically" OFF)
 option(DATAMAN_ENABLE_INTEGRATION_TESTS
 	"Register tests that require a running Dataman server" OFF)
+option(DATAMAN_ENABLE_RECOVERY_TESTS
+	"Build isolated Linux servers for the crash/restart protocol test" OFF)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)

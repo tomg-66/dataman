@@ -30,7 +30,7 @@ Those operations manage handle lifetimes or perform maintenance and must run
 outside the transaction. Index construction retains its existing unavailable
 marker until publication; maintenance is not part of the transactional guarantee.
 
-Record insert/update/delete/undelete, index include/remove (including automatic
+Record insert/update/delete, index include/remove (including automatic
 stale-key removal), and blob replacement/create/truncate/rename/unlink participate
 in undo. Index root positions and generations, including cached aliases, are
 reloaded before admission reopens after commit or rollback. In-memory cooperative
@@ -171,3 +171,13 @@ index splits/root caches, blob namespace operations, large streamed snapshots,
 corrupt framing, partial writes, sync failures, and interrupted recovery. Live
 Java/protocol tests cover client transactions, read-your-writes, automatic key
 removal, competing sessions, and disconnect undo. See [Tests](../tests/README.md).
+
+### Protocol compatibility after legacy-handler removal
+
+Removing `GET_REC` and `UNDELETE` renumbered commands from `DELETE` onward
+by two (`DELETE` is now 14, `FLUSH` 23, and `DISCON` 24). This is incompatible
+with the 4.1.0 wire protocol. Deploy rebuilt servers and C/C++ client libraries
+together with the updated Java client; rebuild/relink statically linked clients
+and update PHP deployments using the C library. Existing client binaries using
+the old command numbers must not connect to the new server. The connection
+handshake does not negotiate a protocol version or reject this mismatch.

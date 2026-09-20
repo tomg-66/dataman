@@ -53,7 +53,7 @@ int mkidx(char *cmd, int offset, char **data) { (void)cmd; (void)offset; (void)d
 static void register_session(int id)
 {
 	char cmd[256], *data = NULL;
-	int offset = snprintf(cmd, sizeof(cmd), "%d|24|", id + 100);
+	int offset = snprintf(cmd, sizeof(cmd), "%d|%d|", id + 100, DEF_ROOT);
 	CHECK(snprintf(cmd + offset, sizeof(cmd) - offset, "%s|", root) < (int)sizeof(cmd) - offset);
 	CHECK(def_root(cmd, offset, &data) == 4 && !data);
 }
@@ -84,7 +84,6 @@ extern int put_blobs(FILES *, int, int64_t, char *);
 extern int flush(char *, int, char **);
 extern int insert(char *, int, char **);
 extern int delete(char *, int, char **);
-extern int undelete(char *, int, char **);
 extern int rm_key(int, int, char *);
 extern void put_ll(void *, int64_t);
 
@@ -223,10 +222,9 @@ static void routed_cases(int dir)
 	routed_flush(4);
 	char command[128] = "1|0|0|0|32|", *data = NULL;
 	CHECK(insert(command, 0, &data) > 0 && !data && !locked);
-	snprintf(command, sizeof(command), "0|0|%zu|%d|", sizeof(initial), INCOMMIT);
-	CHECK(delete(command, 0, &data) == 0 && !data && !locked);
-	snprintf(command, sizeof(command), "0|0|%zu|", sizeof(initial));
-	CHECK(undelete(command, 0, &data) > 0 && !strcmp(command, "0|") && !data && !locked);
+	snprintf(command, sizeof(command), "0|0|%zu|%d|", sizeof(initial), NOXACT);
+	CHECK(delete(command, 0, &data) > 0 && data && !locked);
+	free(data); data = NULL;
 	INDEX_V2_CURSOR cursor; uint64_t root_offset;
 	for (int i = 0; i < 16; i++) {
 		char key[5]; snprintf(key, sizeof(key), "%04d", i);

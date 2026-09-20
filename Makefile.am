@@ -74,6 +74,8 @@ DOCUMENTATION_DIST = \
 	old_docs/utilities.html
 
 TEST_DIST = \
+	tests/protocol_commands.py \
+	tests/protocol_mapping_test.py \
 	tests/README.md \
 	tests/system_setup_test.py \
 	tests/supervisor_foreground_test.py \
@@ -86,6 +88,7 @@ TEST_DIST = \
 	tests/java/OneRecordIntegrationTest.java \
 	tests/java/TransactionIntegrationTest.java \
 	tests/transaction_protocol_test.py \
+	tests/transaction_recovery_test.py \
 	tests/run_java_tests.sh \
 	tests/setup_test.sh
 

@@ -40,8 +40,6 @@ class DatamanFunc{
 		"RELEASE",
 		"MKIDX",
 		"RESTORE",
-		"GET_REC",
-		"UNDELETE",
 		"DELETE",
 		"INSERT",
 		"INCLUDE",
@@ -71,19 +69,17 @@ class DatamanFunc{
 	protected static final int RELEASE = 11;
 	protected static final int MKIDX = 12;
 	protected static final int RESTORE = 13;
-	protected static final int GET_REC = 14;
-	protected static final int UNDELETE = 15;
-	protected static final int DELETE = 16;
-	protected static final int INSERT = 17;
-	protected static final int INCLUDE = 18;
-	protected static final int REMOVE = 19;
-	protected static final int CLEAR = 20;
-	protected static final int IOPEN = 21;
-	protected static final int ICLOSE = 22;
-	protected static final int SORT = 23;
-	protected static final int DEF_ROOT = 24;
-	protected static final int FLUSH = 25;
-	protected static final int DISCON = 26;
+	protected static final int DELETE = 14;
+	protected static final int INSERT = 15;
+	protected static final int INCLUDE = 16;
+	protected static final int REMOVE = 17;
+	protected static final int CLEAR = 18;
+	protected static final int IOPEN = 19;
+	protected static final int ICLOSE = 20;
+	protected static final int SORT = 21;
+	protected static final int DEF_ROOT = 22;
+	protected static final int FLUSH = 23;
+	protected static final int DISCON = 24;
 
     protected String toString(int value) {
          return (funcStrings[value+3]);

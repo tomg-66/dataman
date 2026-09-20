@@ -2,6 +2,13 @@
 
 ## Standalone storage tests
 
+The Python protocol tests share named commands from `protocol_commands.py`.
+Run `python3 tests/protocol_mapping_test.py` to check those constants, the shared
+C/C++ server header, and Java constants and labels against an independent,
+explicit wire-number mapping. CMake registers this as `protocol-mapping` when
+Python is available. The C framing tests retain literal wire messages to check
+the actual framing contract.
+
 The server storage tests run without a database service or fixtures:
 
 ```sh
@@ -59,6 +66,38 @@ These are internal lifecycle tests, not end-to-end client transactions.
 
 ## Integration tests
 
+### Isolated multi-file crash recovery (Linux)
+
+This test starts and stops its own test servers; no installed server or existing
+database is used. It requires Python 3, System V IPC, and permission to open a
+loopback TCP socket. Build and run it with:
+
+```sh
+cmake -S . -B /tmp/dataman-recovery-build -DBUILD_TESTING=ON -DDATAMAN_ENABLE_RECOVERY_TESTS=ON
+cmake --build /tmp/dataman-recovery-build --target recovery_srv recovery_con mkdf -j4
+ctest --test-dir /tmp/dataman-recovery-build -R '^transaction-recovery$' --output-on-failure
+```
+
+`transaction_recovery_test.py` creates two disposable datafiles and two indexes
+with enough entries for multiple leaves. In one transaction it updates records,
+changes keys, inserts records/keys, and deletes records/keys in both files.
+It kills the storage server before disconnecting the client, confirms that the
+changed files and hidden `.dataman-undo` journal remain, and restarts the servers.
+Recovery must restore every datafile and index byte-for-byte and retire the
+journal. Lookups and forward/reverse index traversal must match the baseline.
+The test also verifies explicit rollback with open indexes and checks that a
+successful commit survives a forced stop and restart.
+
+The test binaries use the production server sources with linker wrappers only
+for resource isolation: a separately reserved message queue, unique PID files,
+an ephemeral loopback port, and disabled signaling of the installed server.
+Journaling, protocol handling, mutation handlers, and startup recovery are real.
+The test removes its own processes, IPC resources, and temporary files afterward.
+These test binaries are not installed. This is a process-crash test, not a
+simulation of hardware power loss, and does not yet include blob mutations.
+
+### Existing-server client tests
+
 The PHP and Java integration tests share the data-file definitions in
 `fixtures/`. Each language gets a separate database root so destructive tests
 do not interfere with another binding.
@@ -105,12 +144,8 @@ isolated. Test 013 rebuilds the fixtures and constructs the separate
 `blob_rec_idx`; tests 014 and 015 then exercise master-record fields, metadata,
 blob replacement, field boundaries, and repeated index open/close cycles.
 
-`legacy_transaction_test` checks connection-side transaction cleanup across
-repeated transactions, commit reply handling, and propagation of server errors
-during rollback. Transport is stubbed; no running database or IPC is required.
-
-`record_mutation_test` uses a temporary data file and production insert, delete,
-and undelete handlers to check record flags, both neighboring links, and the
+`record_mutation_test` uses a temporary data file and production insert and delete
+handlers to check record flags, both neighboring links, and the
 first-record pointer at the beginning and middle of a record chain. It needs no
 running server. This checks direct-write behavior, not transaction atomicity.
 
@@ -120,7 +155,7 @@ of descriptor-bound writes. Transaction-session tests check ownership and
 abort-only behavior through the descriptor-aware API.
 
 Transaction-session integration coverage now runs the production flush, insert,
-delete, undelete, and v2 index insert/remove paths through the mutation router.
+delete, and v2 index insert/remove paths through the mutation router.
 It checks byte-for-byte rollback and original file lengths after record and
 index growth, committed record contents, recovery after process exit, rejection
 of writes from an unscoped worker, missing descriptor bindings, and stale scopes.

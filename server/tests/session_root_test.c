@@ -67,7 +67,7 @@ static int request(const char *payload, int work)
 {
 	char cmd[1024];
 	char *data = NULL;
-	int offset = snprintf(cmd, sizeof(cmd), "123|%d|", work == 2 ? 12 : work ? 10 : 24);
+	int offset = snprintf(cmd, sizeof(cmd), "123|%d|", work == 2 ? 12 : work ? 10 : 22);
 	CHECK(snprintf(cmd + offset, sizeof(cmd) - offset, "%s", payload) < (int)sizeof(cmd) - offset);
 	int result = work == 2 ? mkidx_session(cmd, offset, &data) :
 		work ? init_session(cmd, offset, &data) : def_root(cmd, offset, &data);

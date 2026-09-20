@@ -196,7 +196,7 @@ static int execute(void *context)
 		return EINVMSG;
 
 	if (id < 0 && r->command != FLUSH && r->command != PROTECT &&
-			r->command != CLEAR && r->command != GET_REC && r->command != GET_DESC &&
+			r->command != CLEAR && r->command != GET_DESC &&
 			r->command != FORWARD && r->command != BACK && r->command != RELEASE)
 		return EINVMSG;
 

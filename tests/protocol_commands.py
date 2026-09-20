@@ -32,3 +32,7 @@ SORT = 21
 DEF_ROOT = 22
 FLUSH = 23
 DISCON = 24
+
+# Versioned connection greeting; independent of the software release number.
+PROTOCOL_VERSION = 1
+PROTOCOL_HELLO = b"DMAN0001\n"

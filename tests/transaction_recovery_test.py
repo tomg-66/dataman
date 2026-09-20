@@ -19,8 +19,9 @@ import tempfile
 import time
 
 from protocol_commands import (
-    COMMIT, DELETE, FLUSH, GET, GET_FIRST, GET_LAST, GET_NEXT, GET_PRIOR,
+    COMMIT, DELETE, DEF_ROOT, DISCON, FLUSH, GET, GET_FIRST, GET_LAST, GET_NEXT, GET_PRIOR,
     ICLOSE, INCLUDE, INSERT, IOPEN, MKIDX, REMOVE, ROLLBACK, SORT, START_XACT,
+    PROTOCOL_HELLO,
 )
 
 from transaction_protocol_test import Client
@@ -233,8 +234,43 @@ def fixtures(servers, mkdf):
     return client, expected
 
 
+def verify_handshakes(servers):
+    def read(sock, count):
+        data = b""
+        while len(data) < count:
+            chunk = sock.recv(count - len(data))
+            check(bool(chunk), "unexpected EOF during handshake")
+            data += chunk
+        return data
+
+    before = snapshot(servers.root)
+    for greeting in (b"9-30-1966", b"DMAN0002\n", b"DMANxxxx\n", b"DMAN"):
+        with socket.create_connection(("127.0.0.1", servers.port), timeout=10) as sock:
+            sock.sendall(greeting)
+            if len(greeting) < 9:
+                sock.shutdown(socket.SHUT_WR)
+            check(read(sock, 4) == b"-39\n", "incompatible greeting accepted")
+            check(sock.recv(1) == b"", "rejected connection remained open")
+    with socket.create_connection(("127.0.0.1", servers.port), timeout=10) as sock:
+        # Fragment the greeting, then coalesce its last byte with INIT.
+        for byte in PROTOCOL_HELLO[:-1]:
+            sock.sendall(bytes([byte]))
+            time.sleep(.002)
+        command = f"{DEF_ROOT}|{servers.root}|".encode()
+        sock.sendall(PROTOCOL_HELLO[-1:] + struct.pack("!i", len(command)) + command)
+        check(read(sock, len(PROTOCOL_HELLO)) == PROTOCOL_HELLO, "matching version rejected")
+        check(read(sock, struct.unpack("!i", read(sock, 4))[0]) == b"1|", "pipelined INIT lost")
+        command = f"{DISCON}|".encode()
+        sock.sendall(struct.pack("!i", len(command)) + command)
+        check(read(sock, struct.unpack("!i", read(sock, 4))[0]) == b"ok", "disconnect failed")
+    check(snapshot(servers.root) == before, "handshake tests changed database files")
+    check(not (servers.journal / ".dataman-undo").exists(), "handshake left a journal")
+    print("versioned/legacy/fragmented protocol handshakes: PASS", flush=True)
+
+
 def run(servers, mkdf):
     client, original = fixtures(servers, mkdf)
+    verify_handshakes(servers)
     indexes = open_indexes(client, servers.root)
     verify(client, indexes, original)
     before = snapshot(servers.root)

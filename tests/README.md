@@ -9,6 +9,24 @@ explicit wire-number mapping. CMake registers this as `protocol-mapping` when
 Python is available. The C framing tests retain literal wire messages to check
 the actual framing contract.
 
+`protocol_handshake_test` checks the native client/server greeting over real
+socket pairs: matching and mismatched versions, legacy greetings/replies,
+fragmented I/O, truncated greetings, and read deadlines. It also checks that
+bytes following a greeting are preserved. The isolated recovery test checks
+these greetings against the running connection server, including a coalesced
+greeting and initialization command. Socket tests need an environment that
+allows socket I/O.
+
+The Java client handshake has a separate loopback test:
+
+```sh
+javac -d /tmp/dataman-java-handshake clientlib/java/*.java tests/java/ProtocolHandshakeTest.java
+java -cp /tmp/dataman-java-handshake Dataman.ProtocolHandshakeTest
+```
+
+It checks fragmented success replies, version mismatch, an unversioned `ok`
+reply, rejection, and EOF. `run_java_tests.sh` also runs it.
+
 The server storage tests run without a database service or fixtures:
 
 ```sh

@@ -44,6 +44,7 @@ server/rebuild
 server/term_dbserve
 
 # Standalone storage tests
+server/protocol_handshake_test
 server/index_find_test
 server/storage_io_test
 server/flush_io_test

@@ -87,6 +87,7 @@ TEST_DIST = \
 	tests/java/BuildOneRecordIndex.java \
 	tests/java/OneRecordIntegrationTest.java \
 	tests/java/TransactionIntegrationTest.java \
+	tests/java/ProtocolHandshakeTest.java \
 	tests/transaction_protocol_test.py \
 	tests/transaction_recovery_test.py \
 	tests/run_java_tests.sh \

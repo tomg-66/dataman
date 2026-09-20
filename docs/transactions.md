@@ -179,5 +179,13 @@ by two (`DELETE` is now 14, `FLUSH` 23, and `DISCON` 24). This is incompatible
 with the 4.1.0 wire protocol. Deploy rebuilt servers and C/C++ client libraries
 together with the updated Java client; rebuild/relink statically linked clients
 and update PHP deployments using the C library. Existing client binaries using
-the old command numbers must not connect to the new server. The connection
-handshake does not negotiate a protocol version or reject this mismatch.
+the old command numbers are rejected by the new server during connection.
+
+Wire protocol version 1 uses the nine-byte ASCII greeting `DMAN0001\n`
+(the last byte is a newline). The client sends it first; the server echoes it
+only after validating the version and creating session IPC. Both sides require
+an exact match before database commands. Unversioned greetings and other
+versions are rejected; there is no fallback to the old command numbering.
+The handshake has a five-second deadline and handles fragmented TCP reads.
+Protocol versions are independent of release numbers and must change whenever
+the wire contract becomes incompatible. This greeting is not authentication.

@@ -148,6 +148,7 @@ union semun {
 
 #include "msg.h"
 #include "dbfunc.h"
+#include "protocol.h"
 #include "errors.h"
 #include "misc.h"
 
@@ -356,7 +357,6 @@ void serial_service(int sock)
 
 	fd_set readfds;				/* readable fds for select */
 
-	struct timeval tv;
 	struct sembuf sop;			/* semaphore operation */
 	union semun sarg;
 
@@ -389,33 +389,14 @@ void serial_service(int sock)
 		perror("");
 		goto done;
 	}
-/*
- * here we want to let the remote client identify itself.  if it doesn't
- * within a second or know what we are expecting, then boot it!
- * 		(christy's birthday)
- */
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	FD_ZERO(&readfds);
-	FD_SET(sock, &readfds);
-	if (select(sock+1, &readfds, NULL, NULL, &tv))
-		if (read(sock,rcvbuf,9) == 9)
-			if (!memcmp(rcvbuf,"9-30-1966", 9))
-/*
- * FIONREAD requires 'int *' as arg.  I don't think we'll be compiling
- * on 16 bit systems, but by definition an 'int' can be 16, 32, or 64 bits.
- */
-				if (ioctl(sock, FIONREAD, &i) > -1)
-					goto ok_conn;
-
-	fprintf(stderr, "Attempt to connect from non dataman!\n");
-	close(sock);
-	return;
-
-ok_conn:
-	while(i--)
-		if (read(sock, rcvbuf, 1) < 1)	/* if there is an error, the socket is empty */
-			break;
+	/* Reject incompatible peers before allocating session IPC or dispatching. */
+	if (!dm_protocol_accept(sock)) {
+		fprintf(stderr, "pid %d: incompatible or incomplete protocol greeting\n", context.mypid);
+		free(sndbuf);
+		free(rcvbuf);
+		close(sock);
+		return;
+	}
 
 	if ((context.msgid = msg_setup(sock, context.mypid)) < 0)
 		goto done;
@@ -426,7 +407,7 @@ ok_conn:
 /*
  * finally, everything is set up, notify the remote client
  */
-	if (!write_all(sock, "ok", 2)) {	/* let client know we are ok */
+	if (!write_all(sock, DM_PROTOCOL_HELLO, DM_PROTOCOL_SIZE)) {	/* let client know we are ok */
 		fprintf(stderr, "pid %d: failed notification: ", context.mypid);
 		perror("");
 		goto done;

@@ -24,7 +24,7 @@ EXPECTED = {
 class ProtocolMappingTest(unittest.TestCase):
     def test_python_commands(self):
         actual = {name: value for name, value in vars(protocol_commands).items()
-                  if name.isupper()}
+                  if name.isupper() and not name.startswith("PROTOCOL_")}
         self.assertEqual(actual, EXPECTED)
 
     def test_server_and_native_clients(self):
@@ -33,6 +33,16 @@ class ProtocolMappingTest(unittest.TestCase):
         actual = {name: int(value) for name, value in
                   re.findall(r"^#define\s+(\w+)\s+(-?\d+)\b", header, re.M)}
         self.assertEqual(actual, EXPECTED)
+
+    def test_handshake_version(self):
+        self.assertEqual(protocol_commands.PROTOCOL_VERSION, 1)
+        self.assertEqual(protocol_commands.PROTOCOL_HELLO, b"DMAN0001\n")
+        header = (ROOT / "server/protocol.h").read_text()
+        java = (ROOT / "clientlib/java/DatamanComms.java").read_text()
+        self.assertRegex(header, r"#define DM_PROTOCOL_VERSION 1\b")
+        self.assertIn('#define DM_PROTOCOL_HELLO "DMAN0001\\n"', header)
+        self.assertIn('PROTOCOL_VERSION = 1;', java)
+        self.assertIn('PROTOCOL_HELLO = "DMAN0001\\n";', java)
 
     def test_java_commands(self):
         source = (ROOT / "clientlib/java/DatamanFunc.java").read_text()

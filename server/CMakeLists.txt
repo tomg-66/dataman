@@ -59,6 +59,9 @@ endif()
 
 if(BUILD_TESTING)
 	add_executable(serial_prefix_test tests/serial_prefix_test.c)
+	add_executable(protocol_handshake_test tests/protocol_handshake_test.c)
+	target_include_directories(protocol_handshake_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	add_test(NAME protocol-handshake COMMAND protocol_handshake_test)
 	find_package(Python3 QUIET COMPONENTS Interpreter)
 	if(Python3_Interpreter_FOUND)
 		add_test(NAME protocol-mapping COMMAND "${Python3_EXECUTABLE}"

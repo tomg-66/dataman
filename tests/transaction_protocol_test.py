@@ -11,15 +11,17 @@ import sys
 import time
 
 from protocol_commands import (
-    DEF_ROOT, FLUSH, GET_FIRST, IOPEN, ROLLBACK, START_XACT,
+    DEF_ROOT, FLUSH, GET_FIRST, IOPEN, ROLLBACK, START_XACT, PROTOCOL_HELLO,
 )
 
 
 class Client:
     def __init__(self, host, port, root):
         self.socket = socket.create_connection((host, port), timeout=10)
-        self.socket.sendall(b"9-30-1966")
-        assert self.read(2) == b"ok"
+        self.socket.sendall(PROTOCOL_HELLO)
+        if self.read(len(PROTOCOL_HELLO)) != PROTOCOL_HELLO:
+            self.close()
+            raise RuntimeError("incompatible Dataman protocol")
         assert self.command(f"{DEF_ROOT}|{root}|") == b"1|"
 
     def read(self, size):

@@ -48,6 +48,7 @@
  * The GNU General Public License is contained in the file COPYING.
  */
 
+#include "../../server/protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -149,8 +150,7 @@ db_comm::~db_comm(void)
 }
 
 /*
- * connect to the database server.  the only returns if the socket 
- * call succeeds is either a small negative number or the string "ok"
+ * Connect and validate the wire version. Return a socket or a negative error.
  */
 int db_comm::db_connect(const char *host)
 {
@@ -158,15 +158,10 @@ int db_comm::db_connect(const char *host)
 	int i;
 	int sock;
 
-	char resp[8];
-
-	fd_set rfds;
-
 	struct in_addr iadd;
 	struct hostent *haddr;
 	struct sockaddr_in addr;
 
-	memset(resp, '\0', sizeof(resp));
 	bzero((char *)&addr, sizeof(addr));
 /*
  * did we receive an address or host name
@@ -199,52 +194,14 @@ int db_comm::db_connect(const char *host)
 		return(ENOCONN);
 	}
 //
-// we have made a connection.  send them a magic string so that the
-// server knows that we are to be trusted.  (christy's birthday)
+// Check wire compatibility before sending any database commands.
 //
-	if (write(sock, "9-30-1966", 9) != 9) {
+	i = dm_protocol_connect(sock);
+	if (i < 0) {
 		close(sock);
-		return(ENORESP);
+		return i;
 	}
-/*
- * wait for a response
- */
-	while (1) {
-		FD_ZERO(&rfds);
-		FD_SET(sock, &rfds);
-		if (select(sock+1, &rfds, NULL, NULL, NULL) < 0) {
-			if (errno == EINTR) {
-				if (dbgsw) {
-					fprintf(stderr, "after select, interrupted\n");
-					fflush(stderr);
-				}
-				continue;			/* interrupted - reaped child? */
-			} else {
-				db_err(0, "%s, Can't accept new connection: ", _progname);
-				close(sock);
-				return ENORESP;
-			}
-		}
-		break;
-	}
-	if (ioctl(sock, FIONREAD, &i) < 0 || i == 0 || i > 7) {
-		db_err(0, "%s: ioctl failed, socket gone", _progname);
-		close(sock);			// make sure it's really gone
-		return ENORESP;
-	}
-
-	if (read(sock, resp, i) != i) {
-		close(sock);
-		return(ENORESP);
-	}
-/*
- * return the response
- */
-	if (strcmp(resp, "ok")) {
-		close(sock);
-		return atoi(resp);
-	}
-	return(sock);
+	return sock;
 }
 
 /*

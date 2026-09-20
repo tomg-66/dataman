@@ -100,7 +100,8 @@ check_PROGRAMS = index_find_test$(EXEEXT) serial_prefix_test$(EXEEXT) \
 	undo_journal_test$(EXEEXT) session_root_test$(EXEEXT) \
 	journal_startup_test$(EXEEXT) verify_pid_test$(EXEEXT) \
 	transaction_session_test$(EXEEXT) \
-	record_mutation_test$(EXEEXT) blob_io_test$(EXEEXT)
+	record_mutation_test$(EXEEXT) blob_io_test$(EXEEXT) \
+	protocol_handshake_test$(EXEEXT)
 subdir = server
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -201,6 +202,11 @@ am_mkdf_OBJECTS = mkdf.$(OBJEXT) substr.$(OBJEXT) put_short.$(OBJEXT) \
 	put_long.$(OBJEXT) put_ll.$(OBJEXT) get_ll.$(OBJEXT)
 mkdf_OBJECTS = $(am_mkdf_OBJECTS)
 mkdf_LDADD = $(LDADD)
+am_protocol_handshake_test_OBJECTS =  \
+	tests/protocol_handshake_test.$(OBJEXT)
+protocol_handshake_test_OBJECTS =  \
+	$(am_protocol_handshake_test_OBJECTS)
+protocol_handshake_test_LDADD = $(LDADD)
 am_record_mutation_test_OBJECTS =  \
 	tests/record_mutation_test.$(OBJEXT) insert.$(OBJEXT) \
 	delete.$(OBJEXT) storage_io.$(OBJEXT) get_ll.$(OBJEXT) \
@@ -292,6 +298,7 @@ am__depfiles_remade = ./$(DEPDIR)/back.Po ./$(DEPDIR)/blob_ctl.Po \
 	tests/$(DEPDIR)/flush_io_test.Po \
 	tests/$(DEPDIR)/index_find_test.Po \
 	tests/$(DEPDIR)/journal_startup_test.Po \
+	tests/$(DEPDIR)/protocol_handshake_test.Po \
 	tests/$(DEPDIR)/record_mutation_test.Po \
 	tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po \
 	tests/$(DEPDIR)/session_root_test.Po \
@@ -323,18 +330,20 @@ SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
 	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
 	$(index_find_test_SOURCES) $(journal_startup_test_SOURCES) \
-	$(mkdf_SOURCES) $(record_mutation_test_SOURCES) \
-	$(serial_prefix_test_SOURCES) $(session_root_test_SOURCES) \
-	$(storage_io_test_SOURCES) $(transaction_session_test_SOURCES) \
+	$(mkdf_SOURCES) $(protocol_handshake_test_SOURCES) \
+	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
+	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
+	$(transaction_session_test_SOURCES) \
 	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
 DIST_SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
 	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
 	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
 	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
 	$(index_find_test_SOURCES) $(journal_startup_test_SOURCES) \
-	$(mkdf_SOURCES) $(record_mutation_test_SOURCES) \
-	$(serial_prefix_test_SOURCES) $(session_root_test_SOURCES) \
-	$(storage_io_test_SOURCES) $(transaction_session_test_SOURCES) \
+	$(mkdf_SOURCES) $(protocol_handshake_test_SOURCES) \
+	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
+	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
+	$(transaction_session_test_SOURCES) \
 	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -734,11 +743,12 @@ dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 		put_long.c get_datafile_desc.c lock.c get_ll.c \
 		put_ll.c
 
-noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h file_desc.h index_v2.h misc.h \
+noinst_HEADERS = dbfunc.h errors.h protocol.h lock.h msg.h srv_index.h file_desc.h index_v2.h misc.h \
 		 storage_io.h undo_journal.h session_root.h journal_startup.h \
 		 transaction_session.h transaction_dispatch.h transaction_wire.h
 
 TESTS = $(check_PROGRAMS)
+protocol_handshake_test_SOURCES = tests/protocol_handshake_test.c
 index_find_test_SOURCES = tests/index_find_test.c index_v2.c storage_io.c
 storage_io_test_SOURCES = tests/storage_io_test.c
 flush_io_test_SOURCES = tests/flush_io_test.c flush.c
@@ -909,6 +919,12 @@ journal_startup_test$(EXEEXT): $(journal_startup_test_OBJECTS) $(journal_startup
 mkdf$(EXEEXT): $(mkdf_OBJECTS) $(mkdf_DEPENDENCIES) $(EXTRA_mkdf_DEPENDENCIES) 
 	@rm -f mkdf$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(mkdf_OBJECTS) $(mkdf_LDADD) $(LIBS)
+tests/protocol_handshake_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+protocol_handshake_test$(EXEEXT): $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_DEPENDENCIES) $(EXTRA_protocol_handshake_test_DEPENDENCIES)
+	@rm -f protocol_handshake_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_LDADD) $(LIBS)
 tests/record_mutation_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
@@ -1029,6 +1045,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/flush_io_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/index_find_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/journal_startup_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/protocol_handshake_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/record_mutation_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/session_root_test.Po@am__quote@ # am--include-marker
@@ -1403,6 +1420,13 @@ blob_io_test.log: blob_io_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+protocol_handshake_test.log: protocol_handshake_test$(EXEEXT)
+	@p='protocol_handshake_test$(EXEEXT)'; \
+	b='protocol_handshake_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .test.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -1570,6 +1594,7 @@ distclean: distclean-am
 	-rm -f tests/$(DEPDIR)/flush_io_test.Po
 	-rm -f tests/$(DEPDIR)/index_find_test.Po
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
+	-rm -f tests/$(DEPDIR)/protocol_handshake_test.Po
 	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
 	-rm -f tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
 	-rm -f tests/$(DEPDIR)/session_root_test.Po
@@ -1692,6 +1717,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f tests/$(DEPDIR)/flush_io_test.Po
 	-rm -f tests/$(DEPDIR)/index_find_test.Po
 	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
+	-rm -f tests/$(DEPDIR)/protocol_handshake_test.Po
 	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
 	-rm -f tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
 	-rm -f tests/$(DEPDIR)/session_root_test.Po

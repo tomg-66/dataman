@@ -97,7 +97,8 @@
 #define EBLOBWRT		-52		/* can't write blob to file */
 #define EOUTREC			-53		/* error in outrec */
 #define EINREC			-54		/* error in inrec */
-#define MAXERROR		EINREC
+#define EPROTOCOL		-55		/* incompatible wire protocol */
+#define MAXERROR		EPROTOCOL
 
 
 #ifdef DBERROR
@@ -163,6 +164,7 @@ char *db_err_strings[] = {
 	"Can't write blob to file",
 	"Error writing record to database",
 	"Error reading record from database",
+	"Incompatible Dataman protocol; update client and server together",
 	NULL
 };
 #ifdef __cplusplus

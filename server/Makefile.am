@@ -49,7 +49,7 @@ dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
 		put_long.c get_datafile_desc.c lock.c get_ll.c \
 		put_ll.c
 
-noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h file_desc.h index_v2.h misc.h \
+noinst_HEADERS = dbfunc.h errors.h protocol.h lock.h msg.h srv_index.h file_desc.h index_v2.h misc.h \
 		 storage_io.h undo_journal.h session_root.h journal_startup.h \
 		 transaction_session.h transaction_dispatch.h transaction_wire.h
 
@@ -59,6 +59,8 @@ check_PROGRAMS = index_find_test serial_prefix_test storage_io_test flush_io_tes
 		 blob_io_test
 
 TESTS = $(check_PROGRAMS)
+check_PROGRAMS += protocol_handshake_test
+protocol_handshake_test_SOURCES = tests/protocol_handshake_test.c
 
 index_find_test_SOURCES = tests/index_find_test.c index_v2.c storage_io.c
 storage_io_test_SOURCES = tests/storage_io_test.c

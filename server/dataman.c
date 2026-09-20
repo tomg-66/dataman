@@ -407,7 +407,6 @@ int main(int argc, char *argv[])
 		}
 		if (qsw) {
 			fprintf(stderr, "Dataman -IS- running\n");
-			fprintf(stderr, "Debugging is: %s\n", dbgsw ? "on":"off");
 			exit(1);
 		}
 		if (tsw)

@@ -15,7 +15,7 @@
 # chkconfig: 2345 90 10
 # description: Start and stop the Dataman database server
 
-if [ -e /etc/rc.d/init.d/function ] ; then
+if [ -e /etc/rc.d/init.d/functions ] ; then
     . /etc/rc.d/init.d/functions
 fi
 

@@ -862,7 +862,7 @@ tests/$(DEPDIR)/$(am__dirstamp):
 tests/blob_io_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-blob_io_test$(EXEEXT): $(blob_io_test_OBJECTS) $(blob_io_test_DEPENDENCIES) $(EXTRA_blob_io_test_DEPENDENCIES)
+blob_io_test$(EXEEXT): $(blob_io_test_OBJECTS) $(blob_io_test_DEPENDENCIES) $(EXTRA_blob_io_test_DEPENDENCIES) 
 	@rm -f blob_io_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(blob_io_test_OBJECTS) $(blob_io_test_LDADD) $(LIBS)
 
@@ -900,19 +900,19 @@ dumpix$(EXEEXT): $(dumpix_OBJECTS) $(dumpix_DEPENDENCIES) $(EXTRA_dumpix_DEPENDE
 tests/flush_io_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-flush_io_test$(EXEEXT): $(flush_io_test_OBJECTS) $(flush_io_test_DEPENDENCIES) $(EXTRA_flush_io_test_DEPENDENCIES)
+flush_io_test$(EXEEXT): $(flush_io_test_OBJECTS) $(flush_io_test_DEPENDENCIES) $(EXTRA_flush_io_test_DEPENDENCIES) 
 	@rm -f flush_io_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(flush_io_test_OBJECTS) $(flush_io_test_LDADD) $(LIBS)
 tests/index_find_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-index_find_test$(EXEEXT): $(index_find_test_OBJECTS) $(index_find_test_DEPENDENCIES) $(EXTRA_index_find_test_DEPENDENCIES)
+index_find_test$(EXEEXT): $(index_find_test_OBJECTS) $(index_find_test_DEPENDENCIES) $(EXTRA_index_find_test_DEPENDENCIES) 
 	@rm -f index_find_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(index_find_test_OBJECTS) $(index_find_test_LDADD) $(LIBS)
 tests/journal_startup_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-journal_startup_test$(EXEEXT): $(journal_startup_test_OBJECTS) $(journal_startup_test_DEPENDENCIES) $(EXTRA_journal_startup_test_DEPENDENCIES)
+journal_startup_test$(EXEEXT): $(journal_startup_test_OBJECTS) $(journal_startup_test_DEPENDENCIES) $(EXTRA_journal_startup_test_DEPENDENCIES) 
 	@rm -f journal_startup_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(journal_startup_test_OBJECTS) $(journal_startup_test_LDADD) $(LIBS)
 
@@ -922,49 +922,49 @@ mkdf$(EXEEXT): $(mkdf_OBJECTS) $(mkdf_DEPENDENCIES) $(EXTRA_mkdf_DEPENDENCIES)
 tests/protocol_handshake_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-protocol_handshake_test$(EXEEXT): $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_DEPENDENCIES) $(EXTRA_protocol_handshake_test_DEPENDENCIES)
+protocol_handshake_test$(EXEEXT): $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_DEPENDENCIES) $(EXTRA_protocol_handshake_test_DEPENDENCIES) 
 	@rm -f protocol_handshake_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_LDADD) $(LIBS)
 tests/record_mutation_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-record_mutation_test$(EXEEXT): $(record_mutation_test_OBJECTS) $(record_mutation_test_DEPENDENCIES) $(EXTRA_record_mutation_test_DEPENDENCIES)
+record_mutation_test$(EXEEXT): $(record_mutation_test_OBJECTS) $(record_mutation_test_DEPENDENCIES) $(EXTRA_record_mutation_test_DEPENDENCIES) 
 	@rm -f record_mutation_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(record_mutation_test_OBJECTS) $(record_mutation_test_LDADD) $(LIBS)
 tests/serial_prefix_test-serial_prefix_test.$(OBJEXT):  \
 	tests/$(am__dirstamp) tests/$(DEPDIR)/$(am__dirstamp)
 
-serial_prefix_test$(EXEEXT): $(serial_prefix_test_OBJECTS) $(serial_prefix_test_DEPENDENCIES) $(EXTRA_serial_prefix_test_DEPENDENCIES)
+serial_prefix_test$(EXEEXT): $(serial_prefix_test_OBJECTS) $(serial_prefix_test_DEPENDENCIES) $(EXTRA_serial_prefix_test_DEPENDENCIES) 
 	@rm -f serial_prefix_test$(EXEEXT)
 	$(AM_V_CCLD)$(serial_prefix_test_LINK) $(serial_prefix_test_OBJECTS) $(serial_prefix_test_LDADD) $(LIBS)
 tests/session_root_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-session_root_test$(EXEEXT): $(session_root_test_OBJECTS) $(session_root_test_DEPENDENCIES) $(EXTRA_session_root_test_DEPENDENCIES)
+session_root_test$(EXEEXT): $(session_root_test_OBJECTS) $(session_root_test_DEPENDENCIES) $(EXTRA_session_root_test_DEPENDENCIES) 
 	@rm -f session_root_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(session_root_test_OBJECTS) $(session_root_test_LDADD) $(LIBS)
 tests/storage_io_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-storage_io_test$(EXEEXT): $(storage_io_test_OBJECTS) $(storage_io_test_DEPENDENCIES) $(EXTRA_storage_io_test_DEPENDENCIES)
+storage_io_test$(EXEEXT): $(storage_io_test_OBJECTS) $(storage_io_test_DEPENDENCIES) $(EXTRA_storage_io_test_DEPENDENCIES) 
 	@rm -f storage_io_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(storage_io_test_OBJECTS) $(storage_io_test_LDADD) $(LIBS)
 tests/transaction_session_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-transaction_session_test$(EXEEXT): $(transaction_session_test_OBJECTS) $(transaction_session_test_DEPENDENCIES) $(EXTRA_transaction_session_test_DEPENDENCIES)
+transaction_session_test$(EXEEXT): $(transaction_session_test_OBJECTS) $(transaction_session_test_DEPENDENCIES) $(EXTRA_transaction_session_test_DEPENDENCIES) 
 	@rm -f transaction_session_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(transaction_session_test_OBJECTS) $(transaction_session_test_LDADD) $(LIBS)
 tests/undo_journal_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-undo_journal_test$(EXEEXT): $(undo_journal_test_OBJECTS) $(undo_journal_test_DEPENDENCIES) $(EXTRA_undo_journal_test_DEPENDENCIES)
+undo_journal_test$(EXEEXT): $(undo_journal_test_OBJECTS) $(undo_journal_test_DEPENDENCIES) $(EXTRA_undo_journal_test_DEPENDENCIES) 
 	@rm -f undo_journal_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(undo_journal_test_OBJECTS) $(undo_journal_test_LDADD) $(LIBS)
 tests/verify_pid_test.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
-verify_pid_test$(EXEEXT): $(verify_pid_test_OBJECTS) $(verify_pid_test_DEPENDENCIES) $(EXTRA_verify_pid_test_DEPENDENCIES)
+verify_pid_test$(EXEEXT): $(verify_pid_test_OBJECTS) $(verify_pid_test_DEPENDENCIES) $(EXTRA_verify_pid_test_DEPENDENCIES) 
 	@rm -f verify_pid_test$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(verify_pid_test_OBJECTS) $(verify_pid_test_LDADD) $(LIBS)
 

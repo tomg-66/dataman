@@ -81,6 +81,7 @@ class DatamanErrVal{
 		"Can't write blob to file",
 		"Error writing record to database",
 		"Error reading record from database",
+		"Incompatible Dataman protocol; update client and server together",
 	};
 	public static final int ENOTHR = -1;
 	public static final int ENOMSGQ = -2;
@@ -136,7 +137,7 @@ class DatamanErrVal{
 	public static final int EBLOBWRT = -52;
 	public static final int EOUTREC = -53;
 	public static final int EINREC = -54;
-
+	public static final int EPROTOCOL = -55;
 
 	DatamanErrVal() {}
 //

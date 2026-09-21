@@ -56,10 +56,10 @@ noinst_HEADERS = dbfunc.h errors.h protocol.h lock.h msg.h srv_index.h file_desc
 check_PROGRAMS = index_find_test serial_prefix_test storage_io_test flush_io_test \
 		 undo_journal_test session_root_test journal_startup_test verify_pid_test \
 		 transaction_session_test record_mutation_test \
-		 blob_io_test
+		 blob_io_test protocol_handshake_test
 
 TESTS = $(check_PROGRAMS)
-check_PROGRAMS += protocol_handshake_test
+
 protocol_handshake_test_SOURCES = tests/protocol_handshake_test.c
 
 index_find_test_SOURCES = tests/index_find_test.c index_v2.c storage_io.c

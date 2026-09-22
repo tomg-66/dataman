@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	iopen
+ * PROCEDURE:	iopen.c
  *
  * PROJECT:		dataman server side
  * 

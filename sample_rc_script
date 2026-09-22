@@ -1,64 +1,79 @@
 #!/bin/sh
-#
-# this is a sample dataman rc script.  isn't too fancy, but
-# does get the job done.  feel free to improve on it.
-# best read with tabstop=8
-#
-# start the dataman database server....
-#
+### BEGIN INIT INFO
+# Provides:          dataman
+# Required-Start:    $remote_fs $network
+# Required-Stop:     $remote_fs $network
+# Should-Start:      $syslog
+# Should-Stop:       $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Dataman database server
+# Description:       Start and stop the Dataman database server.
+### END INIT INFO
+
+# Legacy chkconfig metadata retained for RPM-family distributions.
 # chkconfig: 2345 90 10
 # description: Start and stop the Dataman database server
-#
 
-. /etc/rc.d/init.d/functions
-PATH=$PATH:/usr/local/bin
+if [ -e /etc/rc.d/init.d/functions ] ; then
+    . /etc/rc.d/init.d/functions
+fi
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+DATAMAN_BIN=$(command -v dataman) || exit 1
+dataman() {
+	runuser -u dataman -g dataman -- "$DATAMAN_BIN" "$@"
+}
 
 RETVAL=0
 
-case $1 in 
+case "${1:-}" in
     start)
         dataman -q >/dev/null 2>&1
-        if [ $? -eq 1 ] ; then
-	    echo Dataman already running
-	    RETVAL=1
-	else
-	    dataman > /dev/null 2>&1
-	    sleep 2
-	    dataman -q > /dev/null 2>&1
-	    if [ $? -ne 1 ] ; then
-		RETVAL=2
-	    fi
-	fi
-	;;
-
+        if [ $? -eq 1 ]; then
+            echo "Dataman already running"
+            RETVAL=1
+        else
+            dataman -m 4 -n 10 >/dev/null 2>&1
+            sleep 2
+            dataman -q >/dev/null 2>&1
+            if [ $? -ne 1 ]; then
+                RETVAL=2
+            fi
+        fi
+        ;;
     stop)
-    	dataman -q > /dev/null 2>&1
-	if [ $? -ne 1 ] ; then
-	    echo Dataman not running
-	    RETVAL=1
-    	else
-	    dataman -t
-	fi
-	;;
-
+        dataman -q >/dev/null 2>&1
+        if [ $? -ne 1 ]; then
+            echo "Dataman not running"
+            RETVAL=1
+        else
+            dataman -t
+        fi
+        ;;
     status)
-    	status dataman
-	RETVAL=$?
-	;;
-
+        dataman -q >/dev/null 2>&1
+        if [ $? -eq 1 ]; then
+            echo "Dataman is running"
+        else
+            echo "Dataman is not running"
+            RETVAL=3
+        fi
+        ;;
     restart)
-    	dataman -t
-	dataman >/dev/null 2>&1
-	sleep 2
-	dataman -q > /dev/null 2>&1
-	if [ $? -ne 1 ] ; then
-	    RETVAL=2
-	fi
-	;;
+        dataman -t
+        dataman -m 4 -n 10 >/dev/null 2>&1
+        sleep 2
+        dataman -q >/dev/null 2>&1
+        if [ $? -ne 1 ]; then
+            RETVAL=2
+        fi
+        ;;
     *)
-	echo "$0: usage: $0 [start|stop|status|reset]"
-	RETVAL=3
-	;;
+        echo "Usage: $0 {start|stop|status|restart}" >&2
+        RETVAL=2
+        ;;
 esac
-exit $RETVAL
 
+exit "$RETVAL"

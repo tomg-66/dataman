@@ -148,6 +148,7 @@ union semun {
 
 #include "msg.h"
 #include "dbfunc.h"
+#include "protocol.h"
 #include "errors.h"
 #include "misc.h"
 
@@ -156,15 +157,11 @@ union semun {
 
 extern void put_long (void *, int32_t);
 
-extern void store_ix(char *, int);
 extern void do_iclose(char *, int);
 extern void store_prot(char *);
 extern void do_clear(char *, key_t);
-extern int soc_setup(int, pid_t);
-extern int rollback(context_t *);
-extern int commit(context_t *);
-extern void xact_del_list(void);
-extern int store_xact(context_t *, char **, int, MSG *, char **, int *, size_t *);
+extern void store_ix(char *cmd, int type);
+extern int sock_setup(int, pid_t);
 extern int msg_setup(int , pid_t);
 extern int sem_setup(int, pid_t);
 extern int shm_setup(int, pid_t, char **);
@@ -300,6 +297,12 @@ static int read_command_prefix(int fd, char *buf, int frame_len, int *cmd,
 	char ch;
 
 	while (fields < 6) {
+		/* Accept a bare current-protocol DISCON without a separator. */
+		if (len == frame_len && len == 2 && buf[0] == '0' + DISCON / 10 && buf[1] == '0' + DISCON % 10) {
+			*cmd = DISCON;
+			*prefix_len = len;
+			return(0);
+		}
 		if (len >= MAXSIZ || len >= frame_len || !read_exact(fd, &ch, 1))
 			return(-1);
 		buf[len++] = ch;
@@ -342,7 +345,6 @@ void serial_service(int sock)
 
 	int cmd;					/* received command */
 	int isw;
-	int in_xact;				/* are we in a transaction */
 
 	char *rcvbuf;				/* socket receive buffer */
 	char *sndbuf;				/* send buffer */
@@ -355,7 +357,6 @@ void serial_service(int sock)
 
 	fd_set readfds;				/* readable fds for select */
 
-	struct timeval tv;
 	struct sembuf sop;			/* semaphore operation */
 	union semun sarg;
 
@@ -371,9 +372,8 @@ void serial_service(int sock)
 	context.semid = -1;					/* semaphore id returned by semget() */
 	context.shmid = -1;					/* shared memory id returned by shmget() */
 	context.shptr = NULL;
-	in_xact = 0;						/* don't start in a transaction */
 
-	if (!soc_setup(sock, context.mypid))
+	if (!sock_setup(sock, context.mypid))
 		goto done;
 
 	sndbuf = malloc(MAXSIZ);
@@ -389,33 +389,14 @@ void serial_service(int sock)
 		perror("");
 		goto done;
 	}
-/*
- * here we want to let the remote client identify itself.  if it doesn't
- * within a second or know what we are expecting, then boot it!
- * 		(christy's birthday)
- */
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	FD_ZERO(&readfds);
-	FD_SET(sock, &readfds);
-	if (select(sock+1, &readfds, NULL, NULL, &tv))
-		if (read(sock,rcvbuf,9) == 9)
-			if (!memcmp(rcvbuf,"9-30-1966", 9))
-/*
- * FIONREAD requires 'int *' as arg.  I don't think we'll be compiling
- * on 16 bit systems, but by definition an 'int' can be 16, 32, or 64 bits.
- */
-				if (ioctl(sock, FIONREAD, &i) > -1)
-					goto ok_conn;
-
-	fprintf(stderr, "Attempt to connect from non dataman!\n");
-	close(sock);
-	return;
-
-ok_conn:
-	while(i--)
-		if (read(sock, rcvbuf, 1) < 1)	/* if there is an error, the socket is empty */
-			break;
+	/* Reject incompatible peers before allocating session IPC or dispatching. */
+	if (!dm_protocol_accept(sock)) {
+		fprintf(stderr, "pid %d: incompatible or incomplete protocol greeting\n", context.mypid);
+		free(sndbuf);
+		free(rcvbuf);
+		close(sock);
+		return;
+	}
 
 	if ((context.msgid = msg_setup(sock, context.mypid)) < 0)
 		goto done;
@@ -426,7 +407,7 @@ ok_conn:
 /*
  * finally, everything is set up, notify the remote client
  */
-	if (!write_all(sock, "ok", 2)) {	/* let client know we are ok */
+	if (!write_all(sock, DM_PROTOCOL_HELLO, DM_PROTOCOL_SIZE)) {	/* let client know we are ok */
 		fprintf(stderr, "pid %d: failed notification: ", context.mypid);
 		perror("");
 		goto done;
@@ -511,55 +492,6 @@ ok_conn:
  * after we send the message we will need to loop on copying more
  * into the shared memory segment.
  */
-		if (cmd == START_XACT) {
-			if (in_xact) {
-				i = sprintf(sndbuf+sizeof(int32_t), "%d|", EINXACT);
-			} else {
-				in_xact = 1;
-				i = sprintf(sndbuf+sizeof(int32_t), "1|");
-			}
-			put_long(sndbuf, (int32_t)i);
-			i += sizeof(int32_t);
-			if (!write_all(sock, sndbuf, (size_t)i)) {
-				fprintf(stderr, "Can't write XACT response to socket:");
-				perror("");
-				exit(0);
-			}
-			if (i > 6)
-				goto done;
-			continue;
-		}
-		if (cmd == COMMIT || cmd == ROLLBACK) {
-			if (!in_xact) {
-				i = sprintf(sndbuf+sizeof(int32_t), "%d|", ENOXACT);
-				put_long(sndbuf, (int32_t)i);
-				i += sizeof(int32_t);
-				if (!write_all(sock, sndbuf, (size_t)i)) {
-					fprintf(stderr, "Can't write ENOXACT to socket:");
-					perror("");
-					exit(0);
-				}
-				goto done;
-			}
-			in_xact = 0;
-			i = TRUE;
-			if (cmd == COMMIT) {
-				i = commit(&context);
-				if (!i)
-					if (!rollback(&context))
-						i = EROLLBACK;
-			}
-			xact_del_list();
-			i = sprintf(sndbuf+sizeof(int32_t), "%d|", i);
-			put_long(sndbuf, (int32_t)i);
-			i += sizeof(int32_t);
-			if (!write_all(sock, sndbuf, (size_t)i)) {
-				fprintf(stderr, "Can't write COMMIT response to socket:");
-				perror("");
-				exit(0);
-			}
-			continue;
-		}
 
 		if (cmd == DISCON) {
 			if (dbgsw) {
@@ -587,25 +519,7 @@ ok_conn:
 			ptr = NULL;
 		}
 		isw = cmd;
-		if (stream_input && in_xact) {
-			if (frame_len + 1 > maxread) {
-				if ((rcvbuf = realloc(rcvbuf, (size_t)frame_len + 1)) == NULL) {
-					fprintf(stderr, "pid %d: failed realloc for transaction payload: ", context.mypid);
-					perror("");
-					break;
-				}
-				maxread = frame_len + 1;
-			}
-			if (!read_exact(sock, rcvbuf + size, (size_t)j)) {
-				fprintf(stderr, "pid %d: transaction payload read failed: ", context.mypid);
-				perror("");
-				break;
-			}
-			rcvbuf[frame_len] = '\0';
-			if (!shared_payload(rcvbuf, frame_len, &ptr, &j, &size))
-				break;
-			stream_input = 0;
-		}
+
 /*
  * verify that the base command we got wasn't bigger than the
  * buffer we have to store it in.  if it is, we can bet it is
@@ -623,21 +537,14 @@ ok_conn:
 			break;
 		}
 /*
- * if we are in a transaction, these commands are the ones that still
- * modify the database, so we need to save them until we do a commit.
- * otherwise we send the command to the server, and get the  response.
+ * All commands, including transaction controls, execute in the storage server.
  */
-		if (stream_input && !in_xact) {
+		if (stream_input) {
 			if (!send_to_server_stream(&context, rcvbuf, size, j, sock))
 				break;
 			if (!recv_from_server_stream(&context, &msgbuf, sock))
 				break;
 			continue;
-		} else if (in_xact && (cmd ==  DELETE || cmd == INSERT || cmd == INCLUDE
-								|| cmd == REMOVE || cmd == FLUSH)) {
-			msgbuf.type = size;
-			if (!store_xact(&context, &rcvbuf, maxread, &msgbuf, &sndbuf, &i, &buflen))
-				break;
 		} else {
 			if (!send_to_server(&context, rcvbuf, ptr, size, j))
 				break;
@@ -719,12 +626,31 @@ ok_conn:
 	}
 
 done:
+/*
+ * Release server-side ownership before index/protection cleanup. The IPC
+ * generation is explicit so a delayed close cannot target a reused PID.
+ */
+	if (context.msgid >= 0 && context.shmid >= 0) {
+		char close_cmd[64];
+		char *reply = NULL;
+		MSG close_reply;
+		int reply_len = 0;
+		size_t message_len = 0;
+
+		int command_len = snprintf(close_cmd, sizeof(close_cmd), "%d|%d|", DISCON, context.shmid);
+		if (!send_to_server(&context, close_cmd, NULL, command_len, 0) ||
+			!recv_from_server(&context, &close_reply, &reply, &reply_len, &message_len) || reply_len < 0)
+			fprintf(stderr, "pid %d: server session cleanup failed\n", context.mypid);
+		free(reply);
+	}
 	do_clear(NULL, context.msgid);				/* clear any recs left protected */
 	do_iclose(NULL, context.msgid);				/* close any indices left open */
+
 	if (context.semid > -1)
 		semctl(context.semid, 0, IPC_RMID, 0);	/* remove the semaphore */
 	if (context.shmid > -1)
 		shmctl(context.shmid, IPC_RMID, 0);		/* remove the shared memory */
+
 	put_long(sndbuf, (int32_t)2);
 	memcpy(sndbuf+sizeof(int32_t), "ok", 2);
 	i = write_all(sock, sndbuf, 2+sizeof(int32_t));	/* shutting down the socket, don't care if it fails */

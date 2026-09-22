@@ -53,9 +53,9 @@ DATAMAN_API extern int match(const char *, const char *);
 DATAMAN_API extern int db_sort(const char *);
 DATAMAN_API extern int db_iopen(char *, int);
 DATAMAN_API extern int db_insert(int, int, char *);
-DATAMAN_API extern int rollback(void);
-DATAMAN_API extern int start_transaction(void);
+DATAMAN_API extern int db_start_xact(void);
 DATAMAN_API extern int db_commit(void);
+DATAMAN_API extern int db_rollback(void);
 DATAMAN_API extern int iclose(char *);
 DATAMAN_API extern int init_dataman(int, char **);
 DATAMAN_API extern int mkidx(int, const char **);
@@ -72,7 +72,6 @@ DATAMAN_API extern void dtm_pause(int, int, const char *);
 
 DATAMAN_API extern char *substr(const char *, const int, const int);
 DATAMAN_API extern char *mask(int64_t, char *);
-
 
 DATAMAN_API const char *_get_indexname(void);
 DATAMAN_API const char *_get_curkey(void);

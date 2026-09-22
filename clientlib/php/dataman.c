@@ -827,7 +827,7 @@ PHP_FUNCTION(dataman_get_file)
 /* start a new transaction */
 PHP_FUNCTION(dataman_start_transaction)
 {
-	if (!start_transaction())
+	if (!db_start_xact())
 		RETURN_FALSE;
 	RETURN_TRUE;
 }
@@ -843,7 +843,7 @@ PHP_FUNCTION(dataman_commit)
 /* cancel (rollback) the transaction */
 PHP_FUNCTION(dataman_rollback)
 {
-	if (!rollback())
+	if (!db_rollback())
 		RETURN_FALSE;
 	RETURN_TRUE;
 }

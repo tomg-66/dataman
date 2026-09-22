@@ -1,6 +1,8 @@
 package Dataman;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketTimeoutException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -9,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 
 /** Package-private transport shared by the Java client classes. */
 class DatamanComms implements Runnable {
+
+	static final int PROTOCOL_VERSION = 1;
+	static final String PROTOCOL_HELLO = "DMAN0001\n";
+	private static final int HANDSHAKE_TIMEOUT_MS = 5000;
 
 	private static final int MAX_RESPONSE_SIZE = 64 * 1024 * 1024;
 	private static SocketChannel db_sock;
@@ -31,18 +37,7 @@ class DatamanComms implements Runnable {
 			db_sock = SocketChannel.open(new InetSocketAddress(host, 8758));
 			Socket socket = db_sock.socket();
 			socket.setTcpNoDelay(true);
-			writeFully(db_sock, StandardCharsets.UTF_8.encode("9-30-1966"));
-
-			/* The connection server returns either "ok" or a short error code. */
-			ByteBuffer response = ByteBuffer.allocate(2);
-			readFully(db_sock, response);
-			response.flip();
-			String value = StandardCharsets.UTF_8.decode(response).toString();
-			if (!value.equals("ok")) {
-				DatamanErrVal errors = new DatamanErrVal();
-				throw new DatamanRuntimeException(
-					errors.getDBErr(DatamanErrVal.ENOCONN));
-			}
+			handshake(socket);
 			inited = true;
 		} catch (IOException | RuntimeException error) {
 			closeSocket();
@@ -56,6 +51,27 @@ class DatamanComms implements Runnable {
 		if (!shutdownHookInstalled) {
 			Runtime.getRuntime().addShutdownHook(new Thread(this));
 			shutdownHookInstalled = true;
+		}
+	}
+
+	/** Exchange the wire version before sending initialization or database commands. */
+	static void handshake(Socket socket) throws IOException {
+		int savedTimeout = socket.getSoTimeout();
+		long deadline = System.nanoTime() + HANDSHAKE_TIMEOUT_MS * 1_000_000L;
+		try {
+			socket.getOutputStream().write(PROTOCOL_HELLO.getBytes(StandardCharsets.US_ASCII));
+			InputStream input = socket.getInputStream();
+			for (int i = 0; i < PROTOCOL_HELLO.length(); i++) {
+				long remaining = deadline - System.nanoTime();
+				if (remaining <= 0)
+					throw new SocketTimeoutException("Dataman protocol handshake timed out");
+				socket.setSoTimeout((int)Math.max(1, remaining / 1_000_000L));
+				if (input.read() != PROTOCOL_HELLO.charAt(i))
+					throw new DatamanRuntimeException(
+						"Incompatible Dataman protocol; update client and server together");
+			}
+		} finally {
+			socket.setSoTimeout(savedTimeout);
 		}
 	}
 

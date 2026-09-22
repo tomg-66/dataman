@@ -1,0 +1,56 @@
+#!/bin/sh
+# Provision a Linux host after installing Dataman. GPL-2.0-or-later.
+set -eu
+
+# Build/package staging must never modify the build host's accounts or services.
+if [ -n "${DESTDIR:-}" ]; then
+    echo "Dataman: staged installation; run dataman-system-setup on the target host."
+    exit 0
+fi
+if [ "$(id -u)" != 0 ]; then
+    echo "Dataman: run dataman-system-setup as root to provision the service account."
+    exit 0
+fi
+if [ "$(uname -s)" != Linux ]; then
+    echo "Dataman: provision the service account manually on this platform."
+    exit 0
+fi
+
+services=/etc/services
+# Check the registration before making changes. Accept dataman as an alias too.
+registration=0
+awk '
+    { sub(/#.*/, "") }
+    NF >= 2 {
+        named = ($1 == "dataman")
+        for (i = 3; i <= NF; i++) if ($i == "dataman") named = 1
+        if (named && $2 ~ /\/tcp$/ && $2 != "8758/tcp") conflict = 1
+        if ($2 == "8758/tcp") {
+            if (named) found = 1
+            else conflict = 1
+        }
+    }
+    END { if (conflict) exit 2; if (!found) exit 1 }
+' "$services" || registration=$?
+case $registration in
+    0|1) ;;
+    *) echo "Dataman: conflicting or unreadable $services; resolve the 8758/tcp registration first." >&2; exit 1 ;;
+esac
+
+if ! getent group dataman >/dev/null; then
+    groupadd --system dataman
+fi
+if ! getent passwd dataman >/dev/null; then
+    nologin=$(command -v nologin) || {
+        echo "Dataman: cannot find the nologin shell." >&2
+        exit 1
+    }
+    useradd --system --gid dataman --home-dir /var/lib/dataman \
+        --no-create-home --shell "$nologin" dataman
+fi
+# Preserve existing account settings and never recursively change database files.
+install -d -o dataman -g dataman -m 0700 /var/lib/dataman /var/lib/dataman/journal
+if [ "$registration" = 1 ]; then
+    printf '\ndataman\t8758/tcp\t# Dataman database server\n' >> "$services"
+fi
+echo "Dataman: service account, journal directories, and TCP service registration ready."

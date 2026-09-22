@@ -72,8 +72,6 @@ int verify_pid(char *prog_name)
 
 	sprintf(pidfile_name, "/tmp/.%s.pid", ptr);
 
-	atexit(termit);
-
 	if ((chan = open(pidfile_name, O_WRONLY|O_CREAT, 0666)) < 0)
 		return(-1);
 /*
@@ -86,10 +84,16 @@ int verify_pid(char *prog_name)
 	lock.l_len = 0;
 
 	if (fcntl(chan, F_SETLK, &lock) < 0) {
-		if (errno == EACCES || errno == EAGAIN)
+		if (errno == EACCES || errno == EAGAIN) {
+			int saved = errno;
+			close(chan);
+			errno = saved;
 			return(-1);
+		}
 		err_sys("%s: can't get lock on pid file: ", prog_name);
 	}
+	/* A failed contender must never delete the active owner's PID file. */
+	atexit(termit);
 /*
  * put our pid in the file.
  */
@@ -106,7 +110,7 @@ int verify_pid(char *prog_name)
 	if ((ret = fcntl(chan, F_GETFD, 0)) < 0)
 		err_sys("%s: Can't get file attr: ", prog_name);
 	ret |= FD_CLOEXEC;
-	if (fcntl(chan, F_SETFD, ret < 0))
+	if (fcntl(chan, F_SETFD, ret) < 0)
 		err_sys("%s: Can't set file attr: ", prog_name);
 	return(0);
 }

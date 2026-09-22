@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	iclose
+ * PROCEDURE:	iclose.c
  *
  * PROJECT:		dataman server side
  * 

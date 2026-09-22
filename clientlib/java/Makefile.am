@@ -11,7 +11,8 @@ JAVAC = javac
 
 JAVAROOT = ../
 
-JAVACFLAGS = -classpath ./
+# Automake's CLASSPATH_ENV includes JAVAROOT, where package classes are built.
+# An explicit -classpath ./ hides those classes during incremental compilation.
 
 CLEANFILES = $(JAVAROOT)Dataman/*.class
 

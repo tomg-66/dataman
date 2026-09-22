@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	dispatch
+ * PROCEDURE:	dispatch.c
  *
  * PROJECT:		dataman server side
  * 
@@ -91,6 +91,9 @@ union semun {
 #include "msg.h"
 #include "dbfunc.h"
 #include "errors.h"
+#include "session_root.h"
+#include "transaction_session.h"
+#include "transaction_wire.h"
 
 extern int dbgsw;				/* debugging on? */
 extern int shmsiz;				/* size of shared mem seg */
@@ -145,6 +148,7 @@ void *dispatch(void *dummy)
 	int len;				/* length of this message */
 	int i;
 	int offs;
+	size_t payload;
 
 	char msg[MAXSIZ];		/* message to operate on */
 	char *ptr;				/* parsing pointers */
@@ -168,7 +172,7 @@ void *dispatch(void *dummy)
  * get the id of the message queue
  */
 	if (dbgsw) {
-		fprintf(stderr, "Enter dispatch, thread = %d\n", pthread_self());
+		fprintf(stderr, "Enter dispatch, thread = %ld\n", pthread_self());
 		fflush(stderr);
 	}
 	if ((msgid = msgget((key_t)MSGKEY, PERMS|IPC_CREAT)) < 0)
@@ -180,6 +184,8 @@ void *dispatch(void *dummy)
  */
 	while (1) {
 		shptr = NULL;
+		ptr = NULL;
+		payload = 0;
 		memset((void *)&msgbuf, '\0', sizeof(MSG));
 		if ((i = msgrcv(msgid, &msgbuf, MAXSIZ, MSG_SRV, 0)) < 0) {
 			switch(errno) {
@@ -209,13 +215,31 @@ void *dispatch(void *dummy)
 		pid = atoi(msgbuf.txt);
 		sptr = strchr(msgbuf.txt, '|') + 1;		/* point past pid */
 		cmd = atoi(sptr);
-		if (cmd < FUNC_MIN || cmd > FUNC_MAX) {
+		/* Negative transaction controls and DISCON never index dbfunc. */
+		if (cmd < ROLLBACK || cmd > DISCON) {
 			ret = EINVMSG;
 			goto err_jump;
 		}
 		sptr = strchr(sptr, '|') + 1;		/* point past cmd */
 		if (sptr == (char *)1) {
 			ret = EINVMSG;
+			goto err_jump;
+		}
+		if (dm_tx_blocked()) {
+			ret = EROLLBACK;
+			goto err_jump;
+		}
+		if (cmd == DISCON) {
+			char *end;
+			long id;
+			errno = 0;
+			id = strtol(sptr, &end, 10);
+			if (errno || end == sptr || id < 0 || id > INT_MAX ||
+				*end != '|' || end[1] || shmget((key_t)pid, 0, 0) != id) {
+				ret = EINVMSG;
+			} else {
+				ret = session_root_close((int)id);
+			}
 			goto err_jump;
 		}
 /*
@@ -242,6 +266,7 @@ void *dispatch(void *dummy)
 				goto err_jump;
 			}
 			offs = 0;
+			payload = (size_t)len;
 /*
  * get the semaphore id, then the shared memory segment.  len tells us
  * how much data we need to get out of the shared memory.  since the
@@ -305,7 +330,12 @@ void *dispatch(void *dummy)
  * len gets the length of the shared memory portion of the return.
  * (if any)
  */
-		ret = dbfunc[cmd](msgbuf.txt, i, &ptr);
+		/* Drain incoming payload before rejecting admission, so the connection
+		 * server cannot be left waiting to finish a shared-memory send.
+		 * Release admission before response IPC; the handler owns its result. */
+		shmid = shmget((key_t)pid, 0, 0);
+		ret = dm_tx_wire(shmid, cmd, msgbuf.txt, i, &ptr, payload,
+				cmd < 0 ? NULL : dbfunc[cmd]);
 
 		if (dbgsw) {
 			fprintf(stderr, "dbfunc[%d] returns %d - ", cmd, ret);
@@ -392,7 +422,8 @@ err_jump:
 				break;
 			}
 			if (dbgsw) {
-				fprintf(stderr, "sending long message from dbfunc returns error: %d\n", msgbuf.txt, errno);
+				fprintf(stderr, "sending long message from dbfunc returns error: %d\n", errno);
+				fprintf(stderr, "message ->%s<-\n", msgbuf.txt);
 				fflush(stderr);
 			}
 			if (errno == EIDRM) {

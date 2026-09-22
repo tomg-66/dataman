@@ -1,3 +1,18 @@
+/* ***************************************************************
+ *
+ * PROCEDURE:	dnodes.c
+ *
+ * PROJECT:		dataman system utility
+ * 
+ * DATE:		Thu Feb 21 13:21:01 MST 2002
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ *
+ * REVISION HISTORY:
+ *
+ *****************************************************************/
 /* Display the physical page and tree structure of a v2 index. */
 #include <ctype.h>
 #include <errno.h>
@@ -326,4 +341,10 @@ int main(int argc, char **argv)
 	return(context.errors == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-/* vim: set noet sw=4 sts=4 ts=4 fdm=marker: */
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
+ */

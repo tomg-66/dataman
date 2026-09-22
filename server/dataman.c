@@ -47,6 +47,7 @@
 #include <time.h>
 #include <string.h>
 #include <libgen.h>
+#include <fcntl.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -60,9 +61,10 @@ static pid_t con_pid,				/* connection manager pid*/
 		srv_pid,					/* db server pid */
 		my_pid;						/* dataman pid */
 static int term_sw,					/* termination switch */
-		dbgsw,						/* debugging switch */
+		dbgsw,						/* debugging command-line switch */
 		threads,					/* number of dbserve worker threads */
-		memsize;					/* size of shared memory segment */
+		memsize,					/* size of shared memory segment */
+		debugging = 0;				/* current state of debugging */
 
 void reap_child(int sig)
 {
@@ -190,7 +192,8 @@ void shutdown_handler(int sig)
 	
 void useage(char *name)
 {
-	fprintf(stderr, "%s: useage: %s [-D|m size|n num|q|s|t]\n"
+	fprintf(stderr, "%s: useage: %s [-D|f|m size|n num|q|s|t]\n"
+					"    -f  stay in foreground for a service manager\n"
 					"    -D  start with debugging turned on\n"
 					"            if dataman is already running will toggle the\n"
 					"            state of debugging\n"
@@ -211,8 +214,10 @@ int main(int argc, char *argv[])
 
 	int i, j;						/* loop counters */
 	int ssw, tsw;					/* control switches */
+	int foreground = 0;
 	int qsw;						/* query switch */
 	int file_opened;				/* another switch */
+	int dbfd;
 
 	pid_t chk_this, chk_parent;
 
@@ -240,6 +245,9 @@ int main(int argc, char *argv[])
 			useage(argv[0]);
 		for (j = 1; j < strlen(argv[i]); j++) {
 			switch(argv[i][j]) {
+				case 'f':
+					foreground = 1;
+					break;
 				case 'D':
 					if (dbgsw ||qsw || ssw || tsw)
 						useage(argv[0]);
@@ -299,6 +307,17 @@ int main(int argc, char *argv[])
 /*
  * find out what of the other routines are running
  */
+	/* Service managers already own the process lifecycle. Acquire our PID
+	 * lock directly, without daemonizing or killing independently run children. */
+	if (foreground) {
+		if (qsw || ssw || tsw)
+			useage(argv[0]);
+		if (verify_pid(basename(argv[0])) < 0) {
+			perror("dataman: cannot own supervisor PID file");
+			return EXIT_FAILURE;
+		}
+		goto start_services;
+	}
 	file_opened = 0;
 	if ((fp = popen("ls /tmp/.dataman*.pid 2>/dev/null", "r")) == NULL) {
 		fprintf(stderr, "Can't popen for current status: ");
@@ -387,11 +406,27 @@ int main(int argc, char *argv[])
 		if (dbgsw) {
 			kill(con_pid, SIGUSR1);
 			kill(srv_pid, SIGUSR1);
+			dbfd = open("/tmp/.dmdbg", O_RDWR);
+			lseek(dbfd, 0l, SEEK_SET);
+			char tst;
+			read(dbfd, &tst, 1);
+			lseek(dbfd, 0l, SEEK_SET);
+			if (tst == '1') {
+				write(dbfd, "0", 1);
+			} else {
+				write(dbfd, "1", 1);
+			}
+			close(dbfd);
 			exit(0);
 		}
 		if (qsw) {
+			char tst;
+			dbfd = open("/tmp/.dmdbg", O_RDONLY);
+			lseek(dbfd, 0l, SEEK_SET);
+			read (dbfd, &tst, 1);
+			close (dbfd);
 			fprintf(stderr, "Dataman -IS- running\n");
-			fprintf(stderr, "Debugging is: %s\n", dbgsw ? "on":"off");
+			fprintf(stderr, "Debugging is %s", tst == '1' ? "active\n" : "not active\n");
 			exit(1);
 		}
 		if (tsw)
@@ -425,6 +460,7 @@ int main(int argc, char *argv[])
 		exit(errno);
 
 	setsid();				/* become the session leader */
+start_services:
 	if (chdir("/tmp") < 0) {
 		fprintf(stderr, "%s: can't change to /tmp: ", argv[0]);
 		perror("");
@@ -435,7 +471,8 @@ int main(int argc, char *argv[])
  * at this point verify_pid should always return true, because we have
  * already determined that we aren't running.
  */
-	verify_pid(basename(argv[0]));
+	if (!foreground && verify_pid(basename(argv[0])) < 0)
+		return EXIT_FAILURE;
 /*
  * ok, now we are a daemon, set up the signal catchers for the child
  * processes
@@ -459,6 +496,21 @@ int main(int argc, char *argv[])
 	act.sa_handler = shutdown_handler;
 	if (sigaction(SIGQUIT, &act, NULL) < 0)
 		err_sys("%s: Can't install quit handler: ", argv[0]);
+/*
+ * at this point we can create the file to communicate if we're
+ * in debug mode
+ */
+	if ((dbfd = open("/tmp/.dmdbg", O_RDWR|O_TRUNC|O_CREAT, 0600)) < 0)
+		fprintf(stderr, "can't create debug state file");
+	else {
+		lseek (dbfd, 0l, SEEK_SET);
+		if (dbgsw) {
+			write(dbfd, "1", 1);
+		} else {
+			write(dbfd, "0", 1);
+		}
+	}
+	close(dbfd);
 /*
  * ok, now we need to exec our kid processes
  */
@@ -526,14 +578,16 @@ int main(int argc, char *argv[])
  * set up a logfile, close stdio channels and let the user know
  * that we are in good shape!
  */
-	fclose(stdin);
-	if ((fp = freopen("/tmp/dataman.log", "w+", stderr)) == NULL) {
-		kill(con_pid, SIGKILL);
-		kill(srv_pid, SIGKILL);
-		err_sys("%s: Can't redirect stderr: ", argv[0]);
+	if (!foreground) {
+		fclose(stdin);
+		if ((fp = freopen("/tmp/dataman.log", "w+", stderr)) == NULL) {
+			kill(con_pid, SIGKILL);
+			kill(srv_pid, SIGKILL);
+			err_sys("%s: Can't redirect stderr: ", argv[0]);
+		}
+		fprintf(stdout, "\n%s: running...\n", argv[0]);
+		fclose(stdout);
 	}
-	fprintf(stdout, "\n%s: running...\n", argv[0]);
-	fclose(stdout);
 /*
  * ok, now do nothing for ever
  */

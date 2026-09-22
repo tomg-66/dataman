@@ -62,7 +62,6 @@ extern int get_next(char *, int, char **);
 extern int get_prior(char *, int, char **);
 extern int get_current(char *, int, char **);
 extern int insert(char *, int, char **);
-extern int undelete(char *, int, char **);
 extern int delete(char *, int, char **);
 extern int include(char *, int, char **);
 extern int dbremove(char *, int, char **);
@@ -73,11 +72,13 @@ extern int forward(char *, int, char **);
 extern int back(char *, int, char **);
 extern int get_desc(char *, int, char **);
 extern int init_dataman(char *, int, char **);
+extern int init_session(char *, int, char **);
+extern int def_root(char *, int, char **);
+extern int mkidx_session(char *, int, char **);
 extern int release(char *, int, char **);
 extern int sort(char *, int, char **);
 extern int mkidx(char *, int, char **);
 extern int restore(char *, int, char **);
-extern int get_rec(char *, int, char **);
 
 /*
  * these functions -must- go in the -same- order as
@@ -95,12 +96,10 @@ static int (*(dbfunc)[])(char *, int, char **)  = {
 	back,
 	protect,
 	get_desc,
-	init_dataman,
+	init_session,
 	release,
-	mkidx,
+	mkidx_session,
 	restore,
-	get_rec,
-	undelete,
 	delete,
 	insert,
 	include,
@@ -109,6 +108,7 @@ static int (*(dbfunc)[])(char *, int, char **)  = {
 	iopen,
 	iclose,
 	sort,
+	def_root,
 	flush
 };
 #endif
@@ -138,29 +138,28 @@ static int (*(dbfunc)[])(char *, int, char **)  = {
 #define RELEASE		11
 #define MKIDX		12
 #define RESTORE		13
-#define GET_REC		14
-#define UNDELETE	15
-#define DELETE		16
+#define DELETE		14
 /*
  * short commands with short responses
  */
-#define INSERT		17
-#define INCLUDE		18
-#define REMOVE		19
-#define CLEAR		20
-#define IOPEN		21
-#define ICLOSE		22
-#define SORT		23
+#define INSERT		15
+#define INCLUDE		16
+#define REMOVE		17
+#define CLEAR		18
+#define IOPEN		19
+#define ICLOSE		20
+#define SORT		21
+#define DEF_ROOT	22
 /*
  * long commands with short responses
  * FLUSH -MUST- BE THE FIRST ONE
  */
-#define FLUSH		24
+#define FLUSH		23
 
 /*
  * and finally, the last of all of them...
  */
-#define DISCON		25
+#define DISCON		24
 
 /*
  * limits

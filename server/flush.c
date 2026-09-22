@@ -48,6 +48,7 @@
 #include "lock.h"
 #include "errors.h"
 #include "misc.h"
+#include "storage_io.h"
 
 extern int idx_cnt;
 
@@ -107,25 +108,20 @@ int flush(char *cmd, int c_off, char **data)
 	cptr = *data;
 
 	fl_lock(&fptr->_lock, LOCK_EX);
-/*
- * seek to the record and past the record header
- *
- * this file has an exclusive lock on it at this point so
- * don't need a mutex around the lseek/write
- */
 	len = fptr->_filedesc->record_desc[fmt-1].rf_len;
-	llseek(fptr->_chan, offs+DATARECORD_HEADER_LENGTH, SEEK_SET);
-	i = write(fptr->_chan, cptr, len);
+	/* A failed record write must not be hidden by a successful blob write. */
+	if (offs < 0 || offs > INT64_MAX - (int64_t)DATARECORD_HEADER_LENGTH || len < 0 ||
+			dm_storage_mutate_at(fptr->_chan, cptr, (size_t)len,
+				offs + DATARECORD_HEADER_LENGTH) < 0) {
+		i = ERECWRT;
+		goto done;
+	}
 	if (fptr->_filedesc->record_desc[fmt-1].has_blob)
 		if ((i = put_blobs(fptr, fmt, offs, cptr)) < 0)
 			goto done;
 
-	if (i < 0)
-		i = ERECWRT;
-	else {
-		strcpy(cmd, "0|1|");
-		i = 4;
-	}
+	strcpy(cmd, "0|1|");
+	i = 4;
 done:
 	fl_lock(&fptr->_lock, LOCK_UN);
 	free(cptr);

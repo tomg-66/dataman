@@ -20,9 +20,6 @@
  ************************************************************* */
 
 /*
- * 4.0.0 dataman file edit procedure header
- * Copyright (c) SuperUser Software 1988-2026.  All rights reserved.
- *
  *  Copy-on-write index v2 header and root-publication primitives.
  *
  *  as the storage capacity, price, and speed of storage has changed
@@ -35,6 +32,24 @@
  *  use the clean utility to optomize disk space as things grow though.
  *
  */
+/*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ * The GNU General Public License is contained in the file COPYING.
+ */
 
 #include <errno.h>
 #include <stdlib.h>
@@ -43,6 +58,7 @@
 #include <unistd.h>
 
 #include "index_v2.h"
+#include "storage_io.h"
 
 static void put_u16(unsigned char *buf, uint16_t value)
 {
@@ -109,20 +125,7 @@ static bool read_full_at(int fd, void *buf, size_t len, off_t offset)
 
 static bool write_full_at(int fd, const void *buf, size_t len, off_t offset)
 {
-	const unsigned char *ptr = buf;
-	ssize_t ret;
-
-	while (len) {
-		ret = pwrite(fd, ptr, len, offset);
-		if (ret < 0 && errno == EINTR)
-			continue;
-		if (ret <= 0)
-			return(false);
-		ptr += ret;
-		offset += ret;
-		len -= (size_t)ret;
-	}
-	return(true);
+	return(dm_storage_mutate_at(fd, buf, len, offset) == 0);
 }
 
 static bool write_header(int fd, uint16_t keylen, uint16_t file_count,
@@ -1377,6 +1380,7 @@ static bool v2_find_entry(V2_INSERT_CONTEXT *context, uint64_t offset,
 	unsigned char *entries;
 	unsigned char *entry;
 	uint64_t *children;
+	uint64_t next_subtree = 0;
 
 	for (;;) {
 		if (!v2_load_node(context, offset, &leaf, &count, &entries, &children))
@@ -1391,6 +1395,11 @@ static bool v2_find_entry(V2_INSERT_CONTEXT *context, uint64_t offset,
 		}
 
 		if (!leaf) {
+			/* Keep the nearest right subtree in case the lower bound
+			 * falls between leaves. A zero-padded prefix can sort before
+			 * its matching separator and descend into the left child. */
+			if (!exact && position < count)
+				next_subtree = children[position + 1];
 			offset = children[position];
 			free(entries);
 			free(children);
@@ -1400,6 +1409,11 @@ static bool v2_find_entry(V2_INSERT_CONTEXT *context, uint64_t offset,
 
 		if (position == count) {
 			free(entries);
+			if (next_subtree != 0) {
+				offset = next_subtree;
+				next_subtree = 0;
+				continue;
+			}
 			return(false);
 		}
 		entry = entries + (size_t)position * context->entry_size;

@@ -43,8 +43,29 @@ server/mkidx
 server/rebuild
 server/term_dbserve
 
+# Standalone storage tests
+server/protocol_handshake_test
+server/index_find_test
+server/storage_io_test
+server/flush_io_test
+server/undo_journal_test
+server/session_root_test
+server/journal_startup_test
+server/verify_pid_test
+server/transaction_session_test
+server/*.log
+server/*.trs
+
 #testing artifacts
 tests/php/files/one_rec
 tests/php/index/one_rec_idx
 tests/java/files/one_rec
 tests/java/index/one_rec_idx
+
+/server/record_mutation_test
+
+/server/blob_io_test
+
+/server/serial_prefix_test
+
+/dataman.service

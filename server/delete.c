@@ -82,6 +82,7 @@
 #include "srv_index.h"
 #include "lock.h"
 #include "errors.h"
+#include "storage_io.h"
 #include "misc.h"
 
 #define DEL     0200                    /* bit mask for deleted record */
@@ -95,7 +96,7 @@ extern short int get_short(char *);
 extern int64_t get_ll(char *);
 extern void put_ll(char *, int64_t);
 extern int get_blobs (FILES *, int , int64_t , char **, int *);
-extern void blob_ctl(char *, char *, int, int64_t, int);
+extern int blob_ctl(char *, char *, int, int64_t, int);
 
 int delete(char *cmd, int c_off, char **ret)
 
@@ -114,8 +115,6 @@ int delete(char *cmd, int c_off, char **ret)
 	char *rptr;
 	char *cptr;
 	char buff[DATARECORD_HEADER_LENGTH];	/* output buffer */
-	char file_name[512];
-	char *path_name, *data_name;
 
 	INDEX *index;				/* the insert index structure */
 	FILES *fptr;
@@ -181,13 +180,8 @@ int delete(char *cmd, int c_off, char **ret)
  */
 	rfptr = fptr->_filedesc->record_desc+m_fmt-1;
 	if (xsw != XACT && rfptr->has_blob) {
-		strcpy(file_name, fptr->_fname);
-		path_name = dirname(file_name);				/* this will return /path/to/root/files */
-		strcpy(file_name, path_name);
-		path_name = dirname(path_name);			/* this will return /path/to/root */
-		strcpy(path_name, fptr->_fname);
-		data_name = basename(path_name);			/* this will be datafile_name */
-		blob_ctl(path_name, data_name, m_fmt, recno, xsw);
+		if ((i = blob_ctl(index->_rootdir, fptr->_fname, m_fmt, recno, xsw)) < 0)
+			goto done;
 		if (xsw == CLEANUP) {
 			i = 0;
 			goto done;
@@ -201,8 +195,7 @@ int delete(char *cmd, int c_off, char **ret)
 	if (xsw == NOXACT || xsw == INCOMMIT) {
 		bof = 0;
 		*buff = m_fmt | DEL;							/* set deleted bit */
-		llseek(fptr->_chan, recno, SEEK_SET);			/* get to current record */
-		if (write(fptr->_chan, buff, sizeof(char)) != sizeof(char)) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, sizeof(char), recno) < 0) {
 			i = EHDRWRT;
 			goto done;
 		}
@@ -210,9 +203,8 @@ int delete(char *cmd, int c_off, char **ret)
  * rewrite the back pointer of the next record if there is one
  */
 		if (m_next != 0) {
-			llseek(fptr->_chan, m_next+OFFSET_TO_PREV, SEEK_SET);
 			put_ll(buff, m_prev);
-			if (write(fptr->_chan, buff, PTR_LENGTH) != PTR_LENGTH) {
+			if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, m_next+OFFSET_TO_PREV) < 0) {
 				i = EHDRWRT;
 				goto err_1;
 			}
@@ -224,9 +216,8 @@ int delete(char *cmd, int c_off, char **ret)
  * rewrite the next pointer of the prev record if there is one
  */
 		if (m_prev != 0) {
-			llseek(fptr->_chan, m_prev+OFFSET_TO_NEXT, SEEK_SET);
 			put_ll(buff, m_next);
-			if (write(fptr->_chan, buff, PTR_LENGTH) != PTR_LENGTH) {
+			if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, m_prev+OFFSET_TO_NEXT) < 0) {
 				i = EHDRWRT;
 				goto err_2;
 			}
@@ -238,9 +229,8 @@ int delete(char *cmd, int c_off, char **ret)
  * new first record is to be found
  */
 		if (bof) {
-			llseek(fptr->_chan, fptr->_hlen+2, SEEK_SET);	/* set pos to first rec */
 			put_ll(buff, bof);
-			if (write(fptr->_chan, buff, PTR_LENGTH) != PTR_LENGTH) {
+			if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, fptr->_hlen+2) < 0) {
 				i = EBEGWRT;
 				goto err_3;
 			}
@@ -290,35 +280,31 @@ int delete(char *cmd, int c_off, char **ret)
  */
 err_4:
 	if (bof) {
-		llseek(fptr->_chan, fptr->_hlen+2, SEEK_SET);	/* set pos to first rec */
 		put_ll(buff, m_cur);
-		if (write(fptr->_chan, buff, PTR_LENGTH) < PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, fptr->_hlen+2) < 0) {
 			i = EMULTIPLE;
 			goto done;
 		}
 	}
 err_3:
 	if (m_prev != 0) {
-		llseek(fptr->_chan, m_prev+OFFSET_TO_NEXT, SEEK_SET);
 		put_ll(buff, m_cur);
-		if (write(fptr->_chan, buff, PTR_LENGTH) < PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, m_prev+OFFSET_TO_NEXT) < 0) {
 			 i = EMULTIPLE;
 			 goto done;
 		}
 	}
 err_2:
 	if (m_next != 0) {
-		llseek(fptr->_chan, m_next+OFFSET_TO_PREV, SEEK_SET);
 		put_ll(buff, m_cur);
-		if (write(fptr->_chan, buff, PTR_LENGTH) < PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, buff, PTR_LENGTH, m_next+OFFSET_TO_PREV) < 0) {
 			i = EMULTIPLE;
 			goto done;
 		}
 	}
 err_1:
 	*buff = m_fmt;
-	llseek(fptr->_chan, m_cur, SEEK_SET);			/* get to current record */
-	if (write(fptr->_chan, buff, 1) < 1)			/* re-mark the record as good */
+	if (dm_storage_mutate_at(fptr->_chan, buff, 1, m_cur) < 0)			/* re-mark the record as good */
 		i = EMULTIPLE;
 done:
 	fl_lock(&fptr->_lock, LOCK_UN);

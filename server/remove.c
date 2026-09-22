@@ -57,6 +57,7 @@
 #include "lock.h"
 #include "errors.h"
 #include "index_v2.h"
+#include "transaction_session.h"
 #include "misc.h"
 
 extern int idx_cnt;
@@ -104,6 +105,8 @@ int rm_key(int idxno, int xsw, char *key)
 		goto done;
 	}
 
+	if ((result = dm_tx_track_index(index)) < 0)
+		goto done;
 	if (!index_v2_remove(index->_idxchan, key, file_id, record_offset) ||
 			!index_v2_read_header(index->_idxchan, &keylen, &file_count,
 				&root, &root_crc, &generation)) {
@@ -148,4 +151,10 @@ int dbremove(char *cmd, int c_off, char **ret)
 	return(result);
 }
 
-/* vim: set noet sw=4 sts=4 ts=4 fdm=marker: */
+/*
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim: set noet sw=4 sts=4 ts=4 fdm=marker:
+ */

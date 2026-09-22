@@ -74,7 +74,11 @@ DOCUMENTATION_DIST = \
 	old_docs/utilities.html
 
 TEST_DIST = \
+	tests/protocol_commands.py \
+	tests/protocol_mapping_test.py \
 	tests/README.md \
+	tests/system_setup_test.py \
+	tests/supervisor_foreground_test.py \
 	tests/fixtures/one_rec.i \
 	tests/fixtures/one_rec.t \
 	tests/fixtures/blob_rec.i \
@@ -82,8 +86,24 @@ TEST_DIST = \
 	tests/cpp/datafield_test.cc \
 	tests/java/BuildOneRecordIndex.java \
 	tests/java/OneRecordIntegrationTest.java \
+	tests/java/TransactionIntegrationTest.java \
+	tests/java/ProtocolHandshakeTest.java \
+	tests/transaction_protocol_test.py \
+	tests/transaction_recovery_test.py \
 	tests/run_java_tests.sh \
 	tests/setup_test.sh
 
-EXTRA_DIST = Cleanfile sample_rc_script $(PHP_EXTENSION_DIST) \
+EXTRA_DIST = Cleanfile sample_rc_script systemd/dataman.service.in $(PHP_EXTENSION_DIST) \
 	$(CMAKE_DIST) $(DOCUMENTATION_DIST) $(TEST_DIST)
+
+# Direct host installs provision the service; DESTDIR/non-root installs skip it.
+dist_sbin_SCRIPTS = scripts/dataman-system-setup
+install-data-hook:
+	DESTDIR="$(DESTDIR)" $(SHELL) "$(srcdir)/scripts/dataman-system-setup"
+
+# Override for distribution packaging; the default is a systemd unit search path.
+systemdsystemunitdir = $(prefix)/lib/systemd/system
+nodist_systemdsystemunit_DATA = dataman.service
+CLEANFILES = dataman.service
+dataman.service: $(srcdir)/systemd/dataman.service.in Makefile
+	$(AM_V_GEN)sed 's|@DATAMAN_BINDIR@|$(bindir)|g' "$<" > "$@"

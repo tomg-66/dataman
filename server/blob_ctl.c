@@ -44,63 +44,48 @@
 #include <sys/types.h>
 
 #include "misc.h"
+#include "errors.h"
+#include "storage_io.h"
+#include "undo_journal.h"
 
-void blob_ctl(char *root, char *f_name, int fmt, int64_t recno, int op)
+int blob_ctl(char *root, char *f_name, int fmt, int64_t recno, int op)
 {
 	struct dirent **namelist;
-
-	int i, j;
-	int offs;
-	int off2;
-
-	char pathname[1024];
-	char destname[1024];
-	char filename[64];
-
-	strcpy(filename, f_name);
-
-	strcpy(pathname, root);
-	strcat(pathname, "/blobs");
-
-	if (op == UNHIDE) {
-		offs = 1;
-		*filename = '.';
-	} else
-		offs = 0;
-	sprintf(filename+offs, "%s.%d.%"PRId64".*", f_name, fmt, recno);
-	offs = strlen(pathname);
-
-	if ((i = scandir(pathname, &namelist, NULL, alphasort)) > 0) {
-		*(pathname+offs) = '/';
-		offs++;
-		if (op == UNHIDE || op == HIDE) {
-			memcpy(destname, pathname, offs);
-			off2 = offs;
-			if (op == HIDE) {
-				*(destname+off2) = '.';
-				off2++;
+	char directory[1024], source[2048], dest[2048], prefix[1024];
+	int count, result = 0;
+	const char *name = strrchr(f_name, '/');
+	name = name ? name + 1 : f_name;
+	if (op != UNLINK && op != HIDE && op != UNHIDE && op != CLEANUP)
+		return(EINVMSG);
+	if (snprintf(directory, sizeof(directory), "%s/blobs", root) >= (int)sizeof(directory) ||
+			snprintf(prefix, sizeof(prefix), "%s%s.%d.%"PRId64".",
+				(op == UNHIDE || op == CLEANUP) ? "." : "", name, fmt, recno) >= (int)sizeof(prefix))
+		return(ENOBLOB);
+	count = scandir(directory, &namelist, NULL, alphasort);
+	if (count < 0)
+		return(ENOBLOB);
+	for (int i = 0; i < count; i++) {
+		const char *entry = namelist[i]->d_name;
+		if (!result && !strncmp(entry, prefix, strlen(prefix))) {
+			if (snprintf(source, sizeof(source), "%s/%s", directory, entry) >= (int)sizeof(source))
+				result = ENOBLOB;
+			else if (op == UNLINK || op == CLEANUP) {
+				int routed = dm_storage_blob_route(DM_BLOB_REMOVE, source, NULL, NULL, 0);
+				if (routed < 0 || (!routed && (dm_storage_namespace_check() < 0 || unlink(source) < 0)))
+					result = EBLOBWRT;
+			} else if (snprintf(dest, sizeof(dest), "%s/%s%s", directory,
+					op == HIDE ? "." : "", op == UNHIDE ? entry + 1 : entry) >= (int)sizeof(dest))
+				result = ENOBLOB;
+			else {
+				int routed = dm_storage_blob_route(DM_BLOB_RENAME, source, dest, NULL, 0);
+				if (routed < 0 || (!routed && (dm_storage_namespace_check() < 0 || rename(source, dest) < 0)))
+					result = EBLOBWRT;
 			}
-		} else if (op == CLEANUP) {
-			*(pathname+offs) = '.';
-			offs++;
 		}
-		for(j = 0; j < i; j++) {
-			if (!fnmatch(filename, namelist[j]->d_name, 0)) {
-				strcpy(pathname+offs, namelist[j]->d_name);
-				if (op == UNLINK || op == CLEANUP)
-					unlink(pathname);
-				else {
-					if (op == UNHIDE)
-						strcpy(destname+off2, namelist[j]->d_name+1);
-					else
-						strcpy(destname+off2, namelist[j]->d_name);
-					rename(pathname, destname);
-				}
-			}
-			free(namelist[j]);
-		}
-		free(namelist);
+		free(namelist[i]);
 	}
+	free(namelist);
+	return(result);
 }
 
 /*

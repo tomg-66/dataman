@@ -39,7 +39,7 @@ target_include_directories(dataman_mini PRIVATE
 target_link_libraries(dataman_mini PUBLIC ${CURSES_LIBRARIES})
 
 set(DATAMAN_C_HEADERS
-	dataman.h globs.h index.h m_params.h proto.h
+	dataman.h globs.h index.h m_params.h dataman_prototypes.h visibility.h
 	sort.h wind.h window.h w_params.h)
 
 install(TARGETS dataman_c

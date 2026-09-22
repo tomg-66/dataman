@@ -45,6 +45,7 @@
 
 #include "fileEdit.hpp"
 #include "db_comm.hpp"
+#include "dataman.hpp"
 #include "datamanError.hpp"
 #include "visibility.h"
 
@@ -82,6 +83,8 @@ DATAMAN_API void rollback(void)
 	if (i < 0)
 		throw makeError(i, "%s: Error during ROLLBACK", _progname);
 
+	masterRecord.discard();
+	workRecord.discard();
 	in_xact = FALSE;
 }
 

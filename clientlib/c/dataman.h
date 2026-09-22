@@ -52,7 +52,9 @@
 #define remove(key,idx)					if (db_rm_key(key,idx)) ;
 #define protect(idx)					if (db_prtct(idx)) ;
 #define restore(idx)					if (db_restore(idx)) ;
+#define start_transaction				if (db_start_xact()) ;
 #define commit							if (db_commit()) ;
+#define rollback						if (db_rollback()) ;
 #define delete(idx)						if (db_delete(idx)) ;
 #define include(idx1, idx2, key)		if (db_include(idx1, idx2, key)) ;
 #define insert(fmt, mode, ixname)		if (db_insert(fmt, mode, ixname)) ;

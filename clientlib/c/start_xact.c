@@ -1,6 +1,6 @@
 /* ***************************************************************
  *
- * PROCEDURE:	get.c
+ * PROCEDURE:	start_xact.c
  *
  * PROJECT:		dataman client side
  * 
@@ -15,7 +15,7 @@
  ************************************************************* */
 /*
  * this routine starts a transaction.  it should be bounded
- * by either a rollback or commit call.
+ * by either a db_rollback or db_commit call.
  */
 /*
  * This program is free software; you can redistribute it and/or
@@ -56,7 +56,7 @@ DATAMAN_HIDDEN extern char *_progname;
 
 DATAMAN_HIDDEN int in_xact;
 
-DATAMAN_API int start_transaction(void)
+DATAMAN_API int db_start_xact(void)
 {
     int i;								/* temporary */
 

@@ -15,8 +15,8 @@
  ************************************************************* */
 /*
  * this routine rolls back a transaction.  it has to end a block
- * that began with a start_transaction.  it makes sure nothing
- * since the start_transaction call has been commited.
+ * that began with a db_start_xact.  it makes sure nothing
+ * since the db_start_xact call has been commited.
  */
 /*
  * This program is free software; you can redistribute it and/or
@@ -46,6 +46,8 @@
 #include "../../server/dbfunc.h"
 #include "../../server/misc.h"
 #include "visibility.h"
+#include "m_params.h"
+#include "w_params.h"
 
 #define TRUE    1
 #define FALSE   0
@@ -57,14 +59,13 @@ DATAMAN_HIDDEN extern int in_xact;
 
 DATAMAN_HIDDEN extern char *_progname;
 
-DATAMAN_API int rollback(void)
+DATAMAN_API int db_rollback(void)
 {
     int i;								/* temporary */
 
 	char cmd[128];
 	char *buff;
 	char *cptr;
-
 
 	i = sprintf(cmd, "%d|", ROLLBACK);
 /*
@@ -82,6 +83,18 @@ DATAMAN_API int rollback(void)
 	free(buff);
 
 	if (i > 0) {
+		/* Discard cached edits so a later navigation cannot flush rolled-back data. */
+		if (mfld) {
+			for (int field = 1; mfld[field]; field++) free(mfld[field]);
+			free(mfld); mfld = NULL;
+		}
+		if (wfld) {
+			for (int field = 1; wfld[field]; field++) free(wfld[field]);
+			free(wfld); wfld = NULL;
+		}
+		free(m_blob_lengths); m_blob_lengths = NULL;
+		free(w_blob_lengths); w_blob_lengths = NULL;
+		m_fmt = w_fmt = 0;
 		in_xact = FALSE;
 		return TRUE;
 	}

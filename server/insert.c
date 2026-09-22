@@ -76,6 +76,7 @@
 #include "srv_index.h"			/* index description */
 #include "lock.h"
 #include "errors.h"
+#include "storage_io.h"
 #include "misc.h"
 
 #define BEFORE  0				/* flag to insert before record */
@@ -202,18 +203,15 @@ int insert(char *cmd, int c_off, char **ret)
 
 	switch(mode) {
 		case BEFORE:
-			llseek(fptr->_chan,m_cur+OFFSET_TO_PREV,SEEK_SET);	/* get to current record */
-			if (write(fptr->_chan,header,PTR_LENGTH) < PTR_LENGTH) {	/* pointer to prev record */
+			if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, m_cur+OFFSET_TO_PREV) < 0) {	/* pointer to prev record */
 				i = EHDRWRT;
 				goto done;
 			}
 			if (m_prev != 0) {
-				llseek(fptr->_chan,m_prev+OFFSET_TO_NEXT,SEEK_SET);		/* get to previous record */
-				if (write(fptr->_chan, header, PTR_LENGTH) < PTR_LENGTH) {		/* pointer to next rec */
+				if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, m_prev+OFFSET_TO_NEXT) < 0) {		/* pointer to next rec */
 					i = EHDRWRT;
 					put_ll(header, m_prev);
-					llseek(fptr->_chan,m_cur+OFFSET_TO_PREV,SEEK_SET);	/* get to current record */
-					if (write(fptr->_chan,header,PTR_LENGTH) < PTR_LENGTH) /* re-point to current */
+					if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, m_cur+OFFSET_TO_PREV) < 0) /* re-point to current */
 						i = EMULTIPLE;
 					goto done;
 				}
@@ -223,18 +221,15 @@ int insert(char *cmd, int c_off, char **ret)
 			break;								/* done here */
 
 		case AFTER:
-			llseek(fptr->_chan,m_cur+OFFSET_TO_NEXT,SEEK_SET);			/* get to current record */
-			if (write(fptr->_chan,header,PTR_LENGTH) < PTR_LENGTH) {	/* write pointer to next */
+			if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, m_cur+OFFSET_TO_NEXT) < 0) {	/* write pointer to next */
 				i = EHDRWRT;
 				goto done;
 			}
 			if (m_next != 0) {
-				llseek(fptr->_chan,m_next+OFFSET_TO_PREV,SEEK_SET);	/* get to next record */
-				if (write(fptr->_chan,header,PTR_LENGTH) < PTR_LENGTH) {	/* write prev pointer */
+				if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, m_next+OFFSET_TO_PREV) < 0) {	/* write prev pointer */
 					i = EHDRWRT;
 					put_ll(header, m_next);
-					llseek(fptr->_chan, m_cur+OFFSET_TO_NEXT, SEEK_SET);
-					if (write(fptr->_chan, header, PTR_LENGTH) < PTR_LENGTH)
+					if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, m_cur+OFFSET_TO_NEXT) < 0)
 						i = EMULTIPLE;
 					goto done;
 				}
@@ -250,9 +245,7 @@ int insert(char *cmd, int c_off, char **ret)
 	put_ll(rptr+OFFSET_TO_PREV,m_prev);				/* save the prev pointer */
 	put_ll(rptr+OFFSET_TO_NEXT,m_next);				/* save the next pointer */
 	memset(rptr+DATARECORD_HEADER_LENGTH, ' ', m_len);
-	llseek(fptr->_chan, m_new, SEEK_SET);			/* get to new record offset */
-
-	if (write(fptr->_chan,rptr,m_len+DATARECORD_HEADER_LENGTH) != m_len+DATARECORD_HEADER_LENGTH) {
+	if (dm_storage_mutate_at(fptr->_chan, rptr, m_len+DATARECORD_HEADER_LENGTH, m_new) < 0) {
 		i = ERECWRT;
 		goto done;
 	}
@@ -260,9 +253,8 @@ int insert(char *cmd, int c_off, char **ret)
 
 	if (bof) {
 		offs = fptr->_hlen + 2;				/* where to seek to */
-		llseek(fptr->_chan,offs,SEEK_SET);	/* get to file position */
 		put_ll(header,m_new);
-		if (write(fptr->_chan,header,PTR_LENGTH) != PTR_LENGTH) {
+		if (dm_storage_mutate_at(fptr->_chan, header, PTR_LENGTH, offs) < 0) {
 			i = EBEGWRT;
 			goto done;
 		}

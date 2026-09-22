@@ -216,14 +216,14 @@ DATAMAN_API int init_dataman(int argc, char **argv)
 		return FALSE;
 	}
 	db_comm comm;
-	if (!traditional)
-		goto done;
-	if (dataman_has_php)
-		goto done;
 /*
  * ok, we're connected, initialize our connection on the server.
  */
-	sprintf(cmd, "%d|%s/files/%s|", INIT_DAT, _root, argv[i]);
+	if (!traditional || dataman_has_php) {
+		sprintf(cmd, "%d|%s|", DEF_ROOT, _root);
+	} else {
+		sprintf(cmd, "%d|%s/files/%s|", INIT_DAT, _root, argv[i]);
+	}
 	if (dbgsw) {
 		fprintf(stderr, "file to open is %s\n", cmd);
 		fflush(stderr);
@@ -237,6 +237,10 @@ DATAMAN_API int init_dataman(int argc, char **argv)
 	i = atoi(cptr);
 	if (i < 0)
 		throw makeError(i, "%s: Error during INIT_DATAMAN", _progname);
+
+	if (!traditional || dataman_has_php) {
+		goto done;
+	}
 
 	workRecord.len = i;
 	cptr = strchr(cptr, '|') + 1;

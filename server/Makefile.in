@@ -95,6 +95,13 @@ bin_PROGRAMS = dataman$(EXEEXT) dataman_con$(EXEEXT) \
 	dataman_srv$(EXEEXT) mkdf$(EXEEXT) dumpdf$(EXEEXT) \
 	dumpix$(EXEEXT) dnodes$(EXEEXT) dbclean$(EXEEXT) \
 	dfedit$(EXEEXT)
+check_PROGRAMS = index_find_test$(EXEEXT) serial_prefix_test$(EXEEXT) \
+	storage_io_test$(EXEEXT) flush_io_test$(EXEEXT) \
+	undo_journal_test$(EXEEXT) session_root_test$(EXEEXT) \
+	journal_startup_test$(EXEEXT) verify_pid_test$(EXEEXT) \
+	transaction_session_test$(EXEEXT) \
+	record_mutation_test$(EXEEXT) blob_io_test$(EXEEXT) \
+	protocol_handshake_test$(EXEEXT)
 subdir = server
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -108,19 +115,23 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(includedir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_dataman_OBJECTS = dataman.$(OBJEXT) err_sys.$(OBJEXT) \
-	verify_pid.$(OBJEXT) version.$(OBJEXT)
-dataman_OBJECTS = $(am_dataman_OBJECTS)
-dataman_LDADD = $(LDADD)
+am__dirstamp = $(am__leading_dot)dirstamp
+am_blob_io_test_OBJECTS = tests/blob_io_test.$(OBJEXT) \
+	storage_io.$(OBJEXT) get_long.$(OBJEXT)
+blob_io_test_OBJECTS = $(am_blob_io_test_OBJECTS)
+blob_io_test_LDADD = $(LDADD)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+am_dataman_OBJECTS = dataman.$(OBJEXT) err_sys.$(OBJEXT) \
+	verify_pid.$(OBJEXT) version.$(OBJEXT)
+dataman_OBJECTS = $(am_dataman_OBJECTS)
+dataman_LDADD = $(LDADD)
 am_dataman_con_OBJECTS = serial.$(OBJEXT) serial_service.$(OBJEXT) \
 	serial_setup.$(OBJEXT) serial_cleanup.$(OBJEXT) \
 	server_comm.$(OBJEXT) err_sys.$(OBJEXT) put_long.$(OBJEXT) \
 	verify_pid.$(OBJEXT) term_dbserve.$(OBJEXT) version.$(OBJEXT) \
-	xact.$(OBJEXT) commit.$(OBJEXT) rollback.$(OBJEXT) \
 	put_ll.$(OBJEXT) get_ll.$(OBJEXT)
 dataman_con_OBJECTS = $(am_dataman_con_OBJECTS)
 dataman_con_LDADD = $(LDADD)
@@ -138,8 +149,11 @@ am_dataman_srv_OBJECTS = dbserve.$(OBJEXT) back.$(OBJEXT) \
 	release.$(OBJEXT) mkidx.$(OBJEXT) sort.$(OBJEXT) \
 	restore.$(OBJEXT) get_datafile_desc.$(OBJEXT) \
 	version.$(OBJEXT) get_blobs.$(OBJEXT) put_blobs.$(OBJEXT) \
-	get_ll.$(OBJEXT) put_ll.$(OBJEXT) get_rec.$(OBJEXT) \
-	blob_ctl.$(OBJEXT) undelete.$(OBJEXT) index_v2.$(OBJEXT)
+	get_ll.$(OBJEXT) put_ll.$(OBJEXT) blob_ctl.$(OBJEXT) \
+	index_v2.$(OBJEXT) storage_io.$(OBJEXT) session_root.$(OBJEXT) \
+	undo_journal.$(OBJEXT) journal_startup.$(OBJEXT) \
+	transaction_session.$(OBJEXT) transaction_dispatch.$(OBJEXT) \
+	transaction_wire.$(OBJEXT)
 dataman_srv_OBJECTS = $(am_dataman_srv_OBJECTS)
 dataman_srv_DEPENDENCIES =
 am_dbclean_OBJECTS = clean.$(OBJEXT) check_it.$(OBJEXT) \
@@ -157,7 +171,8 @@ dfedit_DEPENDENCIES = $(top_builddir)/clientlib/c/libmini.la
 dfedit_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(dfedit_LDFLAGS) $(LDFLAGS) -o $@
-am_dnodes_OBJECTS = dnodes.$(OBJEXT) index_v2.$(OBJEXT)
+am_dnodes_OBJECTS = dnodes.$(OBJEXT) index_v2.$(OBJEXT) \
+	storage_io.$(OBJEXT)
 dnodes_OBJECTS = $(am_dnodes_OBJECTS)
 dnodes_LDADD = $(LDADD)
 am_dumpdf_OBJECTS = dumpdf.$(OBJEXT) get_datafile_desc.$(OBJEXT) \
@@ -167,13 +182,70 @@ dumpdf_OBJECTS = $(am_dumpdf_OBJECTS)
 dumpdf_LDADD = $(LDADD)
 am_dumpix_OBJECTS = dumpix.$(OBJEXT) substr.$(OBJEXT) \
 	get_short.$(OBJEXT) get_long.$(OBJEXT) get_ll.$(OBJEXT) \
-	index_v2.$(OBJEXT)
+	index_v2.$(OBJEXT) storage_io.$(OBJEXT)
 dumpix_OBJECTS = $(am_dumpix_OBJECTS)
 dumpix_LDADD = $(LDADD)
+am_flush_io_test_OBJECTS = tests/flush_io_test.$(OBJEXT) \
+	flush.$(OBJEXT)
+flush_io_test_OBJECTS = $(am_flush_io_test_OBJECTS)
+flush_io_test_LDADD = $(LDADD)
+am_index_find_test_OBJECTS = tests/index_find_test.$(OBJEXT) \
+	index_v2.$(OBJEXT) storage_io.$(OBJEXT)
+index_find_test_OBJECTS = $(am_index_find_test_OBJECTS)
+index_find_test_LDADD = $(LDADD)
+am_journal_startup_test_OBJECTS =  \
+	tests/journal_startup_test.$(OBJEXT) journal_startup.$(OBJEXT) \
+	storage_io.$(OBJEXT)
+journal_startup_test_OBJECTS = $(am_journal_startup_test_OBJECTS)
+journal_startup_test_DEPENDENCIES =
 am_mkdf_OBJECTS = mkdf.$(OBJEXT) substr.$(OBJEXT) put_short.$(OBJEXT) \
 	put_long.$(OBJEXT) put_ll.$(OBJEXT) get_ll.$(OBJEXT)
 mkdf_OBJECTS = $(am_mkdf_OBJECTS)
 mkdf_LDADD = $(LDADD)
+am_protocol_handshake_test_OBJECTS =  \
+	tests/protocol_handshake_test.$(OBJEXT)
+protocol_handshake_test_OBJECTS =  \
+	$(am_protocol_handshake_test_OBJECTS)
+protocol_handshake_test_LDADD = $(LDADD)
+am_record_mutation_test_OBJECTS =  \
+	tests/record_mutation_test.$(OBJEXT) insert.$(OBJEXT) \
+	delete.$(OBJEXT) storage_io.$(OBJEXT) get_ll.$(OBJEXT) \
+	put_ll.$(OBJEXT)
+record_mutation_test_OBJECTS = $(am_record_mutation_test_OBJECTS)
+record_mutation_test_LDADD = $(LDADD)
+am_serial_prefix_test_OBJECTS =  \
+	tests/serial_prefix_test-serial_prefix_test.$(OBJEXT)
+serial_prefix_test_OBJECTS = $(am_serial_prefix_test_OBJECTS)
+serial_prefix_test_LDADD = $(LDADD)
+serial_prefix_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(serial_prefix_test_CFLAGS) $(CFLAGS) \
+	$(serial_prefix_test_LDFLAGS) $(LDFLAGS) -o $@
+am_session_root_test_OBJECTS = tests/session_root_test.$(OBJEXT)
+session_root_test_OBJECTS = $(am_session_root_test_OBJECTS)
+session_root_test_DEPENDENCIES =
+am_storage_io_test_OBJECTS = tests/storage_io_test.$(OBJEXT)
+storage_io_test_OBJECTS = $(am_storage_io_test_OBJECTS)
+storage_io_test_LDADD = $(LDADD)
+am_transaction_session_test_OBJECTS =  \
+	tests/transaction_session_test.$(OBJEXT) \
+	transaction_session.$(OBJEXT) transaction_dispatch.$(OBJEXT) \
+	transaction_wire.$(OBJEXT) undo_journal.$(OBJEXT) \
+	storage_io.$(OBJEXT) flush.$(OBJEXT) index_v2.$(OBJEXT) \
+	put_blobs.$(OBJEXT) blob_ctl.$(OBJEXT) get_long.$(OBJEXT) \
+	remove.$(OBJEXT) insert.$(OBJEXT) delete.$(OBJEXT) \
+	get_ll.$(OBJEXT) put_ll.$(OBJEXT)
+transaction_session_test_OBJECTS =  \
+	$(am_transaction_session_test_OBJECTS)
+transaction_session_test_DEPENDENCIES =
+am_undo_journal_test_OBJECTS = tests/undo_journal_test.$(OBJEXT) \
+	storage_io.$(OBJEXT)
+undo_journal_test_OBJECTS = $(am_undo_journal_test_OBJECTS)
+undo_journal_test_LDADD = $(LDADD)
+am_verify_pid_test_OBJECTS = tests/verify_pid_test.$(OBJEXT) \
+	verify_pid.$(OBJEXT)
+verify_pid_test_OBJECTS = $(am_verify_pid_test_OBJECTS)
+verify_pid_test_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -191,36 +263,49 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/back.Po ./$(DEPDIR)/blob_ctl.Po \
 	./$(DEPDIR)/check_it.Po ./$(DEPDIR)/clean.Po \
-	./$(DEPDIR)/clear.Po ./$(DEPDIR)/commit.Po \
-	./$(DEPDIR)/dataman.Po ./$(DEPDIR)/dbserve.Po \
-	./$(DEPDIR)/delete.Po ./$(DEPDIR)/dfedit.Po \
-	./$(DEPDIR)/dispatch.Po ./$(DEPDIR)/dnodes.Po \
-	./$(DEPDIR)/dumpdf.Po ./$(DEPDIR)/dumpix.Po \
-	./$(DEPDIR)/err_sys.Po ./$(DEPDIR)/flush.Po \
-	./$(DEPDIR)/forward.Po ./$(DEPDIR)/get.Po \
+	./$(DEPDIR)/clear.Po ./$(DEPDIR)/dataman.Po \
+	./$(DEPDIR)/dbserve.Po ./$(DEPDIR)/delete.Po \
+	./$(DEPDIR)/dfedit.Po ./$(DEPDIR)/dispatch.Po \
+	./$(DEPDIR)/dnodes.Po ./$(DEPDIR)/dumpdf.Po \
+	./$(DEPDIR)/dumpix.Po ./$(DEPDIR)/err_sys.Po \
+	./$(DEPDIR)/flush.Po ./$(DEPDIR)/forward.Po ./$(DEPDIR)/get.Po \
 	./$(DEPDIR)/get_blobs.Po ./$(DEPDIR)/get_current.Po \
 	./$(DEPDIR)/get_datafile_desc.Po ./$(DEPDIR)/get_desc.Po \
 	./$(DEPDIR)/get_file.Po ./$(DEPDIR)/get_first.Po \
 	./$(DEPDIR)/get_last.Po ./$(DEPDIR)/get_ll.Po \
 	./$(DEPDIR)/get_long.Po ./$(DEPDIR)/get_next.Po \
-	./$(DEPDIR)/get_prior.Po ./$(DEPDIR)/get_rec.Po \
-	./$(DEPDIR)/get_short.Po ./$(DEPDIR)/iclose.Po \
-	./$(DEPDIR)/include.Po ./$(DEPDIR)/index_v2.Po \
-	./$(DEPDIR)/init_dataman.Po ./$(DEPDIR)/insert.Po \
-	./$(DEPDIR)/iopen.Po ./$(DEPDIR)/lock.Po ./$(DEPDIR)/mkdf.Po \
-	./$(DEPDIR)/mkidx.Po ./$(DEPDIR)/pend.Po \
+	./$(DEPDIR)/get_prior.Po ./$(DEPDIR)/get_short.Po \
+	./$(DEPDIR)/iclose.Po ./$(DEPDIR)/include.Po \
+	./$(DEPDIR)/index_v2.Po ./$(DEPDIR)/init_dataman.Po \
+	./$(DEPDIR)/insert.Po ./$(DEPDIR)/iopen.Po \
+	./$(DEPDIR)/journal_startup.Po ./$(DEPDIR)/lock.Po \
+	./$(DEPDIR)/mkdf.Po ./$(DEPDIR)/mkidx.Po ./$(DEPDIR)/pend.Po \
 	./$(DEPDIR)/protect.Po ./$(DEPDIR)/put_blobs.Po \
 	./$(DEPDIR)/put_ll.Po ./$(DEPDIR)/put_long.Po \
 	./$(DEPDIR)/put_short.Po ./$(DEPDIR)/rebuild.Po \
 	./$(DEPDIR)/release.Po ./$(DEPDIR)/remove.Po \
-	./$(DEPDIR)/restore.Po ./$(DEPDIR)/rollback.Po \
-	./$(DEPDIR)/serial.Po ./$(DEPDIR)/serial_cleanup.Po \
-	./$(DEPDIR)/serial_service.Po ./$(DEPDIR)/serial_setup.Po \
-	./$(DEPDIR)/server_comm.Po ./$(DEPDIR)/sort.Po \
-	./$(DEPDIR)/substr.Po ./$(DEPDIR)/term_dbserve.Po \
-	./$(DEPDIR)/undelete.Po ./$(DEPDIR)/upd_idx.Po \
-	./$(DEPDIR)/verify_pid.Po ./$(DEPDIR)/version.Po \
-	./$(DEPDIR)/xact.Po
+	./$(DEPDIR)/restore.Po ./$(DEPDIR)/serial.Po \
+	./$(DEPDIR)/serial_cleanup.Po ./$(DEPDIR)/serial_service.Po \
+	./$(DEPDIR)/serial_setup.Po ./$(DEPDIR)/server_comm.Po \
+	./$(DEPDIR)/session_root.Po ./$(DEPDIR)/sort.Po \
+	./$(DEPDIR)/storage_io.Po ./$(DEPDIR)/substr.Po \
+	./$(DEPDIR)/term_dbserve.Po \
+	./$(DEPDIR)/transaction_dispatch.Po \
+	./$(DEPDIR)/transaction_session.Po \
+	./$(DEPDIR)/transaction_wire.Po ./$(DEPDIR)/undo_journal.Po \
+	./$(DEPDIR)/upd_idx.Po ./$(DEPDIR)/verify_pid.Po \
+	./$(DEPDIR)/version.Po tests/$(DEPDIR)/blob_io_test.Po \
+	tests/$(DEPDIR)/flush_io_test.Po \
+	tests/$(DEPDIR)/index_find_test.Po \
+	tests/$(DEPDIR)/journal_startup_test.Po \
+	tests/$(DEPDIR)/protocol_handshake_test.Po \
+	tests/$(DEPDIR)/record_mutation_test.Po \
+	tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po \
+	tests/$(DEPDIR)/session_root_test.Po \
+	tests/$(DEPDIR)/storage_io_test.Po \
+	tests/$(DEPDIR)/transaction_session_test.Po \
+	tests/$(DEPDIR)/undo_journal_test.Po \
+	tests/$(DEPDIR)/verify_pid_test.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -240,14 +325,26 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(dataman_SOURCES) $(dataman_con_SOURCES) \
-	$(dataman_srv_SOURCES) $(dbclean_SOURCES) $(dfedit_SOURCES) \
-	$(dnodes_SOURCES) $(dumpdf_SOURCES) $(dumpix_SOURCES) \
-	$(mkdf_SOURCES)
-DIST_SOURCES = $(dataman_SOURCES) $(dataman_con_SOURCES) \
-	$(dataman_srv_SOURCES) $(dbclean_SOURCES) $(dfedit_SOURCES) \
-	$(dnodes_SOURCES) $(dumpdf_SOURCES) $(dumpix_SOURCES) \
-	$(mkdf_SOURCES)
+SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
+	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
+	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
+	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
+	$(index_find_test_SOURCES) $(journal_startup_test_SOURCES) \
+	$(mkdf_SOURCES) $(protocol_handshake_test_SOURCES) \
+	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
+	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
+	$(transaction_session_test_SOURCES) \
+	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
+DIST_SOURCES = $(blob_io_test_SOURCES) $(dataman_SOURCES) \
+	$(dataman_con_SOURCES) $(dataman_srv_SOURCES) \
+	$(dbclean_SOURCES) $(dfedit_SOURCES) $(dnodes_SOURCES) \
+	$(dumpdf_SOURCES) $(dumpix_SOURCES) $(flush_io_test_SOURCES) \
+	$(index_find_test_SOURCES) $(journal_startup_test_SOURCES) \
+	$(mkdf_SOURCES) $(protocol_handshake_test_SOURCES) \
+	$(record_mutation_test_SOURCES) $(serial_prefix_test_SOURCES) \
+	$(session_root_test_SOURCES) $(storage_io_test_SOURCES) \
+	$(transaction_session_test_SOURCES) \
+	$(undo_journal_test_SOURCES) $(verify_pid_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -297,8 +394,192 @@ am__define_uniq_tagged_files = \
   unique=`for i in $$list; do \
     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
   done | $(am__uniquify_input)`
+am__tty_colors_dummy = \
+  mgn= red= grn= lgn= blu= brg= std=; \
+  am__color_tests=no
+am__tty_colors = { \
+  $(am__tty_colors_dummy); \
+  if test "X$(AM_COLOR_TESTS)" = Xno; then \
+    am__color_tests=no; \
+  elif test "X$(AM_COLOR_TESTS)" = Xalways; then \
+    am__color_tests=yes; \
+  elif test "X$$TERM" != Xdumb && { test -t 1; } 2>/dev/null; then \
+    am__color_tests=yes; \
+  fi; \
+  if test $$am__color_tests = yes; then \
+    red='[0;31m'; \
+    grn='[0;32m'; \
+    lgn='[1;32m'; \
+    blu='[1;34m'; \
+    mgn='[0;35m'; \
+    brg='[1m'; \
+    std='[m'; \
+  fi; \
+}
+am__recheck_rx = ^[ 	]*:recheck:[ 	]*
+am__global_test_result_rx = ^[ 	]*:global-test-result:[ 	]*
+am__copy_in_global_log_rx = ^[ 	]*:copy-in-global-log:[ 	]*
+# A command that, given a newline-separated list of test names on the
+# standard input, print the name of the tests that are to be re-run
+# upon "make recheck".
+am__list_recheck_tests = $(AWK) '{ \
+  recheck = 1; \
+  while ((rc = (getline line < ($$0 ".trs"))) != 0) \
+    { \
+      if (rc < 0) \
+        { \
+          if ((getline line2 < ($$0 ".log")) < 0) \
+	    recheck = 0; \
+          break; \
+        } \
+      else if (line ~ /$(am__recheck_rx)[nN][Oo]/) \
+        { \
+          recheck = 0; \
+          break; \
+        } \
+      else if (line ~ /$(am__recheck_rx)[yY][eE][sS]/) \
+        { \
+          break; \
+        } \
+    }; \
+  if (recheck) \
+    print $$0; \
+  close ($$0 ".trs"); \
+  close ($$0 ".log"); \
+}'
+# A command that, given a newline-separated list of test names on the
+# standard input, create the global log from their .trs and .log files.
+am__create_global_log = $(AWK) ' \
+function fatal(msg) \
+{ \
+  print "fatal: making $@: " msg | "cat >&2"; \
+  exit 1; \
+} \
+function rst_section(header) \
+{ \
+  print header; \
+  len = length(header); \
+  for (i = 1; i <= len; i = i + 1) \
+    printf "="; \
+  printf "\n\n"; \
+} \
+{ \
+  copy_in_global_log = 1; \
+  global_test_result = "RUN"; \
+  while ((rc = (getline line < ($$0 ".trs"))) != 0) \
+    { \
+      if (rc < 0) \
+         fatal("failed to read from " $$0 ".trs"); \
+      if (line ~ /$(am__global_test_result_rx)/) \
+        { \
+          sub("$(am__global_test_result_rx)", "", line); \
+          sub("[ 	]*$$", "", line); \
+          global_test_result = line; \
+        } \
+      else if (line ~ /$(am__copy_in_global_log_rx)[nN][oO]/) \
+        copy_in_global_log = 0; \
+    }; \
+  if (copy_in_global_log) \
+    { \
+      rst_section(global_test_result ": " $$0); \
+      while ((rc = (getline line < ($$0 ".log"))) != 0) \
+      { \
+        if (rc < 0) \
+          fatal("failed to read from " $$0 ".log"); \
+        print line; \
+      }; \
+      printf "\n"; \
+    }; \
+  close ($$0 ".trs"); \
+  close ($$0 ".log"); \
+}'
+# Restructured Text title.
+am__rst_title = { sed 's/.*/   &   /;h;s/./=/g;p;x;s/ *$$//;p;g' && echo; }
+# Solaris 10 'make', and several other traditional 'make' implementations,
+# pass "-e" to $(SHELL), and POSIX 2008 even requires this.  Work around it
+# by disabling -e (using the XSI extension "set +e") if it's set.
+am__sh_e_setup = case $$- in *e*) set +e;; esac
+# Default flags passed to test drivers.
+am__common_driver_flags = \
+  --color-tests "$$am__color_tests" \
+  $$am__collect_skipped_logs \
+  --enable-hard-errors "$$am__enable_hard_errors" \
+  --expect-failure "$$am__expect_failure"
+# To be inserted before the command running the test.  Creates the
+# directory for the log if needed.  Stores in $dir the directory
+# containing $f, in $tst the test, in $log the log.  Executes the
+# developer- defined test setup AM_TESTS_ENVIRONMENT (if any), and
+# passes TESTS_ENVIRONMENT.  Set up options for the wrapper that
+# will run the test scripts (or their associated LOG_COMPILER, if
+# thy have one).
+am__check_pre = \
+$(am__sh_e_setup);					\
+$(am__vpath_adj_setup) $(am__vpath_adj)			\
+$(am__tty_colors);					\
+srcdir=$(srcdir); export srcdir;			\
+case "$@" in						\
+  */*) am__odir=`echo "./$@" | sed 's|/[^/]*$$||'`;;	\
+    *) am__odir=.;; 					\
+esac;							\
+test "x$$am__odir" = x"." || test -d "$$am__odir" 	\
+  || $(MKDIR_P) "$$am__odir" || exit $$?;		\
+if test -f "./$$f"; then dir=./;			\
+elif test -f "$$f"; then dir=;				\
+else dir="$(srcdir)/"; fi;				\
+tst=$$dir$$f; log='$@'; 				\
+if test -n '$(IGNORE_SKIPPED_LOGS)'; then		\
+  am__collect_skipped_logs='--collect-skipped-logs no';	\
+else							\
+  am__collect_skipped_logs='';				\
+fi;							\
+if test -n '$(DISABLE_HARD_ERRORS)'; then		\
+  am__enable_hard_errors=no; 				\
+else							\
+  am__enable_hard_errors=yes; 				\
+fi; 							\
+case " $(XFAIL_TESTS) " in				\
+  *[\ \	]$$f[\ \	]* | *[\ \	]$$dir$$f[\ \	]*) \
+    am__expect_failure=yes;;				\
+  *)							\
+    am__expect_failure=no;;				\
+esac; 							\
+$(AM_TESTS_ENVIRONMENT) $(TESTS_ENVIRONMENT)
+# A shell command to get the names of the tests scripts with any registered
+# extension removed (i.e., equivalently, the names of the test logs, with
+# the '.log' extension removed).  The result is saved in the shell variable
+# '$bases'.  This honors runtime overriding of TESTS and TEST_LOGS.  Sadly,
+# we cannot use something simpler, involving e.g., "$(TEST_LOGS:.log=)",
+# since that might cause problem with VPATH rewrites for suffix-less tests.
+# See also 'test-harness-vpath-rewrite.sh' and 'test-trs-basic.sh'.
+am__set_TESTS_bases = \
+  bases='$(TEST_LOGS)'; \
+  bases=`for i in $$bases; do echo $$i; done | sed 's/\.log$$//'`; \
+  bases=`echo $$bases`
+AM_TESTSUITE_SUMMARY_HEADER = ' for $(PACKAGE_STRING)'
+RECHECK_LOGS = $(TEST_LOGS)
+AM_RECURSIVE_TARGETS = check recheck
+TEST_SUITE_LOG = test-suite.log
+TEST_EXTENSIONS = @EXEEXT@ .test
+LOG_DRIVER = $(SHELL) $(top_srcdir)/test-driver
+LOG_COMPILE = $(LOG_COMPILER) $(AM_LOG_FLAGS) $(LOG_FLAGS)
+am__set_b = \
+  case '$@' in \
+    */*) \
+      case '$*' in \
+        */*) b='$*';; \
+          *) b=`echo '$@' | sed 's/\.log$$//'`; \
+       esac;; \
+    *) \
+      b='$*';; \
+  esac
+am__test_logs1 = $(TESTS:=.log)
+am__test_logs2 = $(am__test_logs1:@EXEEXT@.log=.log)
+TEST_LOGS = $(am__test_logs2:.test.log=.log)
+TEST_LOG_DRIVER = $(SHELL) $(top_srcdir)/test-driver
+TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
+	$(TEST_LOG_FLAGS)
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/depcomp \
-	$(top_srcdir)/mkinstalldirs
+	$(top_srcdir)/mkinstalldirs $(top_srcdir)/test-driver
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -426,21 +707,24 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+AUTOMAKE_OPTIONS = subdir-objects
+EXTRA_DIST = tests/recovery_isolation.c
 AM_CFLAGS = -D_LARGEFILE64_SOURCE
 dataman_con_SOURCES = serial.c serial_service.c serial_setup.c \
 	serial_cleanup.c server_comm.c err_sys.c put_long.c verify_pid.c \
-	term_dbserve.c version.c xact.c commit.c rollback.c put_ll.c get_ll.c
+	term_dbserve.c version.c put_ll.c get_ll.c
 
 dataman_srv_SOURCES = dbserve.c back.c clear.c delete.c \
 	dispatch.c err_sys.c flush.c forward.c get.c get_current.c \
 	get_first.c get_last.c get_long.c get_next.c \
 	get_prior.c get_short.c iclose.c include.c insert.c iopen.c \
 	lock.c pend.c protect.c put_long.c get_file.c \
-	put_short.c remove.c substr.c \
-	upd_idx.c verify_pid.c get_desc.c init_dataman.c \
-	release.c mkidx.c sort.c restore.c get_datafile_desc.c \
-	version.c get_blobs.c put_blobs.c get_ll.c put_ll.c get_rec.c \
-	blob_ctl.c undelete.c index_v2.c
+	put_short.c remove.c substr.c upd_idx.c verify_pid.c \
+	get_desc.c init_dataman.c release.c mkidx.c sort.c restore.c \
+	get_datafile_desc.c version.c get_blobs.c put_blobs.c get_ll.c \
+	put_ll.c blob_ctl.c index_v2.c storage_io.c session_root.c \
+	undo_journal.c journal_startup.c transaction_session.c \
+	transaction_dispatch.c transaction_wire.c
 
 dataman_srv_LDADD = -lpthread
 dfedit_LDADD = $(top_builddir)/clientlib/c/libmini.la -lcurses
@@ -448,25 +732,50 @@ dfedit_LDFLAGS = -static
 dataman_SOURCES = dataman.c err_sys.c verify_pid.c version.c
 mkdf_SOURCES = mkdf.c substr.c put_short.c put_long.c put_ll.c get_ll.c
 dumpdf_SOURCES = dumpdf.c get_datafile_desc.c substr.c get_short.c \
-				  get_long.c get_ll.c
+		get_long.c get_ll.c
 
 dbclean_SOURCES = clean.c check_it.c rebuild.c get_datafile_desc.c get_ll.c \
-				  put_ll.c get_short.c put_short.c get_long.c
+		put_ll.c get_short.c put_short.c get_long.c
 
-dumpix_SOURCES = dumpix.c substr.c get_short.c get_long.c get_ll.c index_v2.c
-dnodes_SOURCES = dnodes.c index_v2.c
+dumpix_SOURCES = dumpix.c substr.c get_short.c get_long.c get_ll.c index_v2.c storage_io.c
+dnodes_SOURCES = dnodes.c index_v2.c storage_io.c
 dfedit_SOURCES = dfedit.c get_short.c put_short.c get_long.c \
-				 put_long.c get_datafile_desc.c lock.c get_ll.c \
-				 put_ll.c
+		put_long.c get_datafile_desc.c lock.c get_ll.c \
+		put_ll.c
 
-noinst_HEADERS = dbfunc.h errors.h lock.h msg.h srv_index.h \
-				 file_desc.h index_v2.h misc.h xact.h
+noinst_HEADERS = dbfunc.h errors.h protocol.h lock.h msg.h srv_index.h file_desc.h index_v2.h misc.h \
+		 storage_io.h undo_journal.h session_root.h journal_startup.h \
+		 transaction_session.h transaction_dispatch.h transaction_wire.h
 
+TESTS = $(check_PROGRAMS)
+protocol_handshake_test_SOURCES = tests/protocol_handshake_test.c
+index_find_test_SOURCES = tests/index_find_test.c index_v2.c storage_io.c
+storage_io_test_SOURCES = tests/storage_io_test.c
+flush_io_test_SOURCES = tests/flush_io_test.c flush.c
+undo_journal_test_SOURCES = tests/undo_journal_test.c storage_io.c
+session_root_test_SOURCES = tests/session_root_test.c
+session_root_test_LDADD = -lpthread
+journal_startup_test_SOURCES = tests/journal_startup_test.c journal_startup.c storage_io.c
+journal_startup_test_LDADD = -lpthread
+verify_pid_test_SOURCES = tests/verify_pid_test.c verify_pid.c
+transaction_session_test_SOURCES = tests/transaction_session_test.c transaction_session.c \
+		transaction_dispatch.c transaction_wire.c undo_journal.c \
+		storage_io.c flush.c index_v2.c put_blobs.c blob_ctl.c \
+		get_long.c remove.c insert.c delete.c get_ll.c \
+		put_ll.c
+
+transaction_session_test_LDADD = -lpthread
+record_mutation_test_SOURCES = tests/record_mutation_test.c insert.c delete.c storage_io.c get_ll.c put_ll.c
+blob_io_test_SOURCES = tests/blob_io_test.c storage_io.c get_long.c
+AM_CPPFLAGS = -I$(srcdir)
 include_HEADERS = datafile_header.h
+serial_prefix_test_SOURCES = tests/serial_prefix_test.c
+serial_prefix_test_CFLAGS = $(AM_CFLAGS) -ffunction-sections -fdata-sections
+serial_prefix_test_LDFLAGS = -Wl,--gc-sections
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .lo .o .obj
+.SUFFIXES: .c .lo .log .o .obj .test .test$(EXEEXT) .trs
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -541,6 +850,22 @@ clean-binPROGRAMS:
 	$(am__rm_f) $(bin_PROGRAMS)
 	test -z "$(EXEEXT)" || $(am__rm_f) $(bin_PROGRAMS:$(EXEEXT)=)
 
+clean-checkPROGRAMS:
+	$(am__rm_f) $(check_PROGRAMS)
+	test -z "$(EXEEXT)" || $(am__rm_f) $(check_PROGRAMS:$(EXEEXT)=)
+tests/$(am__dirstamp):
+	@$(MKDIR_P) tests
+	@: >>tests/$(am__dirstamp)
+tests/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tests/$(DEPDIR)
+	@: >>tests/$(DEPDIR)/$(am__dirstamp)
+tests/blob_io_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+blob_io_test$(EXEEXT): $(blob_io_test_OBJECTS) $(blob_io_test_DEPENDENCIES) $(EXTRA_blob_io_test_DEPENDENCIES) 
+	@rm -f blob_io_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(blob_io_test_OBJECTS) $(blob_io_test_LDADD) $(LIBS)
+
 dataman$(EXEEXT): $(dataman_OBJECTS) $(dataman_DEPENDENCIES) $(EXTRA_dataman_DEPENDENCIES) 
 	@rm -f dataman$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(dataman_OBJECTS) $(dataman_LDADD) $(LIBS)
@@ -572,13 +897,80 @@ dumpdf$(EXEEXT): $(dumpdf_OBJECTS) $(dumpdf_DEPENDENCIES) $(EXTRA_dumpdf_DEPENDE
 dumpix$(EXEEXT): $(dumpix_OBJECTS) $(dumpix_DEPENDENCIES) $(EXTRA_dumpix_DEPENDENCIES) 
 	@rm -f dumpix$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(dumpix_OBJECTS) $(dumpix_LDADD) $(LIBS)
+tests/flush_io_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+flush_io_test$(EXEEXT): $(flush_io_test_OBJECTS) $(flush_io_test_DEPENDENCIES) $(EXTRA_flush_io_test_DEPENDENCIES) 
+	@rm -f flush_io_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(flush_io_test_OBJECTS) $(flush_io_test_LDADD) $(LIBS)
+tests/index_find_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+index_find_test$(EXEEXT): $(index_find_test_OBJECTS) $(index_find_test_DEPENDENCIES) $(EXTRA_index_find_test_DEPENDENCIES) 
+	@rm -f index_find_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(index_find_test_OBJECTS) $(index_find_test_LDADD) $(LIBS)
+tests/journal_startup_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+journal_startup_test$(EXEEXT): $(journal_startup_test_OBJECTS) $(journal_startup_test_DEPENDENCIES) $(EXTRA_journal_startup_test_DEPENDENCIES) 
+	@rm -f journal_startup_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(journal_startup_test_OBJECTS) $(journal_startup_test_LDADD) $(LIBS)
 
 mkdf$(EXEEXT): $(mkdf_OBJECTS) $(mkdf_DEPENDENCIES) $(EXTRA_mkdf_DEPENDENCIES) 
 	@rm -f mkdf$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(mkdf_OBJECTS) $(mkdf_LDADD) $(LIBS)
+tests/protocol_handshake_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+protocol_handshake_test$(EXEEXT): $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_DEPENDENCIES) $(EXTRA_protocol_handshake_test_DEPENDENCIES) 
+	@rm -f protocol_handshake_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(protocol_handshake_test_OBJECTS) $(protocol_handshake_test_LDADD) $(LIBS)
+tests/record_mutation_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+record_mutation_test$(EXEEXT): $(record_mutation_test_OBJECTS) $(record_mutation_test_DEPENDENCIES) $(EXTRA_record_mutation_test_DEPENDENCIES) 
+	@rm -f record_mutation_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(record_mutation_test_OBJECTS) $(record_mutation_test_LDADD) $(LIBS)
+tests/serial_prefix_test-serial_prefix_test.$(OBJEXT):  \
+	tests/$(am__dirstamp) tests/$(DEPDIR)/$(am__dirstamp)
+
+serial_prefix_test$(EXEEXT): $(serial_prefix_test_OBJECTS) $(serial_prefix_test_DEPENDENCIES) $(EXTRA_serial_prefix_test_DEPENDENCIES) 
+	@rm -f serial_prefix_test$(EXEEXT)
+	$(AM_V_CCLD)$(serial_prefix_test_LINK) $(serial_prefix_test_OBJECTS) $(serial_prefix_test_LDADD) $(LIBS)
+tests/session_root_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+session_root_test$(EXEEXT): $(session_root_test_OBJECTS) $(session_root_test_DEPENDENCIES) $(EXTRA_session_root_test_DEPENDENCIES) 
+	@rm -f session_root_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(session_root_test_OBJECTS) $(session_root_test_LDADD) $(LIBS)
+tests/storage_io_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+storage_io_test$(EXEEXT): $(storage_io_test_OBJECTS) $(storage_io_test_DEPENDENCIES) $(EXTRA_storage_io_test_DEPENDENCIES) 
+	@rm -f storage_io_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(storage_io_test_OBJECTS) $(storage_io_test_LDADD) $(LIBS)
+tests/transaction_session_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+transaction_session_test$(EXEEXT): $(transaction_session_test_OBJECTS) $(transaction_session_test_DEPENDENCIES) $(EXTRA_transaction_session_test_DEPENDENCIES) 
+	@rm -f transaction_session_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(transaction_session_test_OBJECTS) $(transaction_session_test_LDADD) $(LIBS)
+tests/undo_journal_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+undo_journal_test$(EXEEXT): $(undo_journal_test_OBJECTS) $(undo_journal_test_DEPENDENCIES) $(EXTRA_undo_journal_test_DEPENDENCIES) 
+	@rm -f undo_journal_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(undo_journal_test_OBJECTS) $(undo_journal_test_LDADD) $(LIBS)
+tests/verify_pid_test.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+verify_pid_test$(EXEEXT): $(verify_pid_test_OBJECTS) $(verify_pid_test_DEPENDENCIES) $(EXTRA_verify_pid_test_DEPENDENCIES) 
+	@rm -f verify_pid_test$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(verify_pid_test_OBJECTS) $(verify_pid_test_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f tests/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -588,7 +980,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/check_it.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/clean.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/clear.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/commit.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dataman.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dbserve.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/delete.Po@am__quote@ # am--include-marker
@@ -612,7 +1003,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_long.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_next.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_prior.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_rec.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/get_short.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iclose.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/include.Po@am__quote@ # am--include-marker
@@ -620,6 +1010,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/init_dataman.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/insert.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iopen.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/journal_startup.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lock.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mkdf.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mkidx.Po@am__quote@ # am--include-marker
@@ -633,20 +1024,35 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/release.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/remove.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/restore.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rollback.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serial.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serial_cleanup.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serial_service.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/serial_setup.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/server_comm.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/session_root.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sort.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/storage_io.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/substr.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/term_dbserve.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undelete.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction_dispatch.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction_session.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction_wire.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/undo_journal.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/upd_idx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/verify_pid.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/version.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xact.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/blob_io_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/flush_io_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/index_find_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/journal_startup_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/protocol_handshake_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/record_mutation_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/session_root_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/storage_io_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/transaction_session_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/undo_journal_test.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/verify_pid_test.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -655,25 +1061,42 @@ $(am__depfiles_remade):
 am--depfiles: $(am__depfiles_remade)
 
 .c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+tests/serial_prefix_test-serial_prefix_test.o: tests/serial_prefix_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -MT tests/serial_prefix_test-serial_prefix_test.o -MD -MP -MF tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo -c -o tests/serial_prefix_test-serial_prefix_test.o `test -f 'tests/serial_prefix_test.c' || echo '$(srcdir)/'`tests/serial_prefix_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/serial_prefix_test.c' object='tests/serial_prefix_test-serial_prefix_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -c -o tests/serial_prefix_test-serial_prefix_test.o `test -f 'tests/serial_prefix_test.c' || echo '$(srcdir)/'`tests/serial_prefix_test.c
+
+tests/serial_prefix_test-serial_prefix_test.obj: tests/serial_prefix_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -MT tests/serial_prefix_test-serial_prefix_test.obj -MD -MP -MF tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo -c -o tests/serial_prefix_test-serial_prefix_test.obj `if test -f 'tests/serial_prefix_test.c'; then $(CYGPATH_W) 'tests/serial_prefix_test.c'; else $(CYGPATH_W) '$(srcdir)/tests/serial_prefix_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Tpo tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/serial_prefix_test.c' object='tests/serial_prefix_test-serial_prefix_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(serial_prefix_test_CFLAGS) $(CFLAGS) -c -o tests/serial_prefix_test-serial_prefix_test.obj `if test -f 'tests/serial_prefix_test.c'; then $(CYGPATH_W) 'tests/serial_prefix_test.c'; else $(CYGPATH_W) '$(srcdir)/tests/serial_prefix_test.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -753,6 +1176,271 @@ cscopelist-am: $(am__tagged_files)
 
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
+
+# Recover from deleted '.trs' file; this should ensure that
+# "rm -f foo.log; make foo.trs" re-run 'foo.test', and re-create
+# both 'foo.log' and 'foo.trs'.  Break the recipe in two subshells
+# to avoid problems with "make -n".
+.log.trs:
+	rm -f $< $@
+	$(MAKE) $(AM_MAKEFLAGS) $<
+
+# Leading 'am--fnord' is there to ensure the list of targets does not
+# expand to empty, as could happen e.g. with make check TESTS=''.
+am--fnord $(TEST_LOGS) $(TEST_LOGS:.log=.trs): $(am__force_recheck)
+am--force-recheck:
+	@:
+$(TEST_SUITE_LOG): $(TEST_LOGS)
+	@$(am__set_TESTS_bases); \
+	am__f_ok () { test -f "$$1" && test -r "$$1"; }; \
+	redo_bases=`for i in $$bases; do \
+	              am__f_ok $$i.trs && am__f_ok $$i.log || echo $$i; \
+	            done`; \
+	if test -n "$$redo_bases"; then \
+	  redo_logs=`for i in $$redo_bases; do echo $$i.log; done`; \
+	  redo_results=`for i in $$redo_bases; do echo $$i.trs; done`; \
+	  if $(am__make_dryrun); then :; else \
+	    rm -f $$redo_logs && rm -f $$redo_results || exit 1; \
+	  fi; \
+	fi; \
+	if test -n "$$am__remaking_logs"; then \
+	  echo "fatal: making $(TEST_SUITE_LOG): possible infinite" \
+	       "recursion detected" >&2; \
+	elif test -n "$$redo_logs"; then \
+	  am__remaking_logs=yes $(MAKE) $(AM_MAKEFLAGS) $$redo_logs; \
+	fi; \
+	if $(am__make_dryrun); then :; else \
+	  st=0;  \
+	  errmsg="fatal: making $(TEST_SUITE_LOG): failed to create"; \
+	  for i in $$redo_bases; do \
+	    test -f $$i.trs && test -r $$i.trs \
+	      || { echo "$$errmsg $$i.trs" >&2; st=1; }; \
+	    test -f $$i.log && test -r $$i.log \
+	      || { echo "$$errmsg $$i.log" >&2; st=1; }; \
+	  done; \
+	  test $$st -eq 0 || exit 1; \
+	fi
+	@$(am__sh_e_setup); $(am__tty_colors); $(am__set_TESTS_bases); \
+	ws='[ 	]'; \
+	results=`for b in $$bases; do echo $$b.trs; done`; \
+	test -n "$$results" || results=/dev/null; \
+	all=`  grep "^$$ws*:test-result:"           $$results | wc -l`; \
+	pass=` grep "^$$ws*:test-result:$$ws*PASS"  $$results | wc -l`; \
+	fail=` grep "^$$ws*:test-result:$$ws*FAIL"  $$results | wc -l`; \
+	skip=` grep "^$$ws*:test-result:$$ws*SKIP"  $$results | wc -l`; \
+	xfail=`grep "^$$ws*:test-result:$$ws*XFAIL" $$results | wc -l`; \
+	xpass=`grep "^$$ws*:test-result:$$ws*XPASS" $$results | wc -l`; \
+	error=`grep "^$$ws*:test-result:$$ws*ERROR" $$results | wc -l`; \
+	if test `expr $$fail + $$xpass + $$error` -eq 0; then \
+	  success=true; \
+	else \
+	  success=false; \
+	fi; \
+	br='==================='; br=$$br$$br$$br$$br; \
+	result_count () \
+	{ \
+	    if test x"$$1" = x"--maybe-color"; then \
+	      maybe_colorize=yes; \
+	    elif test x"$$1" = x"--no-color"; then \
+	      maybe_colorize=no; \
+	    else \
+	      echo "$@: invalid 'result_count' usage" >&2; exit 4; \
+	    fi; \
+	    shift; \
+	    desc=$$1 count=$$2; \
+	    if test $$maybe_colorize = yes && test $$count -gt 0; then \
+	      color_start=$$3 color_end=$$std; \
+	    else \
+	      color_start= color_end=; \
+	    fi; \
+	    echo "$${color_start}# $$desc $$count$${color_end}"; \
+	}; \
+	create_testsuite_report () \
+	{ \
+	  result_count $$1 "TOTAL:" $$all   "$$brg"; \
+	  result_count $$1 "PASS: " $$pass  "$$grn"; \
+	  result_count $$1 "SKIP: " $$skip  "$$blu"; \
+	  result_count $$1 "XFAIL:" $$xfail "$$lgn"; \
+	  result_count $$1 "FAIL: " $$fail  "$$red"; \
+	  result_count $$1 "XPASS:" $$xpass "$$red"; \
+	  result_count $$1 "ERROR:" $$error "$$mgn"; \
+	}; \
+	output_system_information () \
+	{ \
+          echo;                                     \
+	  { uname -a | $(AWK) '{                    \
+  printf "System information (uname -a):";          \
+  for (i = 1; i < NF; ++i)                          \
+    {                                               \
+      if (i != 2)                                   \
+        printf " %s", $$i;                          \
+    }                                               \
+  printf "\n";                                      \
+}'; } 2>&1;                                         \
+	  if test -r /etc/os-release; then          \
+	    echo "Distribution information (/etc/os-release):"; \
+	    sed 8q /etc/os-release;                 \
+	  elif test -r /etc/issue; then             \
+	    echo "Distribution information (/etc/issue):";      \
+	    cat /etc/issue;                         \
+	  fi;                                       \
+	}; \
+	please_report () \
+	{ \
+echo "Some test(s) failed.  Please report this to $(PACKAGE_BUGREPORT),";    \
+echo "together with the test-suite.log file (gzipped) and your system";      \
+echo "information.  Thanks.";                                                \
+	}; \
+	{								\
+	  echo "$(PACKAGE_STRING): $(subdir)/$(TEST_SUITE_LOG)" |	\
+	    $(am__rst_title);						\
+	  create_testsuite_report --no-color;				\
+	  output_system_information;                                    \
+	  echo;								\
+	  echo ".. contents:: :depth: 2";				\
+	  echo;								\
+	  for b in $$bases; do echo $$b; done				\
+	    | $(am__create_global_log);					\
+	} >$(TEST_SUITE_LOG).tmp || exit 1;				\
+	mv $(TEST_SUITE_LOG).tmp $(TEST_SUITE_LOG);			\
+	if $$success; then						\
+	  col="$$grn";							\
+	 else								\
+	  col="$$red";							\
+	  test x"$$VERBOSE" = x || cat $(TEST_SUITE_LOG);		\
+	fi;								\
+	echo "$${col}$$br$${std}"; 					\
+	echo "$${col}Testsuite summary"$(AM_TESTSUITE_SUMMARY_HEADER)"$${std}";	\
+	echo "$${col}$$br$${std}"; 					\
+	create_testsuite_report --maybe-color;				\
+	echo "$$col$$br$$std";						\
+	if $$success; then :; else					\
+	  echo "$${col}See $(subdir)/$(TEST_SUITE_LOG) for debugging.$${std}";\
+	  if test -n "$(PACKAGE_BUGREPORT)"; then			\
+	    please_report | sed -e "s/^/$${col}/" -e s/'$$'/"$${std}"/; \
+	  fi;								\
+	  echo "$$col$$br$$std";					\
+	fi;								\
+	$$success || exit 1
+
+check-TESTS: $(check_PROGRAMS)
+	@$(am__rm_f) $(RECHECK_LOGS)
+	@$(am__rm_f) $(RECHECK_LOGS:.log=.trs)
+	@$(am__rm_f) $(TEST_SUITE_LOG)
+	@set +e; $(am__set_TESTS_bases); \
+	log_list=`for i in $$bases; do echo $$i.log; done`; \
+	log_list=`echo $$log_list`; \
+	$(MAKE) $(AM_MAKEFLAGS) $(TEST_SUITE_LOG) TEST_LOGS="$$log_list"; \
+	exit $$?;
+recheck: all $(check_PROGRAMS)
+	@$(am__rm_f) $(TEST_SUITE_LOG)
+	@set +e; $(am__set_TESTS_bases); \
+	bases=`for i in $$bases; do echo $$i; done \
+	         | $(am__list_recheck_tests)` || exit 1; \
+	log_list=`for i in $$bases; do echo $$i.log; done`; \
+	log_list=`echo $$log_list`; \
+	$(MAKE) $(AM_MAKEFLAGS) $(TEST_SUITE_LOG) \
+	        am__force_recheck=am--force-recheck \
+	        TEST_LOGS="$$log_list"; \
+	exit $$?
+index_find_test.log: index_find_test$(EXEEXT)
+	@p='index_find_test$(EXEEXT)'; \
+	b='index_find_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+serial_prefix_test.log: serial_prefix_test$(EXEEXT)
+	@p='serial_prefix_test$(EXEEXT)'; \
+	b='serial_prefix_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+storage_io_test.log: storage_io_test$(EXEEXT)
+	@p='storage_io_test$(EXEEXT)'; \
+	b='storage_io_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+flush_io_test.log: flush_io_test$(EXEEXT)
+	@p='flush_io_test$(EXEEXT)'; \
+	b='flush_io_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+undo_journal_test.log: undo_journal_test$(EXEEXT)
+	@p='undo_journal_test$(EXEEXT)'; \
+	b='undo_journal_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+session_root_test.log: session_root_test$(EXEEXT)
+	@p='session_root_test$(EXEEXT)'; \
+	b='session_root_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+journal_startup_test.log: journal_startup_test$(EXEEXT)
+	@p='journal_startup_test$(EXEEXT)'; \
+	b='journal_startup_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+verify_pid_test.log: verify_pid_test$(EXEEXT)
+	@p='verify_pid_test$(EXEEXT)'; \
+	b='verify_pid_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+transaction_session_test.log: transaction_session_test$(EXEEXT)
+	@p='transaction_session_test$(EXEEXT)'; \
+	b='transaction_session_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+record_mutation_test.log: record_mutation_test$(EXEEXT)
+	@p='record_mutation_test$(EXEEXT)'; \
+	b='record_mutation_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+blob_io_test.log: blob_io_test$(EXEEXT)
+	@p='blob_io_test$(EXEEXT)'; \
+	b='blob_io_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+protocol_handshake_test.log: protocol_handshake_test$(EXEEXT)
+	@p='protocol_handshake_test$(EXEEXT)'; \
+	b='protocol_handshake_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+.test.log:
+	@p='$<'; \
+	$(am__set_b); \
+	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+@am__EXEEXT_TRUE@.test$(EXEEXT).log:
+@am__EXEEXT_TRUE@	@p='$<'; \
+@am__EXEEXT_TRUE@	$(am__set_b); \
+@am__EXEEXT_TRUE@	$(am__check_pre) $(TEST_LOG_DRIVER) --test-name "$$f" \
+@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
+@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_TEST_LOG_DRIVER_FLAGS) $(TEST_LOG_DRIVER_FLAGS) -- $(TEST_LOG_COMPILE) \
+@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
 distdir: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) distdir-am
 
@@ -787,6 +1475,8 @@ distdir-am: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
+	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
 all-am: Makefile $(PROGRAMS) $(HEADERS)
 installdirs:
@@ -813,19 +1503,25 @@ install-strip:
 	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
 	fi
 mostlyclean-generic:
+	-$(am__rm_f) $(TEST_LOGS)
+	-$(am__rm_f) $(TEST_LOGS:.log=.trs)
+	-$(am__rm_f) $(TEST_SUITE_LOG)
 
 clean-generic:
 
 distclean-generic:
 	-$(am__rm_f) $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || $(am__rm_f) $(CONFIG_CLEAN_VPATH_FILES)
+	-$(am__rm_f) tests/$(DEPDIR)/$(am__dirstamp)
+	-$(am__rm_f) tests/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
+clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
+	clean-libtool mostlyclean-am
 
 distclean: distclean-am
 	-rm -f ./$(DEPDIR)/back.Po
@@ -833,7 +1529,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/check_it.Po
 	-rm -f ./$(DEPDIR)/clean.Po
 	-rm -f ./$(DEPDIR)/clear.Po
-	-rm -f ./$(DEPDIR)/commit.Po
 	-rm -f ./$(DEPDIR)/dataman.Po
 	-rm -f ./$(DEPDIR)/dbserve.Po
 	-rm -f ./$(DEPDIR)/delete.Po
@@ -857,7 +1552,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/get_long.Po
 	-rm -f ./$(DEPDIR)/get_next.Po
 	-rm -f ./$(DEPDIR)/get_prior.Po
-	-rm -f ./$(DEPDIR)/get_rec.Po
 	-rm -f ./$(DEPDIR)/get_short.Po
 	-rm -f ./$(DEPDIR)/iclose.Po
 	-rm -f ./$(DEPDIR)/include.Po
@@ -865,6 +1559,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/init_dataman.Po
 	-rm -f ./$(DEPDIR)/insert.Po
 	-rm -f ./$(DEPDIR)/iopen.Po
+	-rm -f ./$(DEPDIR)/journal_startup.Po
 	-rm -f ./$(DEPDIR)/lock.Po
 	-rm -f ./$(DEPDIR)/mkdf.Po
 	-rm -f ./$(DEPDIR)/mkidx.Po
@@ -878,20 +1573,35 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/release.Po
 	-rm -f ./$(DEPDIR)/remove.Po
 	-rm -f ./$(DEPDIR)/restore.Po
-	-rm -f ./$(DEPDIR)/rollback.Po
 	-rm -f ./$(DEPDIR)/serial.Po
 	-rm -f ./$(DEPDIR)/serial_cleanup.Po
 	-rm -f ./$(DEPDIR)/serial_service.Po
 	-rm -f ./$(DEPDIR)/serial_setup.Po
 	-rm -f ./$(DEPDIR)/server_comm.Po
+	-rm -f ./$(DEPDIR)/session_root.Po
 	-rm -f ./$(DEPDIR)/sort.Po
+	-rm -f ./$(DEPDIR)/storage_io.Po
 	-rm -f ./$(DEPDIR)/substr.Po
 	-rm -f ./$(DEPDIR)/term_dbserve.Po
-	-rm -f ./$(DEPDIR)/undelete.Po
+	-rm -f ./$(DEPDIR)/transaction_dispatch.Po
+	-rm -f ./$(DEPDIR)/transaction_session.Po
+	-rm -f ./$(DEPDIR)/transaction_wire.Po
+	-rm -f ./$(DEPDIR)/undo_journal.Po
 	-rm -f ./$(DEPDIR)/upd_idx.Po
 	-rm -f ./$(DEPDIR)/verify_pid.Po
 	-rm -f ./$(DEPDIR)/version.Po
-	-rm -f ./$(DEPDIR)/xact.Po
+	-rm -f tests/$(DEPDIR)/blob_io_test.Po
+	-rm -f tests/$(DEPDIR)/flush_io_test.Po
+	-rm -f tests/$(DEPDIR)/index_find_test.Po
+	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
+	-rm -f tests/$(DEPDIR)/protocol_handshake_test.Po
+	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
+	-rm -f tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
+	-rm -f tests/$(DEPDIR)/session_root_test.Po
+	-rm -f tests/$(DEPDIR)/storage_io_test.Po
+	-rm -f tests/$(DEPDIR)/transaction_session_test.Po
+	-rm -f tests/$(DEPDIR)/undo_journal_test.Po
+	-rm -f tests/$(DEPDIR)/verify_pid_test.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -942,7 +1652,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/check_it.Po
 	-rm -f ./$(DEPDIR)/clean.Po
 	-rm -f ./$(DEPDIR)/clear.Po
-	-rm -f ./$(DEPDIR)/commit.Po
 	-rm -f ./$(DEPDIR)/dataman.Po
 	-rm -f ./$(DEPDIR)/dbserve.Po
 	-rm -f ./$(DEPDIR)/delete.Po
@@ -966,7 +1675,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/get_long.Po
 	-rm -f ./$(DEPDIR)/get_next.Po
 	-rm -f ./$(DEPDIR)/get_prior.Po
-	-rm -f ./$(DEPDIR)/get_rec.Po
 	-rm -f ./$(DEPDIR)/get_short.Po
 	-rm -f ./$(DEPDIR)/iclose.Po
 	-rm -f ./$(DEPDIR)/include.Po
@@ -974,6 +1682,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/init_dataman.Po
 	-rm -f ./$(DEPDIR)/insert.Po
 	-rm -f ./$(DEPDIR)/iopen.Po
+	-rm -f ./$(DEPDIR)/journal_startup.Po
 	-rm -f ./$(DEPDIR)/lock.Po
 	-rm -f ./$(DEPDIR)/mkdf.Po
 	-rm -f ./$(DEPDIR)/mkidx.Po
@@ -987,20 +1696,35 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/release.Po
 	-rm -f ./$(DEPDIR)/remove.Po
 	-rm -f ./$(DEPDIR)/restore.Po
-	-rm -f ./$(DEPDIR)/rollback.Po
 	-rm -f ./$(DEPDIR)/serial.Po
 	-rm -f ./$(DEPDIR)/serial_cleanup.Po
 	-rm -f ./$(DEPDIR)/serial_service.Po
 	-rm -f ./$(DEPDIR)/serial_setup.Po
 	-rm -f ./$(DEPDIR)/server_comm.Po
+	-rm -f ./$(DEPDIR)/session_root.Po
 	-rm -f ./$(DEPDIR)/sort.Po
+	-rm -f ./$(DEPDIR)/storage_io.Po
 	-rm -f ./$(DEPDIR)/substr.Po
 	-rm -f ./$(DEPDIR)/term_dbserve.Po
-	-rm -f ./$(DEPDIR)/undelete.Po
+	-rm -f ./$(DEPDIR)/transaction_dispatch.Po
+	-rm -f ./$(DEPDIR)/transaction_session.Po
+	-rm -f ./$(DEPDIR)/transaction_wire.Po
+	-rm -f ./$(DEPDIR)/undo_journal.Po
 	-rm -f ./$(DEPDIR)/upd_idx.Po
 	-rm -f ./$(DEPDIR)/verify_pid.Po
 	-rm -f ./$(DEPDIR)/version.Po
-	-rm -f ./$(DEPDIR)/xact.Po
+	-rm -f tests/$(DEPDIR)/blob_io_test.Po
+	-rm -f tests/$(DEPDIR)/flush_io_test.Po
+	-rm -f tests/$(DEPDIR)/index_find_test.Po
+	-rm -f tests/$(DEPDIR)/journal_startup_test.Po
+	-rm -f tests/$(DEPDIR)/protocol_handshake_test.Po
+	-rm -f tests/$(DEPDIR)/record_mutation_test.Po
+	-rm -f tests/$(DEPDIR)/serial_prefix_test-serial_prefix_test.Po
+	-rm -f tests/$(DEPDIR)/session_root_test.Po
+	-rm -f tests/$(DEPDIR)/storage_io_test.Po
+	-rm -f tests/$(DEPDIR)/transaction_session_test.Po
+	-rm -f tests/$(DEPDIR)/undo_journal_test.Po
+	-rm -f tests/$(DEPDIR)/verify_pid_test.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -1019,11 +1743,12 @@ ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS
 
-.MAKE: install-am install-strip
+.MAKE: check-am install-am install-strip
 
-.PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
-	clean-binPROGRAMS clean-generic clean-libtool cscopelist-am \
-	ctags ctags-am distclean distclean-compile distclean-generic \
+.PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-TESTS \
+	check-am clean clean-binPROGRAMS clean-checkPROGRAMS \
+	clean-generic clean-libtool cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-binPROGRAMS \
 	install-data install-data-am install-dvi install-dvi-am \
@@ -1033,8 +1758,9 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS
 	install-ps-am install-strip installcheck installcheck-am \
 	installdirs maintainer-clean maintainer-clean-generic \
 	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am uninstall-binPROGRAMS uninstall-includeHEADERS
+	mostlyclean-libtool pdf pdf-am ps ps-am recheck tags tags-am \
+	uninstall uninstall-am uninstall-binPROGRAMS \
+	uninstall-includeHEADERS
 
 .PRECIOUS: Makefile
 

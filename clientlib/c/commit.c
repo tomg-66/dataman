@@ -15,7 +15,7 @@
  ************************************************************* */
 /*
  * this routine commits a transaction.  it has to end a block
- * that began with a start_transaction.
+ * that began with a db_start_xact.
  */
 /*
  * This program is free software; you can redistribute it and/or
@@ -69,6 +69,10 @@ DATAMAN_API int db_commit(void)
 	char *buff;
 	char *cptr;
 
+	if (!in_xact) {
+		db_err(ENOXACT, "%s: no transaction to commit", _progname);
+		return FALSE;
+	}
 /*
  * if need be, flush the current record before the commit
  */
@@ -99,7 +103,7 @@ DATAMAN_API int db_commit(void)
 		i = FALSE;
 	}
 	free(buff);
-	in_xact = FALSE;
+	if (i > 0) in_xact = FALSE;
 	return(i);
 }
 

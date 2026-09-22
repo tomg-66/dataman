@@ -20,7 +20,11 @@ javac -Xlint:all -d "$build_dir" \
 	"$repo_root"/clientlib/java/*.java \
 	"$this_dir"/java/*.java
 
+java -cp "$build_dir" Dataman.ProtocolHandshakeTest
 java -cp "$build_dir" BuildOneRecordIndex "$database_root" "$server_host"
 java -cp "$build_dir" OneRecordIntegrationTest "$database_root" "$server_host"
+
+java -cp "$build_dir" TransactionIntegrationTest "$database_root" "$server_host"
+python3 "$this_dir/transaction_protocol_test.py" "$database_root" "$server_host"
 
 echo "java integration tests: PASS"

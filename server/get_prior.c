@@ -1,4 +1,19 @@
-/* Return the entry preceding the client's generation-qualified v2 cursor. */
+/* ***************************************************************
+ *
+ * PROCEDURE:	get_prior.c
+ *
+ * PROJECT:		dataman
+ * 
+ * DATE:		
+ * 
+ * AUTHOR:		Tom Green
+ * 
+ * FILES:
+ ************************************************************* */
+/*
+ * Return the entry preceding the client's generation-qualified v2 cursor.
+ */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

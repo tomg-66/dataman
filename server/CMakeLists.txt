@@ -49,12 +49,12 @@ if(BUILD_TESTING AND DATAMAN_ENABLE_RECOVERY_TESTS)
 		target_link_libraries(recovery_${kind} PRIVATE Threads::Threads)
 		target_link_options(recovery_${kind} PRIVATE
 			-Wl,--wrap=msgget -Wl,--wrap=verify_pid -Wl,--wrap=bind
-			-Wl,--wrap=term_dbserve)
+			-Wl,--wrap=term_dbserve -Wl,--wrap=pwrite -Wl,--wrap=fsync)
 	endforeach()
 	add_test(NAME transaction-recovery COMMAND "${Python3_EXECUTABLE}"
 		"${PROJECT_SOURCE_DIR}/tests/transaction_recovery_test.py"
 		$<TARGET_FILE:recovery_srv> $<TARGET_FILE:recovery_con> $<TARGET_FILE:mkdf>)
-	set_tests_properties(transaction-recovery PROPERTIES TIMEOUT 120 LABELS integration)
+	set_tests_properties(transaction-recovery PROPERTIES TIMEOUT 240 LABELS integration)
 endif()
 
 if(BUILD_TESTING)

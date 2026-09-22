@@ -53,7 +53,8 @@ class Servers:
         self.journal.mkdir(mode=0o700)
         self.root = directory / "database"
         self.env = dict(os.environ, DM_TEST_MSGKEY=str(self.key),
-                        DATAMAN_JOURNAL_DIR=str(self.journal))
+                        DATAMAN_JOURNAL_DIR=str(self.journal),
+                        DM_TEST_FAIL_DIR=str(directory), DM_TEST_DATA=str(self.root / "files/alpha"))
 
     def start(self):
         self.srv = subprocess.Popen([self.srv_binary], env=self.env,
@@ -125,7 +126,7 @@ class Servers:
 
 def command(client, text):
     reply = client.command(text)
-    check(int(reply.split(b"|", 1)[0]) >= 0, f"command {text!r}: {reply!r}")
+    check(int(reply.split(b"|", 1)[0]) >= 0, f"command {text[:120]!r} (length {len(text)}): {reply[:120]!r}")
     return reply
 
 
@@ -205,6 +206,77 @@ def mutate(client, indexes):
         command(client, f"{DELETE}|{index}|0|{deleted[0]}|1|")
 
 
+# Binary payloads cross both shared-memory and journal-stream chunk boundaries.
+ORIGINAL_BLOBS = {
+    "BKEEP01": bytes(range(256)) * 4097,
+    "BDROP01": b"delete this blob\x00\xff",
+    "BZERO01": b"truncate me" * 7000,
+    "BNONE01": None,
+}
+CHANGED_BLOBS = {
+    "BKEEP01": b"replacement\x00\xff" * 100001,
+    "BZERO01": b"",
+    "BNONE01": b"created for an existing record",
+    "BNEW001": b"new record blob\x00" * 5000,
+}
+
+
+def blob_index(client, root):
+    return int(command(client, f"{IOPEN}|documents_idx|{root}|").split(b"|")[1])
+
+
+def blob_get(client, index, key):
+    reply = command(client, f"{GET}|{index}|{key}|")
+    if int(reply.split(b"|", 1)[0]) == 0:
+        return None
+    fields = reply.split(b"|", 5)
+    body = fields[5]
+    check(int(fields[0]) == len(body) - 16, "blob response length differs")
+    check(body[16:23] == key.encode(), "wrong blob record")
+    length = struct.unpack_from("!i", body, 39)[0]
+    check(length >= 0 and len(body) == 43 + length, "invalid blob payload length")
+    return struct.unpack_from("!q", body, 8)[0], body[43:]
+
+
+def blob_flush(client, index, record, key, blob):
+    data = payload(key, "blob record") + struct.pack("!i", len(blob)) + blob
+    check(command(client, f"{FLUSH}|{index}|0|{record}|1|{len(data)}|".encode() + data)
+          == b"1|", "blob flush failed")
+
+
+def mutate_blobs(client, index):
+    for key in ("BKEEP01", "BZERO01", "BNONE01"):
+        record, _ = blob_get(client, index, key)
+        blob_flush(client, index, record, key, CHANGED_BLOBS[key])
+    # Repeated replacement must still undo to the original, not an intermediate value.
+    record, _ = blob_get(client, index, "BKEEP01")
+    blob_flush(client, index, record, "BKEEP01", b"intermediate")
+    blob_flush(client, index, record, "BKEEP01", CHANGED_BLOBS["BKEEP01"])
+    inserted = command(client, f"{INSERT}|1|1|{index}|0|{record}|").split(b"|")
+    record = int(inserted[1])
+    blob_flush(client, index, record, "BNEW001", CHANGED_BLOBS["BNEW001"])
+    command(client, f"{INCLUDE}|{index}|0|{index}|0|{record}|BNEW001|")
+    record, _ = blob_get(client, index, "BDROP01")
+    command(client, f"{REMOVE}|{index}|1|BDROP01")
+    command(client, f"{DELETE}|{index}|0|{record}|1|")
+
+
+def verify_blobs(client, index, root, expected):
+    paths = set()
+    for key, blob in expected.items():
+        found = blob_get(client, index, key)
+        check(found is not None and found[1] == (blob or b""), f"blob contents differ: {key}")
+        path = root / "blobs" / f"documents.1.{found[0]}.2"
+        if blob is None:
+            check(not path.exists(), "absent blob became an empty file")
+        else:
+            check(path.read_bytes() == blob, f"disk blob differs: {key}")
+            paths.add(path.name)
+    for key in (ORIGINAL_BLOBS.keys() | CHANGED_BLOBS.keys()) - expected.keys():
+        check(blob_get(client, index, key) is None, f"unexpected blob index entry: {key}")
+    check({p.name for p in (root / "blobs").iterdir()} == paths, "orphan/missing blob files")
+
+
 def fixtures(servers, mkdf):
     for folder in ("files", "index", "blobs"):
         (servers.root / folder).mkdir(parents=True)
@@ -218,8 +290,12 @@ def fixtures(servers, mkdf):
         subprocess.run([mkdf, name, str(initial)], input=b"1\n2\n7\n16\n",
                        env=dict(os.environ, ROOT=str(servers.root)),
                        stdout=servers.log, stderr=servers.log, check=True)
+    initial.write_text("".join(f"1:{key}:blob record:\n" for key in ORIGINAL_BLOBS))
+    subprocess.run([mkdf, "documents", str(initial)], input=b"1\n3\n7\n16\n0\n",
+                   env=dict(os.environ, ROOT=str(servers.root)),
+                   stdout=servers.log, stderr=servers.log, check=True)
     client = servers.start()
-    for name in ("alpha", "beta"):
+    for name in ("alpha", "beta", "documents"):
         reply = command(client, f"{MKIDX}|7|{name}_idx|{servers.root}|1|{name}|").split(b"|", 9)
         index, workfile = int(reply[1]), int(reply[3])
         data = (servers.root / "files" / name).read_bytes()
@@ -231,6 +307,12 @@ def fixtures(servers, mkdf):
             record = struct.unpack_from("!q", data, record + 9)[0]
         check(command(client, f"{ICLOSE}|{index}|") == b"1|", "index build close failed")
         check(command(client, f"{ICLOSE}|-{workfile}|") == b"1|", "workfile close failed")
+    index = blob_index(client, servers.root)
+    for key, blob in ORIGINAL_BLOBS.items():
+        record, _ = blob_get(client, index, key)
+        if blob is not None:
+            blob_flush(client, index, record, key, blob)
+    command(client, f"{ICLOSE}|{index}|")
     return client, expected
 
 
@@ -268,50 +350,150 @@ def verify_handshakes(servers):
     print("versioned/legacy/fragmented protocol handshakes: PASS", flush=True)
 
 
+def failure_cases(servers, client, indexes, blobs, before, original):
+    def restored():
+        check(snapshot(servers.root) == before, "failure handling did not restore every file")
+        check(not (servers.journal / ".dataman-undo").exists(), "resolved failure left journal")
+
+    other = servers.client()
+    other_indexes = open_indexes(other, servers.root)
+    mutate(client, indexes)
+    mutate_blobs(client, blobs)
+    during = snapshot(servers.root)
+    for request in (f"{START_XACT}|", f"{GET}|{other_indexes[0]}|KEEP001|",
+                    f"{FLUSH}|{other_indexes[0]}|0|32|1|23|".encode() + b"x" * 23):
+        check(other.command(request) == b"-8|", "competing request was not excluded")
+    check(snapshot(servers.root) == during, "competing client changed transaction data")
+    check(command(client, f"{ROLLBACK}|") == b"1|", "contention rollback failed")
+    restored()
+    verify(other, other_indexes, original)
+    print("competing begin/read/write rejected without changing owner data: PASS", flush=True)
+
+    mutate(client, indexes)
+    mutate_blobs(client, blobs)
+    record, _ = lookup(client, indexes[0], "REN0001")
+    marker = servers.directory / "fail-write"
+    marker.touch()
+    request = f"{FLUSH}|{indexes[0]}|0|{record}|1|23|".encode() + payload("REN0001", "failed write")
+    check(client.command(request) == b"-19|", "write failure was not reported")
+    check(not marker.exists(), "write fault was not exercised")
+    check(client.command(f"{COMMIT}|") == b"-19|", "abort-only transaction committed")
+    check(other.command(f"{START_XACT}|") == b"-8|", "failed commit released ownership")
+    check(command(client, f"{ROLLBACK}|") == b"1|", "write-failure rollback failed")
+    restored()
+    verify_blobs(client, blobs, servers.root, ORIGINAL_BLOBS)
+    print("ENOSPC write error, rejected commit, and complete rollback: PASS", flush=True)
+
+    mutate(client, indexes)
+    mutate_blobs(client, blobs)
+    client.close()
+    deadline = time.monotonic() + 10
+    while True:
+        response = other.command(f"{START_XACT}|")
+        if response == b"1|":
+            break
+        check(response == b"-8|" and time.monotonic() < deadline,
+              "disconnect did not release transaction ownership")
+        time.sleep(.02)
+    check(snapshot(servers.root) == before, "disconnect did not restore all records/indexes/blobs")
+    check(command(other, f"{ROLLBACK}|") == b"1|", "new owner's rollback failed")
+    restored()
+    client = other
+    indexes = other_indexes
+    blobs = blob_index(client, servers.root)
+    verify_blobs(client, blobs, servers.root, ORIGINAL_BLOBS)
+    print("client disconnect undoes records, indexes, and blobs: PASS", flush=True)
+
+    mutate(client, indexes)
+    mutate_blobs(client, blobs)
+    marker = servers.directory / "fail-sync"
+    marker.touch()
+    check(client.command(f"{COMMIT}|") == b"-51|", "failed commit sync reported success")
+    check(not marker.exists(), "commit sync fault was not exercised")
+    # Completion is uncertain: abort/re-entry must not proceed on this server.
+    for request in (f"{ROLLBACK}|", f"{START_XACT}|"):
+        try:
+            check(client.command(request) == b"-48|", "uncertain commit allowed further work")
+        except (OSError, RuntimeError):
+            # The server's periodic blocked-state check can terminate it first.
+            break
+    check((servers.journal / ".dataman-undo").exists(), "failed sync discarded recovery journal")
+    servers.stop()
+    client = servers.start()
+    restored()
+    indexes = open_indexes(client, servers.root)
+    blobs = blob_index(client, servers.root)
+    verify(client, indexes, original)
+    verify_blobs(client, blobs, servers.root, ORIGINAL_BLOBS)
+    print("commit fsync error blocks service; restart restores entire transaction: PASS", flush=True)
+    return client, indexes, blobs
+
+
 def run(servers, mkdf):
     client, original = fixtures(servers, mkdf)
     verify_handshakes(servers)
     indexes = open_indexes(client, servers.root)
     verify(client, indexes, original)
+    blobs = blob_index(client, servers.root)
+    verify_blobs(client, blobs, servers.root, ORIGINAL_BLOBS)
     before = snapshot(servers.root)
     changed = dict(original)
     del changed["KEEP001"], changed["DROP001"]
     changed.update(REN0001=payload("REN0001", "changed"), NEW0001=payload("NEW0001", "inserted"))
 
     mutate(client, indexes)
+    mutate_blobs(client, blobs)
     verify(client, indexes, changed)
+    verify_blobs(client, blobs, servers.root, CHANGED_BLOBS)
     journal = servers.journal / ".dataman-undo"
     check(journal.stat().st_size > 0, "active transaction has no journal")
     during = snapshot(servers.root)
     for name in before:
-        check(during[name] != before[name], f"transaction did not change {name}")
+        check(during.get(name) != before[name], f"transaction did not change {name}")
     servers.stop()
     check(journal.exists(), "crash did not leave an undo journal")
     check(snapshot(servers.root) == during, "crash unexpectedly performed rollback")
+    marker = servers.directory / "fail-write"
+    marker.touch()
+    servers.srv = subprocess.Popen([servers.srv_binary], env=servers.env,
+                                   stdout=servers.log, stderr=servers.log, start_new_session=True)
+    check(servers.srv.wait(timeout=10) != 0, "failed recovery admitted database requests")
+    check(not marker.exists() and journal.exists(), "recovery failure lost journal or missed injection")
+    servers.stop()
+    print("startup undo write failure refuses service and retains journal: PASS", flush=True)
 
     client = servers.start()
     check(not journal.exists(), "startup did not retire recovered journal")
     check(snapshot(servers.root) == before, "recovery did not restore every file byte-for-byte")
     indexes = open_indexes(client, servers.root)
+    blobs = blob_index(client, servers.root)
     verify(client, indexes, original)
+    verify_blobs(client, blobs, servers.root, ORIGINAL_BLOBS)
     print("multi-file crash recovery: exact data/index restoration and lookups PASS", flush=True)
 
     mutate(client, indexes)
+    mutate_blobs(client, blobs)
     check(command(client, f"{ROLLBACK}|") == b"1|", "explicit rollback failed")
     check(snapshot(servers.root) == before, "explicit rollback did not restore all files")
     verify(client, indexes, original)
+    verify_blobs(client, blobs, servers.root, ORIGINAL_BLOBS)
     check(not journal.exists(), "explicit rollback left journal")
     print("multi-file explicit rollback: restored files and open-index caches PASS", flush=True)
 
+    client, indexes, blobs = failure_cases(servers, client, indexes, blobs, before, original)
+
     mutate(client, indexes)
+    mutate_blobs(client, blobs)
     check(command(client, f"{COMMIT}|") == b"1|", "commit failed")
     check(not journal.exists(), "commit left journal")
     committed = snapshot(servers.root)
     verify(client, indexes, changed)
+    verify_blobs(client, blobs, servers.root, CHANGED_BLOBS)
     servers.stop()
     client = servers.start()
     check(snapshot(servers.root) == committed, "committed files changed on restart")
     verify(client, open_indexes(client, servers.root), changed)
+    verify_blobs(client, blob_index(client, servers.root), servers.root, CHANGED_BLOBS)
     print("multi-file commit: data and index changes survive restart PASS", flush=True)
 
 

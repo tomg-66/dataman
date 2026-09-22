@@ -10,7 +10,7 @@ User=dataman
 Group=dataman
 Environment="PATH=@DATAMAN_BINDIR@:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Environment=DATAMAN_JOURNAL_DIR=/var/lib/dataman/journal
-ExecStart="@DATAMAN_BINDIR@/dataman" -f
+ExecStart="@DATAMAN_BINDIR@/dataman" -f -m 4 -n 10
 Restart=always
 RestartSec=5
 KillMode=control-group

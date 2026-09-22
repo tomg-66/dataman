@@ -2,7 +2,7 @@
 
 ## Client transactions
 
-The `add_transactions` branch now executes transactions in the storage server.
+Transactions execute in the storage server.
 The connection server forwards commands; it no longer collects mutations for
 later execution. Open the indexes you need before starting a transaction.
 
@@ -41,6 +41,13 @@ returns an error; call rollback. C, C++, and Java retain their transaction flag
 when commit fails. On successful rollback they discard cached master/work record
 fields so later navigation cannot flush abandoned edits. Reposition/reload records
 before editing again; saved application values and cursors are not restored.
+
+A failure while synchronizing or resolving commit is different from an
+abort-only transaction: commit reports `EMULTIPLE`, and the server blocks
+further work for restart recovery. Do not assume that an explicit rollback can
+resolve that state. If startup recovery fails, the server refuses service and
+retains the journal; correct the underlying I/O or filesystem problem and retry
+startup with the same journal directory.
 
 Disconnecting with an open journal aborts it, including an intentional application
 exit without commit. A periodic sweep handles failed connections. Startup recovery
@@ -171,6 +178,17 @@ index splits/root caches, blob namespace operations, large streamed snapshots,
 corrupt framing, partial writes, sync failures, and interrupted recovery. Live
 Java/protocol tests cover client transactions, read-your-writes, automatic key
 removal, competing sessions, and disconnect undo. See [Tests](../tests/README.md).
+
+The isolated live-server recovery test covers three datafiles and three indexes,
+including blob creation, repeated replacement, truncation, and deletion with
+binary payloads larger than 1 MiB. Crash recovery and explicit rollback must
+restore original file contents exactly and remove newly created blobs. Committed
+changes must survive restart. The same test verifies client-visible contention,
+disconnect undo, abort-only behavior after an injected data-write failure, blocked
+service after a commit sync failure, and successful retry of failed startup undo.
+These failure cases use a Python protocol client and test-only I/O injection;
+they do not simulate hardware power loss or cover every language binding's
+application-side error handling.
 
 ### Protocol compatibility after legacy-handler removal
 

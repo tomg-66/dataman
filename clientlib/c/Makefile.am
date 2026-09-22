@@ -5,7 +5,7 @@ libmini_la_SOURCES = show.c accept.c pause.c screen.c mask.c init_dwin.c \
 
 includedir = $(prefix)/include/dataman
 
-noinst_HEADERS = index.h m_params.h window.h w_params.h
+noinst_HEADERS = index.h m_params.h window.h w_params.h globs.h
 
 
 lib_LTLIBRARIES = libdataman.la
@@ -21,7 +21,7 @@ libdataman_la_SOURCES = accept.c add_protect.c back.c clear.c cl_win.c \
 	       	put_long.c put_blob.c get_ll.c start_xact.c commit.c rollback.c put_ll.c
 
 
-libdataman_la_LDFLAGS = -version-info 5:0:1 -lcurses
+libdataman_la_LDFLAGS = -version-info 6:0:2 -lcurses
 
 include_HEADERS = dataman.h dataman_prototypes.h sort.h wind.h visibility.h 
 

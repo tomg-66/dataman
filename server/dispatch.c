@@ -172,7 +172,7 @@ void *dispatch(void *dummy)
  * get the id of the message queue
  */
 	if (dbgsw) {
-		fprintf(stderr, "Enter dispatch, thread = %d\n", pthread_self());
+		fprintf(stderr, "Enter dispatch, thread = %ld\n", pthread_self());
 		fflush(stderr);
 	}
 	if ((msgid = msgget((key_t)MSGKEY, PERMS|IPC_CREAT)) < 0)
@@ -422,7 +422,8 @@ err_jump:
 				break;
 			}
 			if (dbgsw) {
-				fprintf(stderr, "sending long message from dbfunc returns error: %d\n", msgbuf.txt, errno);
+				fprintf(stderr, "sending long message from dbfunc returns error: %d\n", errno);
+				fprintf(stderr, "message ->%s<-\n", msgbuf.txt);
 				fflush(stderr);
 			}
 			if (errno == EIDRM) {

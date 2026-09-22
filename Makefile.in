@@ -98,7 +98,7 @@ am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
-	$(am__configure_deps) $(am__DIST_COMMON)
+	$(am__configure_deps) $(dist_sbin_SCRIPTS) $(am__DIST_COMMON)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -133,7 +133,7 @@ am__uninstall_files_from_dir = { \
   }
 am__installdirs = "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(systemdsystemunitdir)"
-SCRIPTS = $(sbin_SCRIPTS)
+SCRIPTS = $(dist_sbin_SCRIPTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -459,7 +459,7 @@ EXTRA_DIST = Cleanfile sample_rc_script systemd/dataman.service.in $(PHP_EXTENSI
 
 
 # Direct host installs provision the service; DESTDIR/non-root installs skip it.
-sbin_SCRIPTS = scripts/dataman-system-setup
+dist_sbin_SCRIPTS = scripts/dataman-system-setup
 
 # Override for distribution packaging; the default is a systemd unit search path.
 systemdsystemunitdir = $(prefix)/lib/systemd/system
@@ -517,9 +517,9 @@ $(srcdir)/config.h.in:  $(am__configure_deps)
 
 distclean-hdr:
 	-rm -f config.h stamp-h1
-install-sbinSCRIPTS: $(sbin_SCRIPTS)
+install-dist_sbinSCRIPTS: $(dist_sbin_SCRIPTS)
 	@$(NORMAL_INSTALL)
-	@list='$(sbin_SCRIPTS)'; test -n "$(sbindir)" || list=; \
+	@list='$(dist_sbin_SCRIPTS)'; test -n "$(sbindir)" || list=; \
 	if test -n "$$list"; then \
 	  echo " $(MKDIR_P) '$(DESTDIR)$(sbindir)'"; \
 	  $(MKDIR_P) "$(DESTDIR)$(sbindir)" || exit 1; \
@@ -546,9 +546,9 @@ install-sbinSCRIPTS: $(sbin_SCRIPTS)
 	     } \
 	; done
 
-uninstall-sbinSCRIPTS:
+uninstall-dist_sbinSCRIPTS:
 	@$(NORMAL_UNINSTALL)
-	@list='$(sbin_SCRIPTS)'; test -n "$(sbindir)" || exit 0; \
+	@list='$(dist_sbin_SCRIPTS)'; test -n "$(sbindir)" || exit 0; \
 	files=`for p in $$list; do echo "$$p"; done | \
 	       sed -e 's,.*/,,;$(transform)'`; \
 	dir='$(DESTDIR)$(sbindir)'; $(am__uninstall_files_from_dir)
@@ -953,7 +953,7 @@ install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
-install-exec-am: install-sbinSCRIPTS
+install-exec-am: install-dist_sbinSCRIPTS
 
 install-html: install-html-recursive
 
@@ -993,8 +993,8 @@ ps: ps-recursive
 
 ps-am:
 
-uninstall-am: uninstall-nodist_systemdsystemunitDATA \
-	uninstall-sbinSCRIPTS
+uninstall-am: uninstall-dist_sbinSCRIPTS \
+	uninstall-nodist_systemdsystemunitDATA
 
 .MAKE: $(am__recursive_targets) all install-am install-data-am \
 	install-strip
@@ -1007,16 +1007,17 @@ uninstall-am: uninstall-nodist_systemdsystemunitDATA \
 	distclean-generic distclean-hdr distclean-libtool \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-data-hook install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
+	install-data install-data-am install-data-hook \
+	install-dist_sbinSCRIPTS install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man \
 	install-nodist_systemdsystemunitDATA install-pdf \
-	install-pdf-am install-ps install-ps-am install-sbinSCRIPTS \
-	install-strip installcheck installcheck-am installdirs \
-	installdirs-am maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
-	ps ps-am tags tags-am uninstall uninstall-am \
-	uninstall-nodist_systemdsystemunitDATA uninstall-sbinSCRIPTS
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs installdirs-am \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags tags-am uninstall uninstall-am uninstall-dist_sbinSCRIPTS \
+	uninstall-nodist_systemdsystemunitDATA
 
 .PRECIOUS: Makefile
 

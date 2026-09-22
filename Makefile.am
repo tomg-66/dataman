@@ -97,7 +97,7 @@ EXTRA_DIST = Cleanfile sample_rc_script systemd/dataman.service.in $(PHP_EXTENSI
 	$(CMAKE_DIST) $(DOCUMENTATION_DIST) $(TEST_DIST)
 
 # Direct host installs provision the service; DESTDIR/non-root installs skip it.
-sbin_SCRIPTS = scripts/dataman-system-setup
+dist_sbin_SCRIPTS = scripts/dataman-system-setup
 install-data-hook:
 	DESTDIR="$(DESTDIR)" $(SHELL) "$(srcdir)/scripts/dataman-system-setup"
 

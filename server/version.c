@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static char dataman_version[] = "4.1.0";
+static char dataman_version[] = "4.2.0";
 
 void print_version(char *name)
 {

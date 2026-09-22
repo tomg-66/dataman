@@ -47,6 +47,7 @@
 #include <time.h>
 #include <string.h>
 #include <libgen.h>
+#include <fcntl.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -60,9 +61,10 @@ static pid_t con_pid,				/* connection manager pid*/
 		srv_pid,					/* db server pid */
 		my_pid;						/* dataman pid */
 static int term_sw,					/* termination switch */
-		dbgsw,						/* debugging switch */
+		dbgsw,						/* debugging command-line switch */
 		threads,					/* number of dbserve worker threads */
-		memsize;					/* size of shared memory segment */
+		memsize,					/* size of shared memory segment */
+		debugging = 0;				/* current state of debugging */
 
 void reap_child(int sig)
 {
@@ -215,6 +217,7 @@ int main(int argc, char *argv[])
 	int foreground = 0;
 	int qsw;						/* query switch */
 	int file_opened;				/* another switch */
+	int dbfd;
 
 	pid_t chk_this, chk_parent;
 
@@ -403,10 +406,27 @@ int main(int argc, char *argv[])
 		if (dbgsw) {
 			kill(con_pid, SIGUSR1);
 			kill(srv_pid, SIGUSR1);
+			dbfd = open("/tmp/.dmdbg", O_RDWR);
+			lseek(dbfd, 0l, SEEK_SET);
+			char tst;
+			read(dbfd, &tst, 1);
+			lseek(dbfd, 0l, SEEK_SET);
+			if (tst == '1') {
+				write(dbfd, "0", 1);
+			} else {
+				write(dbfd, "1", 1);
+			}
+			close(dbfd);
 			exit(0);
 		}
 		if (qsw) {
+			char tst;
+			dbfd = open("/tmp/.dmdbg", O_RDONLY);
+			lseek(dbfd, 0l, SEEK_SET);
+			read (dbfd, &tst, 1);
+			close (dbfd);
 			fprintf(stderr, "Dataman -IS- running\n");
+			fprintf(stderr, "Debugging is %s", tst == '1' ? "active\n" : "not active\n");
 			exit(1);
 		}
 		if (tsw)
@@ -476,6 +496,21 @@ start_services:
 	act.sa_handler = shutdown_handler;
 	if (sigaction(SIGQUIT, &act, NULL) < 0)
 		err_sys("%s: Can't install quit handler: ", argv[0]);
+/*
+ * at this point we can create the file to communicate if we're
+ * in debug mode
+ */
+	if ((dbfd = open("/tmp/.dmdbg", O_RDWR|O_TRUNC|O_CREAT, 0600)) < 0)
+		fprintf(stderr, "can't create debug state file");
+	else {
+		lseek (dbfd, 0l, SEEK_SET);
+		if (dbgsw) {
+			write(dbfd, "1", 1);
+		} else {
+			write(dbfd, "0", 1);
+		}
+	}
+	close(dbfd);
 /*
  * ok, now we need to exec our kid processes
  */

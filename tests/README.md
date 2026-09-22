@@ -96,23 +96,40 @@ cmake --build /tmp/dataman-recovery-build --target recovery_srv recovery_con mkd
 ctest --test-dir /tmp/dataman-recovery-build -R '^transaction-recovery$' --output-on-failure
 ```
 
-`transaction_recovery_test.py` creates two disposable datafiles and two indexes
-with enough entries for multiple leaves. In one transaction it updates records,
-changes keys, inserts records/keys, and deletes records/keys in both files.
+`transaction_recovery_test.py` creates three disposable datafiles and three indexes,
+including a blob-bearing file and indexes with multiple leaves. In one transaction
+it updates records, changes keys, inserts records/keys, and deletes records/keys.
+Blob operations include repeated replacement, truncation to zero, creation on an
+existing record, insertion of a record with a blob, and deletion of a blob-bearing
+record. Binary payloads exceed 1 MiB and cross journal/shared-memory chunk boundaries.
 It kills the storage server before disconnecting the client, confirms that the
 changed files and hidden `.dataman-undo` journal remain, and restarts the servers.
-Recovery must restore every datafile and index byte-for-byte and retire the
+Recovery must restore every datafile, index, and original blob byte-for-byte,
+remove newly created blobs, preserve originally absent blobs, and retire the
 journal. Lookups and forward/reverse index traversal must match the baseline.
 The test also verifies explicit rollback with open indexes and checks that a
 successful commit survives a forced stop and restart.
 
-The test binaries use the production server sources with linker wrappers only
-for resource isolation: a separately reserved message queue, unique PID files,
-an ephemeral loopback port, and disabled signaling of the installed server.
+The test also checks these failures through a Python TCP client:
+
+- Competing begin/read/write requests return `ENOLOCK` without changing owner data.
+- An injected `ENOSPC` data write makes the transaction abort-only; commit fails,
+  ownership remains held, and explicit rollback restores records, indexes, and blobs.
+- Client disconnect undoes the entire transaction before admitting another owner.
+- An injected commit `fsync` error reports failure and blocks further work;
+  restart recovers the uncommitted changes.
+- A failed startup undo write refuses service and retains its journal;
+  a subsequent restart completes recovery, including already partially undone blobs.
+
+The test binaries use the production server sources with linker wrappers
+for resource isolation and one-shot I/O failure injection: a reserved message
+queue, unique PID files, an ephemeral loopback port, and disabled signaling of
+the installed server.
 Journaling, protocol handling, mutation handlers, and startup recovery are real.
 The test removes its own processes, IPC resources, and temporary files afterward.
 These test binaries are not installed. This is a process-crash test, not a
-simulation of hardware power loss, and does not yet include blob mutations.
+simulation of hardware power loss. The failure cases exercise client-visible wire
+responses; they do not replace separate C/C++/Java client-library tests.
 
 ### Existing-server client tests
 
